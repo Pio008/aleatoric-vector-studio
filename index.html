@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Aleatoric Vector Studio (Canvas Resize Fixed)</title>
+<title>Aleatoric Vector Studio (Copy & Paste Details)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -442,11 +442,15 @@ let canvasDragState = null;
 let addPointMode = false;
 let addPointLayerId = null;
 
+// Clipboard storage for parameters
+let parameterClipboard = null;
+
 const DEFAULTS = {
   line: {
     lineType:'straight', x:40, y:80, rotation:0,
     length:200, amplitude:20, cycles:26, phase:0, decay:1.0,
     chirpRate:-1, damping:0.6,
+    ampStart:40, ampEnd:1, ampShape:1.7, periodStart:28, periodEnd:100, periodShape:1.0, tailLength:20,
     thickness:4.2, dash:'solid', cap:'round', color:'#211D18',
     fixedStroke:false, arrowType:'stroke', arrowPlacement:'end', arrowSize:14, arrowStrokeWidth:4.2, arrowStrokeColor:'#211D18', arrowFillColor:'#211D18'
   },
@@ -464,6 +468,7 @@ const DEFAULTS = {
     x:100, y:80, rotation:0,
     points:[], closed:false,
     lineType:'straight', amplitude:12, cycles:2, phase:0, decay:0, chirpRate:-1, damping:0.6,
+    ampStart:24, ampEnd:1, ampShape:1.7, periodStart:20, periodEnd:60, periodShape:1.0, tailLength:10,
     thickness:1.8, dash:'solid', cap:'round', color:'#211D18', fixedStroke:true,
     arrowType:'none', arrowPlacement:'end', arrowSize:14
   }
@@ -536,10 +541,10 @@ function schemaFor(layer){
   if(layer.type==='line'){
     const t = layer.params.lineType;
     const fields = [
-      {key:'lineType', label:'Line type', type:'select', options:['straight','wavy','zigzag','chirp','arc'], group:'shape'},
+      {key:'lineType', label:'Line type', type:'select', options:['straight','wavy','zigzag','chirp','arc','dampedWave'], group:'shape'},
       {key:'length', label:'Length', type:'range', min:10, max:Math.max(canvasW,1200), step:1, group:'shape'}
     ];
-    if(t!=='straight'){
+    if(t!=='straight' && t!=='dampedWave'){
       fields.push({key:'amplitude', label:'Amplitude', type:'range', min:0, max:100, step:1, group:'shape'});
     }
     if(t==='wavy'||t==='zigzag'||t==='chirp'){
@@ -552,6 +557,15 @@ function schemaFor(layer){
     if(t==='chirp'){
       fields.push({key:'chirpRate', label:'Chirp rate', type:'range', min:-3, max:3, step:0.1, group:'shape'});
       fields.push({key:'damping', label:'Damping', type:'range', min:-2, max:2, step:0.1, group:'shape'});
+    }
+    if(t==='dampedWave'){
+      fields.push({key:'ampStart', label:'Amplitude start', type:'range', min:0, max:150, step:1, group:'shape'});
+      fields.push({key:'ampEnd', label:'Amplitude end', type:'range', min:0, max:150, step:1, group:'shape'});
+      fields.push({key:'ampShape', label:'Decay shape', type:'range', min:0.3, max:4, step:0.1, group:'shape'});
+      fields.push({key:'periodStart', label:'Wavelength start', type:'range', min:4, max:200, step:1, group:'shape'});
+      fields.push({key:'periodEnd', label:'Wavelength end', type:'range', min:4, max:400, step:1, group:'shape'});
+      fields.push({key:'periodShape', label:'Growth shape', type:'range', min:0.3, max:4, step:0.1, group:'shape'});
+      fields.push({key:'tailLength', label:'Straight tail', type:'range', min:0, max:200, step:1, group:'shape'});
     }
     fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:12, step:0.1, group:'stroke'});
     fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted'], group:'stroke'});
@@ -596,10 +610,10 @@ function schemaFor(layer){
   if(layer.type==='custom'){
     const t = layer.params.lineType;
     const fields = [
-      {key:'lineType', label:'Line style', type:'select', options:['straight','wavy','zigzag','chirp','arc'], group:'shape'},
+      {key:'lineType', label:'Line style', type:'select', options:['straight','wavy','zigzag','chirp','arc','dampedWave'], group:'shape'},
       {key:'closed', label:'Close shape', type:'checkbox', group:'shape'}
     ];
-    if(t!=='straight'){
+    if(t!=='straight' && t!=='dampedWave'){
       fields.push({key:'amplitude', label:'Amplitude', type:'range', min:0, max:100, step:1, group:'shape'});
     }
     if(t==='wavy'||t==='zigzag'||t==='chirp'){
@@ -612,6 +626,15 @@ function schemaFor(layer){
     if(t==='chirp'){
       fields.push({key:'chirpRate', label:'Chirp rate', type:'range', min:-3, max:3, step:0.1, group:'shape'});
       fields.push({key:'damping', label:'Damping', type:'range', min:-2, max:2, step:0.1, group:'shape'});
+    }
+    if(t==='dampedWave'){
+      fields.push({key:'ampStart', label:'Amplitude start', type:'range', min:0, max:150, step:1, group:'shape'});
+      fields.push({key:'ampEnd', label:'Amplitude end', type:'range', min:0, max:150, step:1, group:'shape'});
+      fields.push({key:'ampShape', label:'Decay shape', type:'range', min:0.3, max:4, step:0.1, group:'shape'});
+      fields.push({key:'periodStart', label:'Wavelength start', type:'range', min:4, max:200, step:1, group:'shape'});
+      fields.push({key:'periodEnd', label:'Wavelength end', type:'range', min:4, max:400, step:1, group:'shape'});
+      fields.push({key:'periodShape', label:'Growth shape', type:'range', min:0.3, max:4, step:0.1, group:'shape'});
+      fields.push({key:'tailLength', label:'Straight tail (per segment)', type:'range', min:0, max:200, step:1, group:'shape'});
     }
     fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:12, step:0.1, group:'stroke'});
     fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted'], group:'stroke'});
@@ -679,6 +702,38 @@ function samplePoints(p){
   return pts;
 }
 
+function dampedWavePoints(p){
+  const N = 300;
+  const totalLen = Math.max(1, p.length);
+  const tailLength = clamp(p.tailLength !== undefined ? p.tailLength : 0, 0, totalLen - 5);
+  const waveLength = Math.max(5, totalLen - tailLength);
+  const ampStart = p.ampStart !== undefined ? p.ampStart : 20;
+  const ampEnd = p.ampEnd !== undefined ? p.ampEnd : 0;
+  const ampShape = p.ampShape !== undefined ? p.ampShape : 1.5;
+  const periodStart = p.periodStart !== undefined ? p.periodStart : 30;
+  const periodEnd = p.periodEnd !== undefined ? p.periodEnd : 110;
+  const periodShape = p.periodShape !== undefined ? p.periodShape : 1.0;
+  const dx = waveLength / N;
+  let phase = 0;
+  const pts = [{x:0, y:0}];
+  for(let i=1; i<=N; i++){
+    const xMid = (i - 0.5) * dx;
+    const uMid = xMid / waveLength;
+    const per = Math.max(1, periodStart + (periodEnd - periodStart) * Math.pow(uMid, periodShape));
+    phase += (2*Math.PI/per) * dx;
+    const x = i * dx;
+    const u = x / waveLength;
+    const amp = ampEnd + (ampStart - ampEnd) * Math.pow(1 - u, ampShape);
+    const y = -amp * Math.sin(phase);
+    pts.push({x, y});
+  }
+  if(tailLength > 0){
+    const last = pts[pts.length-1];
+    pts.push({x: last.x + tailLength, y: last.y});
+  }
+  return pts;
+}
+
 function zigzagPoints(p){
   const segments = Math.max(2, Math.round(p.cycles*2));
   const pts = [{x:0,y:0}];
@@ -703,6 +758,7 @@ function dashArrayFor(style, thickness){
 function getLinePoints(p){
   if(p.lineType==='straight') return [{x:0,y:0},{x:p.length,y:0}];
   if(p.lineType==='zigzag') return zigzagPoints(p);
+  if(p.lineType==='dampedWave') return dampedWavePoints(p);
   return samplePoints(p);
 }
 
@@ -757,7 +813,7 @@ function renderArrowheads(pts, p, angleStart, angleEnd) {
 
 function lineElement(p){
   const pts = getLinePoints(p);
-  let d = (p.lineType==='straight' || p.lineType==='zigzag') 
+  let d = (p.lineType==='straight' || p.lineType==='zigzag' || p.lineType==='dampedWave')
     ? 'M ' + pts.map(pt=>`${pt.x.toFixed(2)},${pt.y.toFixed(2)}`).join(' L ') 
     : catmullRomPath(pts);
 
@@ -825,7 +881,9 @@ function waveSegmentPoints(p0, p1, lineParams){
   }
   const angle = Math.atan2(dy,dx);
   const segParams = Object.assign({}, lineParams, {length:segLen});
-  const localPts = lineParams.lineType==='zigzag' ? zigzagPoints(segParams) : samplePoints(segParams);
+  const localPts = lineParams.lineType==='zigzag' ? zigzagPoints(segParams)
+    : lineParams.lineType==='dampedWave' ? dampedWavePoints(segParams)
+    : samplePoints(segParams);
   const cos = Math.cos(angle), sin = Math.sin(angle);
   return localPts.map(pt=>({
     x: p0.x + pt.x*cos - pt.y*sin,
@@ -846,7 +904,7 @@ function customElement(p){
     allPts = allPts.concat(segPts);
   }
   let d;
-  if(p.lineType==='straight' || p.lineType==='zigzag'){
+  if(p.lineType==='straight' || p.lineType==='zigzag' || p.lineType==='dampedWave'){
     d = 'M ' + allPts.map(pt=>`${pt.x.toFixed(2)},${pt.y.toFixed(2)}`).join(' L ');
   } else {
     d = catmullRomPath(allPts);
@@ -948,7 +1006,7 @@ function selectionOverlaySvg(layer){
     handles += handleRect(layer.id,'resize-s', p.width/2-5, p.height-5);
     handles += handleRect(layer.id,'resize-se', p.width-5, p.height-5);
   } else if(layer.type==='line'){
-    const amp = (p.lineType==='straight') ? 0 : p.amplitude;
+    const amp = (p.lineType==='straight') ? 0 : (p.lineType==='dampedWave' ? Math.max(p.ampStart, p.ampEnd) : p.amplitude);
     outline = `<rect class="sel-outline" x="0" y="${-amp-4}" width="${p.length}" height="${amp*2+8}"/>`;
     handles += handleRect(layer.id,'line-end', p.length-5, -5);
     if(p.lineType!=='straight'){
@@ -1002,6 +1060,45 @@ function moveLayer(id, dir, ev){
   const j = i + dir;
   if(j<0 || j>=layers.length) return;
   [layers[i], layers[j]] = [layers[j], layers[i]];
+  renderAll();
+}
+
+/* ============================= PARAMS COPY / PASTE SYSTEM ============================= */
+function copyElementParams(id) {
+  const layer = layers.find(l => l.id === id);
+  if (!layer) return;
+  
+  // Clone parameters but exclude geometric position/dots data so it overlays naturally
+  const baseParams = JSON.parse(JSON.stringify(layer.params));
+  delete baseParams.x;
+  delete baseParams.y;
+  delete baseParams.rotation;
+  delete baseParams.points; // Keep macro shape, let dots be custom
+  
+  parameterClipboard = {
+    sourceType: layer.type,
+    params: baseParams
+  };
+  renderAll();
+}
+
+function pasteElementParams(id) {
+  if (!parameterClipboard) return;
+  const layer = layers.find(l => l.id === id);
+  if (!layer) return;
+  
+  // Blend matching variables over without rewriting layout positioning
+  if (layer.type === parameterClipboard.sourceType) {
+    Object.assign(layer.params, parameterClipboard.params);
+  } else {
+    // Cross-element fallback paste for styling variables (ink, thickness etc.)
+    const shareableKeys = ['thickness', 'color', 'fixedStroke', 'dash', 'cap', 'lineType', 'amplitude', 'cycles', 'phase', 'decay', 'chirpRate', 'damping'];
+    shareableKeys.forEach(k => {
+      if (parameterClipboard.params[k] !== undefined && layer.params[k] !== undefined) {
+        layer.params[k] = parameterClipboard.params[k];
+      }
+    });
+  }
   renderAll();
 }
 
@@ -1115,6 +1212,15 @@ function buildParamPanel(){
   else if(layer.type==='custom') note = '<div class="mouse-note">Hold Ctrl while dragging any handle (or while adding dots) to keep it on the same horizontal line.</div>';
   else note += ' (hold Ctrl on the corner square to keep width &amp; height equal).</div>';
   
+  // Clipboard Operations Bar
+  const isClipboardEmpty = parameterClipboard === null;
+  const clipboardHtml = `
+    <div style="display:flex; gap:8px; margin-bottom:14px; background:var(--paper-deep); padding:8px; border-radius:3px; border:1px solid var(--border);">
+      <button class="btn secondary" style="font-size:12px; padding:6px 10px; flex:1;" onclick="copyElementParams('${layer.id}')">📋 Copy Line Details</button>
+      <button class="btn" style="font-size:12px; padding:6px 10px; flex:1;" ${isClipboardEmpty ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} onclick="pasteElementParams('${layer.id}')">📥 Paste to This Line</button>
+    </div>
+  `;
+
   let customControls = '';
   if(layer.type==='custom'){
     const active = addPointMode && addPointLayerId===layer.id;
@@ -1130,7 +1236,7 @@ function buildParamPanel(){
       </div>`;
   }
   
-  body.innerHTML = note + customControls + renderSchemaFields(schemaFor(layer), layer);
+  body.innerHTML = note + clipboardHtml + customControls + renderSchemaFields(schemaFor(layer), layer);
 }
 
 function toggleAddPoint(id, checked){
