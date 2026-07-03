@@ -448,7 +448,7 @@ const DEFAULTS = {
     length:120, amplitude:12, cycles:3, phase:0,
     chirpRate:-1, damping:0.6,
     thickness:1.6, dash:'solid', cap:'round', color:'#211D18',
-    fixedStroke:false, arrowType:'none', arrowSize:14
+    fixedStroke:false, arrowType:'none', arrowSize:14, arrowStrokeWidth:1.6, arrowStrokeColor:'#211D18', arrowFillColor:'#211D18'
   },
   box: {
     x:40, y:30, rotation:0,
@@ -495,7 +495,7 @@ function svgPointFromClient(clientX, clientY){
 // Every field carries a `group` tag (shape | stroke | arrow | position) so
 // the param panel can render them as clearly separated, labeled sections
 // instead of one long crowded list.
-const GROUP_LABELS = { shape:'Shape', stroke:'Stroke & fill', arrow:'Arrowhead', position:'Position & rotation' };
+const GROUP_LABELS = { shape:'Shape', stroke:'Stroke', arrow:'Arrowhead', position:'Position & rotation' };
 function schemaFor(layer){
   const common = [
     {key:'x', label:'X', type:'range', min:0, max:canvasW, step:1, group:'position'},
@@ -527,6 +527,9 @@ function schemaFor(layer){
     fields.push({key:'arrowType', label:'Arrowhead', type:'select', options:['none','triangle','flat','hollow','stroke'], group:'arrow'});
     if(layer.params.arrowType && layer.params.arrowType!=='none'){
       fields.push({key:'arrowSize', label:'Arrowhead size', type:'range', min:4, max:60, step:1, group:'arrow'});
+      fields.push({key:'arrowStrokeWidth', label:'Stroke width', type:'range', min:0.2, max:8, step:0.1, group:'arrow'});
+      fields.push({key:'arrowStrokeColor', label:'Stroke colour', type:'color', group:'arrow'});
+      fields.push({key:'arrowFillColor', label:'Fill colour', type:'color', group:'arrow'});
     }
     return [...fields, ...common];
   }
@@ -581,6 +584,9 @@ function schemaFor(layer){
       fields.push({key:'arrowType', label:'Arrowhead', type:'select', options:['none','triangle','flat','hollow','stroke'], group:'arrow'});
       if(layer.params.arrowType && layer.params.arrowType!=='none'){
         fields.push({key:'arrowSize', label:'Arrowhead size', type:'range', min:4, max:60, step:1, group:'arrow'});
+      fields.push({key:'arrowStrokeWidth', label:'Stroke width', type:'range', min:0.2, max:8, step:0.1, group:'arrow'});
+      fields.push({key:'arrowStrokeColor', label:'Stroke colour', type:'color', group:'arrow'});
+      fields.push({key:'arrowFillColor', label:'Fill colour', type:'color', group:'arrow'});
       }
     }
     return [...fields, ...common];
@@ -656,23 +662,24 @@ function getLinePoints(p){
    the path itself ends at — even when the group is rotated — so the head
    never floats free of a wavy/zigzag/chirp curve whose end isn't at y=0,
    and its orientation never tilts to follow the curve's local tangent. */
-function arrowHeadWorldStraight(anchorX, anchorY, size, color, groupRotationDeg, style, strokeW){
+function arrowHeadWorldStraight(anchorX, anchorY, size, colors, groupRotationDeg, style, strokeW){
+  const stroke=colors.stroke; const fill=colors.fill;
   const tipX = anchorX + size, tipY = anchorY;
   const spread = size*0.42;
   const leftX = anchorX, leftY = anchorY - spread;
   const rightX = anchorX, rightY = anchorY + spread;
   let shape;
   if(style==='hollow'){
-    shape = `<path d="M${tipX.toFixed(2)},${tipY.toFixed(2)} L${leftX.toFixed(2)},${leftY.toFixed(2)} L${rightX.toFixed(2)},${rightY.toFixed(2)} Z" fill="none" stroke="${color}" stroke-width="${strokeW}" stroke-linejoin="round"/>`;
+    shape = `<path d="M${tipX.toFixed(2)},${tipY.toFixed(2)} L${leftX.toFixed(2)},${leftY.toFixed(2)} L${rightX.toFixed(2)},${rightY.toFixed(2)} Z" fill="none" stroke="${stroke}" stroke-width="${strokeW}" stroke-linejoin="round"/>`;
   } else if(style==='flat'){
     // T-style cap: a single crossbar perpendicular to the line, sitting
     // right at the endpoint — like a "T" rather than an arrow shape.
     const barHalf = size*0.5;
-    shape = `<line x1="${anchorX.toFixed(2)}" y1="${(anchorY-barHalf).toFixed(2)}" x2="${anchorX.toFixed(2)}" y2="${(anchorY+barHalf).toFixed(2)}" stroke="${color}" stroke-width="${strokeW}" stroke-linecap="butt"/>`;
+    shape = `<line x1="${anchorX.toFixed(2)}" y1="${(anchorY-barHalf).toFixed(2)}" x2="${anchorX.toFixed(2)}" y2="${(anchorY+barHalf).toFixed(2)}" stroke="${stroke}" stroke-width="${strokeW}" stroke-linecap="butt"/>`;
   } else if(style==='stroke'){
-    shape = `<path d="M${tipX.toFixed(2)},${tipY.toFixed(2)} L${leftX.toFixed(2)},${leftY.toFixed(2)} M${tipX.toFixed(2)},${tipY.toFixed(2)} L${rightX.toFixed(2)},${rightY.toFixed(2)}" fill="none" stroke="${color}" stroke-width="${strokeW}" stroke-linecap="round"/>`;
+    shape = `<path d="M${tipX.toFixed(2)},${tipY.toFixed(2)} L${leftX.toFixed(2)},${leftY.toFixed(2)} M${tipX.toFixed(2)},${tipY.toFixed(2)} L${rightX.toFixed(2)},${rightY.toFixed(2)}" fill="none" stroke="${stroke}" stroke-width="${strokeW}" stroke-linecap="round"/>`;
   } else {
-    shape = `<path d="M${tipX.toFixed(2)},${tipY.toFixed(2)} L${leftX.toFixed(2)},${leftY.toFixed(2)} L${rightX.toFixed(2)},${rightY.toFixed(2)} Z" fill="${color}"/>`;
+    shape = `<path d="M${tipX.toFixed(2)},${tipY.toFixed(2)} L${leftX.toFixed(2)},${leftY.toFixed(2)} L${rightX.toFixed(2)},${rightY.toFixed(2)} Z" fill="${fill}"/>`;
   }
   return `<g transform="rotate(${(-groupRotationDeg).toFixed(2)} ${anchorX.toFixed(2)} ${anchorY.toFixed(2)})">${shape}</g>`;
 }
@@ -689,9 +696,9 @@ function lineElement(p){
   let out = `<path d="${d}" fill="none" stroke="${p.color}" stroke-width="${p.thickness}" stroke-linecap="${p.cap}"${dash!=='none' ? ` stroke-dasharray="${dash}"`:''}${vecEffect}/>`;
   if(p.arrowType && p.arrowType!=='none'){
     const arrowSize = p.arrowSize || 14;
-    const strokeW = Math.max(p.thickness, arrowSize*0.12);
+    const strokeW = p.arrowStrokeWidth || Math.max(p.thickness, arrowSize*0.12);
     const last = pts[pts.length-1];
-    out += arrowHeadWorldStraight(last.x, last.y, arrowSize, p.color, p.rotation, p.arrowType, strokeW);
+    out += arrowHeadWorldStraight(last.x,last.y,arrowSize,{stroke:p.arrowStrokeColor||p.color,fill:p.arrowFillColor||p.color},p.rotation,p.arrowType,strokeW);
   }
   return out;
 }
