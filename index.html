@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Aleatoric Vector Studio</title>
+<title>Aleatoric Vector Studio (Canvas Resize Fixed)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
     --paper:#F3EEE2;
@@ -71,7 +71,7 @@
     align-items:start;
   }
   .panel-elements{grid-area:elements;}
-  .panel-canvas{grid-area:canvas;}
+  .panel-canvas{grid-area:canvas; min-width:0;}
   .panel-export{grid-area:export;}
   .panel-params{grid-area:params;}
   @media (max-width:1080px){
@@ -170,7 +170,7 @@
     font-size:12px;
     color:var(--ink-soft);
   }
-  .canvas-toolbar label{display:flex;align-items:center;gap:6px;}
+  .canvas-toolbar label{display:flex;align-items:center;gap:4px;}
   .canvas-toolbar input[type=number]{width:56px;}
   .canvas-toolbar .hint{
     font-family:'IBM Plex Mono',monospace;
@@ -179,8 +179,9 @@
   }
   .canvas-wrap{
     padding:34px;
-    display:flex;
-    justify-content:center;
+    text-align:center;
+    overflow:auto;
+    max-height:550px;
     background:
       repeating-linear-gradient(0deg, transparent, transparent 23px, var(--ruled) 23px, var(--ruled) 24px);
     background-size:100% 24px;
@@ -189,6 +190,7 @@
   .canvas-frame{
     position:relative;
     display:inline-block;
+    text-align:left;
     background:var(--paper);
     box-shadow:0 1px 3px rgba(33,29,24,0.15), 0 0 0 1px var(--border);
     border-radius:2px;
@@ -208,9 +210,10 @@
 
   /* selection / handles inside svg */
   .layer-group, .layer-group *{cursor:move;}
-  .sel-outline{fill:none; stroke:var(--rubric-soft); stroke-width:1; stroke-dasharray:4,3; pointer-events:none; vector-effect:non-scaling-stroke;}
+  .sel-outline{fill:none; stroke:var(--rubric); stroke-width:1; stroke-dasharray:3,4; opacity:0.35; pointer-events:none; vector-effect:non-scaling-stroke;}
   .handle{fill:var(--rubric); stroke:#fff; stroke-width:1; cursor:grab;}
   .handle.amp{fill:var(--good);}
+  .handle.pt{cursor:move;}
   .handle[data-role="resize-e"], .handle[data-role="line-end"]{cursor:ew-resize;}
   .handle[data-role="resize-s"], .handle[data-role="line-amp"]{cursor:ns-resize;}
   .handle[data-role="resize-se"]{cursor:nwse-resize;}
@@ -365,7 +368,6 @@
   </header>
 
   <div class="layout">
-    <!-- LEFT: add + layers -->
     <div class="panel panel-elements">
       <div class="panel-head">Elements</div>
       <div class="panel-body">
@@ -391,14 +393,14 @@
       </div>
     </div>
 
-    <!-- CENTER: canvas -->
     <div class="panel panel-canvas">
       <div class="canvas-toolbar">
         <label><input type="checkbox" id="gridToggle" checked onchange="toggleGrid()"> Ruled guide</label>
-        <label>Canvas W <input type="number" id="canvasW" value="320" min="40" max="2000" onchange="resizeCanvasFromInputs()"></label>
+        <label style="margin-left:8px;"><input type="checkbox" id="snapGridToggle" checked> Snap Grid (10px)</label>
+        <label><input type="checkbox" id="snapElementToggle" checked> Snap Ends</label>
+        <label style="margin-left:8px;">Canvas W <input type="number" id="canvasW" value="1000" min="40" max="2000" onchange="resizeCanvasFromInputs()"></label>
         <label>Canvas H <input type="number" id="canvasH" value="160" min="40" max="2000" onchange="resizeCanvasFromInputs()"></label>
-        <label>Zoom <input type="range" id="zoom" min="1" max="4" step="0.1" value="1.6" oninput="applyZoom()"></label>
-        <span class="hint">drag shapes to move (hold Ctrl to keep on the same horizontal line) · drag squares to resize (hold Ctrl on the corner square for equal width/height) · drag corner to resize canvas</span>
+        <label>Zoom <input type="range" id="zoom" min="0.5" max="4" step="0.1" value="1.0" oninput="applyZoom()"></label>
       </div>
       <div class="canvas-wrap" id="canvasWrap">
         <div class="canvas-frame">
@@ -408,7 +410,6 @@
       </div>
     </div>
 
-    <!-- RIGHT: export -->
     <div class="panel panel-export">
       <div class="panel-head">Export</div>
       <div class="panel-body">
@@ -421,7 +422,6 @@
       </div>
     </div>
 
-    <!-- BOTTOM: parameters, spanning full width so field groups can sit side by side -->
     <div class="panel panel-params">
       <div class="panel-head" id="paramTitle">Parameters</div>
       <div class="panel-body" id="paramBody">
@@ -436,7 +436,7 @@
 let layers = [];
 let selectedId = null;
 let uid = 1;
-let canvasW = 320, canvasH = 160;
+let canvasW = 280, canvasH = 160;
 let dragState = null;
 let canvasDragState = null;
 let addPointMode = false;
@@ -444,11 +444,11 @@ let addPointLayerId = null;
 
 const DEFAULTS = {
   line: {
-    lineType:'wavy', x:20, y:80, rotation:0,
-    length:120, amplitude:12, cycles:3, phase:0,
+    lineType:'straight', x:40, y:80, rotation:0,
+    length:200, amplitude:20, cycles:26, phase:0, decay:1.0,
     chirpRate:-1, damping:0.6,
-    thickness:1.6, dash:'solid', cap:'round', color:'#211D18',
-    fixedStroke:false, arrowType:'none', arrowSize:14, arrowStrokeWidth:1.6, arrowStrokeColor:'#211D18', arrowFillColor:'#211D18'
+    thickness:4.2, dash:'solid', cap:'round', color:'#211D18',
+    fixedStroke:false, arrowType:'stroke', arrowPlacement:'end', arrowSize:14, arrowStrokeWidth:4.2, arrowStrokeColor:'#211D18', arrowFillColor:'#211D18'
   },
   box: {
     x:40, y:30, rotation:0,
@@ -461,18 +461,19 @@ const DEFAULTS = {
     fixedStroke:true
   },
   custom: {
-    x:0, y:0, rotation:0,
+    x:100, y:80, rotation:0,
     points:[], closed:false,
-    lineType:'straight', amplitude:12, cycles:2, phase:0, chirpRate:-1, damping:0.6,
+    lineType:'straight', amplitude:12, cycles:2, phase:0, decay:0, chirpRate:-1, damping:0.6,
     thickness:1.8, dash:'solid', cap:'round', color:'#211D18', fixedStroke:true,
-    arrowType:'none', arrowSize:14
+    arrowType:'none', arrowPlacement:'end', arrowSize:14
   }
 };
 
 const LABELS = { line:'Line', box:'Box', shape:'Shape', custom:'Custom' };
 
-/* ============================= MATH HELPERS ============================= */
+/* ============================= MATH & SNAPPING HELPERS ============================= */
 function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
 function toLocal(px,py,ox,oy,rotDeg){
   const rad = -rotDeg*Math.PI/180;
   const dx = px-ox, dy = py-oy;
@@ -481,6 +482,7 @@ function toLocal(px,py,ox,oy,rotDeg){
     ly: dx*Math.sin(rad) + dy*Math.cos(rad)
   };
 }
+
 function svgPointFromClient(clientX, clientY){
   const stage = document.getElementById('stage');
   const pt = stage.createSVGPoint();
@@ -491,10 +493,39 @@ function svgPointFromClient(clientX, clientY){
   return {x:p.x, y:p.y};
 }
 
+function getSnapCoordinates(targetX, targetY, skipId) {
+  const snapEl = document.getElementById('snapElementToggle').checked;
+  const snapGrid = document.getElementById('snapGridToggle').checked;
+  const tolerance = 10;
+
+  if (snapEl) {
+    for (let l of layers) {
+      if (l.id === skipId) continue;
+      if (Math.hypot(targetX - l.params.x, targetY - l.params.y) < tolerance) {
+        return { x: l.params.x, y: l.params.y };
+      }
+      if (l.type === 'line') {
+        const rad = l.params.rotation * Math.PI / 180;
+        const endX = l.params.x + l.params.length * Math.cos(rad);
+        const endY = l.params.y + l.params.length * Math.sin(rad);
+        if (Math.hypot(targetX - endX, targetY - endY) < tolerance) {
+          return { x: endX, y: endY };
+        }
+      }
+    }
+  }
+
+  if (snapGrid) {
+    return {
+      x: Math.round(targetX / 10) * 10,
+      y: Math.round(targetY / 10) * 10
+    };
+  }
+
+  return { x: targetX, y: targetY };
+}
+
 /* ============================= SCHEMAS ============================= */
-// Every field carries a `group` tag (shape | stroke | arrow | position) so
-// the param panel can render them as clearly separated, labeled sections
-// instead of one long crowded list.
 const GROUP_LABELS = { shape:'Shape', stroke:'Stroke', arrow:'Arrowhead', position:'Position & rotation' };
 function schemaFor(layer){
   const common = [
@@ -506,28 +537,32 @@ function schemaFor(layer){
     const t = layer.params.lineType;
     const fields = [
       {key:'lineType', label:'Line type', type:'select', options:['straight','wavy','zigzag','chirp','arc'], group:'shape'},
-      {key:'length', label:'Length', type:'range', min:10, max:Math.max(canvasW,300), step:1, group:'shape'}
+      {key:'length', label:'Length', type:'range', min:10, max:Math.max(canvasW,1200), step:1, group:'shape'}
     ];
     if(t!=='straight'){
       fields.push({key:'amplitude', label:'Amplitude', type:'range', min:0, max:100, step:1, group:'shape'});
     }
     if(t==='wavy'||t==='zigzag'||t==='chirp'){
-      fields.push({key:'cycles', label:'Cycles', type:'range', min:0.5, max:12, step:0.5, group:'shape'});
+      fields.push({key:'cycles', label:'Cycles', type:'range', min:0.5, max:60, step:0.5, group:'shape'});
       fields.push({key:'phase', label:'Phase°', type:'range', min:0, max:360, step:5, group:'shape'});
     }
-    if(t==='chirp'){
-      fields.push({key:'chirpRate', label:'Chirp rate (– slows down)', type:'range', min:-3, max:3, step:0.1, group:'shape'});
-      fields.push({key:'damping', label:'Damping (– grows)', type:'range', min:-2, max:2, step:0.1, group:'shape'});
+    if(t==='wavy'||t==='zigzag'){
+      fields.push({key:'decay', label:'Dissipation (1 = flat end)', type:'range', min:0, max:1, step:0.01, group:'shape'});
     }
-    fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:8, step:0.1, group:'stroke'});
+    if(t==='chirp'){
+      fields.push({key:'chirpRate', label:'Chirp rate', type:'range', min:-3, max:3, step:0.1, group:'shape'});
+      fields.push({key:'damping', label:'Damping', type:'range', min:-2, max:2, step:0.1, group:'shape'});
+    }
+    fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:12, step:0.1, group:'stroke'});
     fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted'], group:'stroke'});
     fields.push({key:'cap', label:'Line cap', type:'select', options:['butt','round','square'], group:'stroke'});
-    fields.push({key:'fixedStroke', label:'Fixed stroke width (ignore scaling)', type:'checkbox', group:'stroke'});
+    fields.push({key:'fixedStroke', label:'Fixed stroke', type:'checkbox', group:'stroke'});
     fields.push({key:'color', label:'Ink colour', type:'color', group:'stroke'});
     fields.push({key:'arrowType', label:'Arrowhead', type:'select', options:['none','triangle','flat','hollow','stroke'], group:'arrow'});
     if(layer.params.arrowType && layer.params.arrowType!=='none'){
+      fields.push({key:'arrowPlacement', label:'Arrowhead placement', type:'select', options:['end','start','both'], group:'arrow'});
       fields.push({key:'arrowSize', label:'Arrowhead size', type:'range', min:4, max:60, step:1, group:'arrow'});
-      fields.push({key:'arrowStrokeWidth', label:'Stroke width', type:'range', min:0.2, max:8, step:0.1, group:'arrow'});
+      fields.push({key:'arrowStrokeWidth', label:'Stroke width', type:'range', min:0.2, max:12, step:0.1, group:'arrow'});
       fields.push({key:'arrowStrokeColor', label:'Stroke colour', type:'color', group:'arrow'});
       fields.push({key:'arrowFillColor', label:'Fill colour', type:'color', group:'arrow'});
     }
@@ -539,7 +574,7 @@ function schemaFor(layer){
       {key:'height', label:'Height', type:'range', min:10, max:Math.max(canvasH,300), step:1, group:'shape'},
       {key:'cornerRadius', label:'Corner radius', type:'range', min:0, max:40, step:1, group:'shape'},
       {key:'thickness', label:'Border thickness', type:'range', min:0.5, max:14, step:0.1, group:'stroke'},
-      {key:'fixedStroke', label:'Fixed stroke width (ignore scaling)', type:'checkbox', group:'stroke'},
+      {key:'fixedStroke', label:'Fixed stroke width', type:'checkbox', group:'stroke'},
       {key:'color', label:'Ink colour', type:'color', group:'stroke'},
       ...common
     ];
@@ -554,7 +589,7 @@ function schemaFor(layer){
       fields.push({key:'fillMode', label:'Fill mode', type:'select', options:['filled','outline'], group:'stroke'});
     }
     fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.5, max:10, step:0.1, group:'stroke'});
-    fields.push({key:'fixedStroke', label:'Fixed stroke width (ignore scaling)', type:'checkbox', group:'stroke'});
+    fields.push({key:'fixedStroke', label:'Fixed stroke width', type:'checkbox', group:'stroke'});
     fields.push({key:'color', label:'Ink colour', type:'color', group:'stroke'});
     return [...fields, ...common];
   }
@@ -562,7 +597,7 @@ function schemaFor(layer){
     const t = layer.params.lineType;
     const fields = [
       {key:'lineType', label:'Line style', type:'select', options:['straight','wavy','zigzag','chirp','arc'], group:'shape'},
-      {key:'closed', label:'Close shape (connect last dot back to first)', type:'checkbox', group:'shape'}
+      {key:'closed', label:'Close shape', type:'checkbox', group:'shape'}
     ];
     if(t!=='straight'){
       fields.push({key:'amplitude', label:'Amplitude', type:'range', min:0, max:100, step:1, group:'shape'});
@@ -571,22 +606,26 @@ function schemaFor(layer){
       fields.push({key:'cycles', label:'Cycles per segment', type:'range', min:0.5, max:12, step:0.5, group:'shape'});
       fields.push({key:'phase', label:'Phase°', type:'range', min:0, max:360, step:5, group:'shape'});
     }
-    if(t==='chirp'){
-      fields.push({key:'chirpRate', label:'Chirp rate (– slows down)', type:'range', min:-3, max:3, step:0.1, group:'shape'});
-      fields.push({key:'damping', label:'Damping (– grows)', type:'range', min:-2, max:2, step:0.1, group:'shape'});
+    if(t==='wavy'||t==='zigzag'){
+      fields.push({key:'decay', label:'Dissipation (1 = flat end)', type:'range', min:0, max:1, step:0.01, group:'shape'});
     }
-    fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:8, step:0.1, group:'stroke'});
+    if(t==='chirp'){
+      fields.push({key:'chirpRate', label:'Chirp rate', type:'range', min:-3, max:3, step:0.1, group:'shape'});
+      fields.push({key:'damping', label:'Damping', type:'range', min:-2, max:2, step:0.1, group:'shape'});
+    }
+    fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:12, step:0.1, group:'stroke'});
     fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted'], group:'stroke'});
     fields.push({key:'cap', label:'Line cap', type:'select', options:['butt','round','square'], group:'stroke'});
-    fields.push({key:'fixedStroke', label:'Fixed stroke width (ignore scaling)', type:'checkbox', group:'stroke'});
+    fields.push({key:'fixedStroke', label:'Fixed stroke', type:'checkbox', group:'stroke'});
     fields.push({key:'color', label:'Ink colour', type:'color', group:'stroke'});
     if(!layer.params.closed){
       fields.push({key:'arrowType', label:'Arrowhead', type:'select', options:['none','triangle','flat','hollow','stroke'], group:'arrow'});
       if(layer.params.arrowType && layer.params.arrowType!=='none'){
+        fields.push({key:'arrowPlacement', label:'Arrowhead placement', type:'select', options:['end','start','both'], group:'arrow'});
         fields.push({key:'arrowSize', label:'Arrowhead size', type:'range', min:4, max:60, step:1, group:'arrow'});
-      fields.push({key:'arrowStrokeWidth', label:'Stroke width', type:'range', min:0.2, max:8, step:0.1, group:'arrow'});
-      fields.push({key:'arrowStrokeColor', label:'Stroke colour', type:'color', group:'arrow'});
-      fields.push({key:'arrowFillColor', label:'Fill colour', type:'color', group:'arrow'});
+        fields.push({key:'arrowStrokeWidth', label:'Stroke width', type:'range', min:0.2, max:12, step:0.1, group:'arrow'});
+        fields.push({key:'arrowStrokeColor', label:'Stroke colour', type:'color', group:'arrow'});
+        fields.push({key:'arrowFillColor', label:'Fill colour', type:'color', group:'arrow'});
       }
     }
     return [...fields, ...common];
@@ -601,7 +640,7 @@ function catmullRomPath(points){
     return `M ${points[0].x.toFixed(2)},${points[0].y.toFixed(2)} L ${points[1].x.toFixed(2)},${points[1].y.toFixed(2)}`;
   }
   let d = `M ${points[0].x.toFixed(2)},${points[0].y.toFixed(2)} `;
-  for(let i=0;i<points.length-1;i++){
+  for(let i=0; i<points.length-1; i++){
     const p0 = points[i-1] || points[i];
     const p1 = points[i];
     const p2 = points[i+1];
@@ -614,15 +653,19 @@ function catmullRomPath(points){
   }
   return d.trim();
 }
+
 function samplePoints(p){
-  const N = 140;
+  const N = 250;
   const pts = [];
-  for(let i=0;i<=N;i++){
+  const decayFactor = p.decay !== undefined ? p.decay : 0;
+  for(let i=0; i<=N; i++){
     const t = i/N;
     const x = t*p.length;
     let y = 0;
+    const amplitudeEnvelope = p.amplitude * (1 - t * decayFactor);
+
     if(p.lineType==='wavy'){
-      y = p.amplitude * Math.sin(2*Math.PI*p.cycles*t + p.phase*Math.PI/180);
+      y = amplitudeEnvelope * Math.sin(2*Math.PI*p.cycles*t + p.phase*Math.PI/180);
     } else if(p.lineType==='chirp'){
       const f0 = p.cycles, k = p.chirpRate;
       const phase = 2*Math.PI*f0*(t + k*t*t/2) + p.phase*Math.PI/180;
@@ -635,85 +678,109 @@ function samplePoints(p){
   }
   return pts;
 }
+
 function zigzagPoints(p){
   const segments = Math.max(2, Math.round(p.cycles*2));
   const pts = [{x:0,y:0}];
-  for(let i=1;i<segments;i++){
-    const x = (i/segments)*p.length;
-    const y = (i%2===1) ? p.amplitude : -p.amplitude;
+  const decayFactor = p.decay !== undefined ? p.decay : 0;
+  for(let i=1; i<segments; i++){
+    const t = i/segments;
+    const x = t*p.length;
+    const amplitudeEnvelope = p.amplitude * (1 - t * decayFactor);
+    const y = (i%2===1) ? amplitudeEnvelope : -amplitudeEnvelope;
     pts.push({x,y});
   }
   pts.push({x:p.length,y:0});
   return pts;
 }
+
 function dashArrayFor(style, thickness){
   if(style==='dashed') return `${(thickness*3).toFixed(1)},${(thickness*2.2).toFixed(1)}`;
   if(style==='dotted') return `${(thickness*0.1).toFixed(1)},${(thickness*2.4).toFixed(1)}`;
   return 'none';
 }
+
 function getLinePoints(p){
   if(p.lineType==='straight') return [{x:0,y:0},{x:p.length,y:0}];
   if(p.lineType==='zigzag') return zigzagPoints(p);
   return samplePoints(p);
 }
-/* Arrowheads always point world-horizontal and are anchored exactly at the
-   path's real endpoint. Pivoting the counter-rotation around the anchor
-   (rather than the tip) guarantees the anchor lands on the same world point
-   the path itself ends at — even when the group is rotated — so the head
-   never floats free of a wavy/zigzag/chirp curve whose end isn't at y=0,
-   and its orientation never tilts to follow the curve's local tangent. */
-function arrowHeadWorldStraight(anchorX, anchorY, size, colors, groupRotationDeg, style, strokeW){
-  const stroke=colors.stroke; const fill=colors.fill;
-  const tipX = anchorX + size, tipY = anchorY;
-  const spread = size*0.42;
-  const leftX = anchorX, leftY = anchorY - spread;
-  const rightX = anchorX, rightY = anchorY + spread;
+
+function generateArrowheadHtml(anchorX, anchorY, angleRad, size, colors, style, strokeW){
+  const stroke = colors.stroke; const fill = colors.fill;
+  const spread = size * 0.42;
+  
+  // Base triangle facing right at (0,0)
+  const tipX = size, tipY = 0;
+  const leftX = 0, leftY = -spread;
+  const rightX = 0, rightY = spread;
+  
   let shape;
   if(style==='hollow'){
-    shape = `<path d="M${tipX.toFixed(2)},${tipY.toFixed(2)} L${leftX.toFixed(2)},${leftY.toFixed(2)} L${rightX.toFixed(2)},${rightY.toFixed(2)} Z" fill="none" stroke="${stroke}" stroke-width="${strokeW}" stroke-linejoin="round"/>`;
+    shape = `<path d="M${tipX},${tipY} L${leftX},${leftY} L${rightX},${rightY} Z" fill="none" stroke="${stroke}" stroke-width="${strokeW}" stroke-linejoin="round"/>`;
   } else if(style==='flat'){
-    // T-style cap: a single crossbar perpendicular to the line, sitting
-    // right at the endpoint — like a "T" rather than an arrow shape.
     const barHalf = size*0.5;
-    shape = `<line x1="${anchorX.toFixed(2)}" y1="${(anchorY-barHalf).toFixed(2)}" x2="${anchorX.toFixed(2)}" y2="${(anchorY+barHalf).toFixed(2)}" stroke="${stroke}" stroke-width="${strokeW}" stroke-linecap="butt"/>`;
-  } else if(style==='stroke'){
-    shape = `<path d="M${tipX.toFixed(2)},${tipY.toFixed(2)} L${leftX.toFixed(2)},${leftY.toFixed(2)} M${tipX.toFixed(2)},${tipY.toFixed(2)} L${rightX.toFixed(2)},${rightY.toFixed(2)}" fill="none" stroke="${stroke}" stroke-width="${strokeW}" stroke-linecap="round"/>`;
+    shape = `<line x1="0" y1="${-barHalf}" x2="0" y2="${barHalf}" stroke="${stroke}" stroke-width="${strokeW}" stroke-linecap="round"/>`;
+  } else if(style==='stroke') {
+    shape = `<path d="M${tipX},${tipY} L${leftX},${leftY} M${tipX},${tipY} L${rightX},${rightY}" fill="none" stroke="${stroke}" stroke-width="${strokeW}" stroke-linejoin="round" stroke-linecap="round"/>`;
   } else {
-    shape = `<path d="M${tipX.toFixed(2)},${tipY.toFixed(2)} L${leftX.toFixed(2)},${leftY.toFixed(2)} L${rightX.toFixed(2)},${rightY.toFixed(2)} Z" fill="${fill}"/>`;
+    shape = `<path d="M${tipX},${tipY} L${leftX},${leftY} L${rightX},${rightY} Z" fill="${fill}"/>`;
   }
-  return `<g transform="rotate(${(-groupRotationDeg).toFixed(2)} ${anchorX.toFixed(2)} ${anchorY.toFixed(2)})">${shape}</g>`;
+  
+  const deg = (angleRad * 180 / Math.PI).toFixed(2);
+  return `<g transform="translate(${anchorX.toFixed(2)}, ${anchorY.toFixed(2)}) rotate(${deg})">${shape}</g>`;
 }
-function lineElement(p){
-  const pts = getLinePoints(p);
-  let d;
-  if(p.lineType==='straight' || p.lineType==='zigzag'){
-    d = 'M ' + pts.map(pt=>`${pt.x.toFixed(2)},${pt.y.toFixed(2)}`).join(' L ');
-  } else {
-    d = catmullRomPath(pts);
+
+function renderArrowheads(pts, p, angleStart, angleEnd) {
+  if (!p.arrowType || p.arrowType === 'none' || pts.length < 2) return '';
+  
+  let out = '';
+  const placement = p.arrowPlacement || 'end';
+  const size = p.arrowSize || 14;
+  const strokeW = p.arrowStrokeWidth || p.thickness;
+  const colors = { stroke: p.arrowStrokeColor || p.color, fill: p.arrowFillColor || p.color };
+
+  // End Head
+  if (placement === 'end' || placement === 'both') {
+    const last = pts[pts.length - 1];
+    out += generateArrowheadHtml(last.x, last.y, angleEnd, size, colors, p.arrowType, strokeW);
   }
-  const dash = dashArrayFor(p.dash, p.thickness);
-  const vecEffect = p.fixedStroke ? ' vector-effect="non-scaling-stroke"' : '';
-  let out = `<path d="${d}" fill="none" stroke="${p.color}" stroke-width="${p.thickness}" stroke-linecap="${p.cap}"${dash!=='none' ? ` stroke-dasharray="${dash}"`:''}${vecEffect}/>`;
-  if(p.arrowType && p.arrowType!=='none'){
-    const arrowSize = p.arrowSize || 14;
-    const strokeW = p.arrowStrokeWidth || Math.max(p.thickness, arrowSize*0.12);
-    const last = pts[pts.length-1];
-    out += arrowHeadWorldStraight(last.x,last.y,arrowSize,{stroke:p.arrowStrokeColor||p.color,fill:p.arrowFillColor||p.color},p.rotation,p.arrowType,strokeW);
+  
+  // Start Head
+  if (placement === 'start' || placement === 'both') {
+    const first = pts[0];
+    out += generateArrowheadHtml(first.x, first.y, angleStart, size, colors, p.arrowType, strokeW);
   }
+  
   return out;
 }
+
+function lineElement(p){
+  const pts = getLinePoints(p);
+  let d = (p.lineType==='straight' || p.lineType==='zigzag') 
+    ? 'M ' + pts.map(pt=>`${pt.x.toFixed(2)},${pt.y.toFixed(2)}`).join(' L ') 
+    : catmullRomPath(pts);
+
+  const dash = dashArrayFor(p.dash, p.thickness);
+  const vecEffect = p.fixedStroke ? ' vector-effect="non-scaling-stroke"' : '';
+  let out = `<path d="${d}" fill="none" stroke="${p.color}" stroke-width="${p.thickness}" stroke-linecap="${p.cap}" stroke-linejoin="round"${dash!=='none' ? ` stroke-dasharray="${dash}"`:''}${vecEffect}/>`;
+  
+  // Always point straight relative to the main vector (Math.PI for start, 0 for end)
+  out += renderArrowheads(pts, p, Math.PI, 0);
+  return out;
+}
+
 function roundedRectPath(x,y,w,h,r){
   r = Math.max(0, Math.min(r, w/2, h/2));
-  if(r<=0.01){
-    return `M${x},${y} H${x+w} V${y+h} H${x} Z`;
-  }
+  if(r<=0.01) return `M${x},${y} H${x+w} V${y+h} H${x} Z`;
   return `M${x+r},${y} H${x+w-r} A${r},${r} 0 0 1 ${x+w},${y+r} V${y+h-r} A${r},${r} 0 0 1 ${x+w-r},${y+h} H${x+r} A${r},${r} 0 0 1 ${x},${y+h-r} V${y+r} A${r},${r} 0 0 1 ${x+r},${y} Z`;
 }
+
 function boxElement(p){
   const vecEffect = p.fixedStroke ? ' vector-effect="non-scaling-stroke"' : '';
-  const d = roundedRectPath(0,0,p.width,p.height,p.cornerRadius);
-  return `<path d="${d}" fill="none" fill-rule="evenodd" clip-rule="evenodd" stroke="${p.color}" stroke-width="${p.thickness}"${vecEffect}/>`;
+  return `<path d="${roundedRectPath(0,0,p.width,p.height,p.cornerRadius)}" fill="none" stroke="${p.color}" stroke-width="${p.thickness}"${vecEffect}/>`;
 }
+
 function starPathD(w,h){
   const cx=w/2, cy=h/2, outerRx=w/2, outerRy=h/2, innerRx=outerRx*0.382, innerRy=outerRy*0.382;
   let d='';
@@ -727,9 +794,7 @@ function starPathD(w,h){
   }
   return d + 'Z';
 }
-function ellipsePathD(cx, cy, rx, ry){
-  return `M${(cx-rx).toFixed(2)},${cy.toFixed(2)} A${rx.toFixed(2)},${ry.toFixed(2)} 0 1 0 ${(cx+rx).toFixed(2)},${cy.toFixed(2)} A${rx.toFixed(2)},${ry.toFixed(2)} 0 1 0 ${(cx-rx).toFixed(2)},${cy.toFixed(2)} Z`;
-}
+
 function shapeElement(p){
   const w = p.width, h = p.height;
   const outline = p.fillMode==='outline';
@@ -737,31 +802,21 @@ function shapeElement(p){
   const vecEffect = p.fixedStroke ? ' vector-effect="non-scaling-stroke"' : '';
   const strokeAttr = outline ? `stroke="${p.color}" stroke-width="${p.thickness}"${vecEffect}` : '';
   if(p.shapeType==='circle'){
-    const rx = Math.max(0.5, w/2 - (outline?p.thickness/2:0));
-    const ry = Math.max(0.5, h/2 - (outline?p.thickness/2:0));
-    if(outline){
-      return `<path d="${ellipsePathD(w/2,h/2,rx,ry)}" fill="none" fill-rule="evenodd" clip-rule="evenodd" stroke="${p.color}" stroke-width="${p.thickness}"${vecEffect}/>`;
-    }
-    return `<ellipse cx="${w/2}" cy="${h/2}" rx="${rx}" ry="${ry}" fill="${fillAttr}"/>`;
+    return `<ellipse cx="${w/2}" cy="${h/2}" rx="${Math.max(0.5, w/2)}" ry="${Math.max(0.5, h/2)}" fill="${fillAttr}" ${strokeAttr}/>`;
   }
-  if(p.shapeType==='triangle'){
-    return `<path d="M${w/2},0 L${w},${h} L0,${h} Z" fill="${fillAttr}" ${strokeAttr}/>`;
-  }
-  if(p.shapeType==='diamond'){
-    return `<path d="M${w/2},0 L${w},${h/2} L${w/2},${h} L0,${h/2} Z" fill="${fillAttr}" ${strokeAttr}/>`;
-  }
+  if(p.shapeType==='triangle') return `<path d="M${w/2},0 L${w},${h} L0,${h} Z" fill="${fillAttr}" ${strokeAttr}/>`;
+  if(p.shapeType==='diamond') return `<path d="M${w/2},0 L${w},${h/2} L${w/2},${h} L0,${h/2} Z" fill="${fillAttr}" ${strokeAttr}/>`;
   if(p.shapeType==='arrow'){
     const d = `M0,${h*0.4} L${w*0.6},${h*0.4} L${w*0.6},${h*0.2} L${w},${h*0.5} L${w*0.6},${h*0.8} L${w*0.6},${h*0.6} L0,${h*0.6} Z`;
     return `<path d="${d}" fill="${fillAttr}" ${strokeAttr}/>`;
   }
-  if(p.shapeType==='cross'){
-    return `<path d="M${w/2},0 L${w/2},${h} M0,${h/2} L${w},${h/2}" fill="none" stroke="${p.color}" stroke-width="${p.thickness}" stroke-linecap="round"${vecEffect}/>`;
-  }
+  if(p.shapeType==='cross') return `<path d="M${w/2},0 L${w/2},${h} M0,${h/2} L${w},${h/2}" fill="none" stroke="${p.color}" stroke-width="${p.thickness}" stroke-linecap="round"${vecEffect}/>`;
   if(p.shapeType==='star'){
     return `<path d="${starPathD(w,h)}" fill="${fillAttr}" ${strokeAttr}/>`;
   }
   return '';
 }
+
 function waveSegmentPoints(p0, p1, lineParams){
   const dx = p1.x-p0.x, dy = p1.y-p0.y;
   const segLen = Math.hypot(dx,dy);
@@ -777,16 +832,17 @@ function waveSegmentPoints(p0, p1, lineParams){
     y: p0.y + pt.x*sin + pt.y*cos
   }));
 }
+
 function customElement(p){
   const pts = p.points||[];
   if(pts.length<2) return '';
   const segCount = pts.length-1 + (p.closed && pts.length>2 ? 1 : 0);
   let allPts = [];
-  for(let i=0;i<segCount;i++){
+  for(let i=0; i<segCount; i++){
     const a = pts[i % pts.length];
     const b = pts[(i+1) % pts.length];
     let segPts = waveSegmentPoints(a, b, p);
-    if(i>0) segPts = segPts.slice(1); // drop duplicate joint point
+    if(i>0) segPts = segPts.slice(1);
     allPts = allPts.concat(segPts);
   }
   let d;
@@ -798,74 +854,58 @@ function customElement(p){
   if(p.closed) d += ' Z';
   const dash = dashArrayFor(p.dash, p.thickness);
   const vecEffect = p.fixedStroke ? ' vector-effect="non-scaling-stroke"' : '';
-  let out = `<path d="${d}" fill="none" fill-rule="evenodd" clip-rule="evenodd" stroke="${p.color}" stroke-width="${p.thickness}" stroke-linecap="${p.cap}" stroke-linejoin="round"${dash!=='none' ? ` stroke-dasharray="${dash}"`:''}${vecEffect}/>`;
-  if(!p.closed && p.arrowType && p.arrowType!=='none' && allPts.length){
-    const last = allPts[allPts.length-1];
-    const arrowSize = p.arrowSize || 14;
-    const strokeW = Math.max(p.thickness, arrowSize*0.12);
-    out += arrowHeadWorldStraight(last.x, last.y, arrowSize, p.color, p.rotation, p.arrowType, strokeW);
+  let out = `<path d="${d}" fill="none" stroke="${p.color}" stroke-width="${p.thickness}" stroke-linecap="${p.cap}" stroke-linejoin="round"${dash!=='none' ? ` stroke-dasharray="${dash}"`:''}${vecEffect}/>`;
+  
+  if(!p.closed){
+    // Calculate macro angles to keep the arrowhead straight ignoring local waves
+    let angleStart = Math.PI;
+    let angleEnd = 0;
+    if(p.points && p.points.length >= 2) {
+      const p0 = p.points[0], p1 = p.points[1];
+      angleStart = Math.atan2(p0.y - p1.y, p0.x - p1.x); // outward from start segment
+      
+      const pL = p.points[p.points.length-1], pL_prev = p.points[p.points.length-2];
+      angleEnd = Math.atan2(pL.y - pL_prev.y, pL.x - pL_prev.x); // outward from end segment
+    }
+    out += renderArrowheads(allPts, p, angleStart, angleEnd);
   }
   return out;
 }
-function localBBox(layer){
-  const p = layer.params;
-  if(layer.type==='box') return {x:0,y:0,w:p.width,h:p.height};
-  if(layer.type==='shape') return {x:0,y:0,w:p.width,h:p.height};
-  if(layer.type==='line'){
-    const amp = (p.lineType==='straight') ? 0 : p.amplitude;
-    const arrowPad = ((p.arrowType && p.arrowType!=='none')) ? (p.arrowSize||14) : 0;
-    return {x:0,y:-amp,w:p.length+arrowPad,h:amp*2};
-  }
-  if(layer.type==='custom'){
-    const pts = p.points||[];
-    if(!pts.length) return {x:-5,y:-5,w:10,h:10};
-    const pad = (p.lineType && p.lineType!=='straight') ? (p.amplitude||0) : 0;
-    const arrowPad = (!p.closed && (p.arrowType && p.arrowType!=='none')) ? (p.arrowSize||14) : 0;
-    const totalPad = Math.max(pad, arrowPad);
-    const xs = pts.map(pt=>pt.x), ys = pts.map(pt=>pt.y);
-    const minX = Math.min(...xs) - totalPad, maxX = Math.max(...xs) + totalPad;
-    const minY = Math.min(...ys) - totalPad, maxY = Math.max(...ys) + totalPad;
-    return {x:minX, y:minY, w:Math.max(1,maxX-minX), h:Math.max(1,maxY-minY)};
-  }
-  return {x:0,y:0,w:10,h:10};
-}
-/* World-space bounding box for a layer, used to crop the exported SVG to the
-   actual drawn content instead of the full design canvas. Programs that embed
-   an SVG as an image (e.g. MuseScore) use its width/height as the element's
-   selection/hit box, so a canvas full of empty margin makes that box far
-   bigger than the visible drawing. */
+
 function worldBBoxForLayer(layer){
   const p = layer.params;
-  const b = localBBox(layer);
-  const pad = (typeof p.thickness === 'number') ? p.thickness/2 : 0;
-  const corners = [
-    {x:b.x-pad, y:b.y-pad},
-    {x:b.x+b.w+pad, y:b.y-pad},
-    {x:b.x+b.w+pad, y:b.y+b.h+pad},
-    {x:b.x-pad, y:b.y+b.h+pad}
-  ];
-  const rad = p.rotation*Math.PI/180;
-  const cos = Math.cos(rad), sin = Math.sin(rad);
-  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-  corners.forEach(c=>{
-    const wx = p.x + c.x*cos - c.y*sin;
-    const wy = p.y + c.x*sin + c.y*cos;
-    if(wx<minX) minX=wx; if(wx>maxX) maxX=wx;
-    if(wy<minY) minY=wy; if(wy>maxY) maxY=wy;
-  });
-  return {minX,minY,maxX,maxY};
+  const pad = (typeof p.thickness === 'number') ? p.thickness/2 + 20 : 20;
+  if (layer.type === 'custom') {
+    const pts = p.points || [];
+    if (!pts.length) return { minX: p.x - pad, minY: p.y - pad, maxX: p.x + pad, maxY: p.y + pad };
+    const rad = p.rotation * Math.PI / 180;
+    const cos = Math.cos(rad), sin = Math.sin(rad);
+    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+    pts.forEach(pt => {
+      const wx = p.x + pt.x * cos - pt.y * sin;
+      const wy = p.y + pt.x * sin + pt.y * cos;
+      if(wx < minX) minX = wx; if(wx > maxX) maxX = wx;
+      if(wy < minY) minY = wy; if(wy > maxY) maxY = wy;
+    });
+    const amp = (p.lineType !== 'straight') ? (p.amplitude || 0) : 0;
+    const extra = pad + amp;
+    return { minX: minX - extra, minY: minY - extra, maxX: maxX + extra, maxY: maxY + extra };
+  }
+  return { minX: p.x - pad, minY: p.y - pad, maxX: p.x + (p.length || p.width || 100) + pad, maxY: p.y + (p.height || 50) + pad };
 }
+
 function contentBBox(){
   const visible = layers.filter(l=>l.visible);
   if(!visible.length) return {minX:0,minY:0,maxX:canvasW,maxY:canvasH};
   let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
   visible.forEach(l=>{
     const b = worldBBoxForLayer(l);
-    if(b.minX<minX) minX=b.minX; if(b.maxX>maxX) maxX=b.maxX;
-    if(b.minY<minY) minY=b.minY; if(b.maxY>maxY) maxY=b.maxY;
+    if(b.minX < minX) minX=b.minX; if(b.maxX > maxX) maxX=b.maxX;
+    if(b.minY < minY) minY=b.minY; if(b.maxY > maxY) maxY=b.maxY;
   });
-  return {minX,minY,maxX,maxY};
+  return {minX: Math.max(0, minX), minY: Math.max(0, minY), maxX: Math.min(canvasW, maxX), maxY: Math.min(canvasH, maxY)};
 }
+
 function renderLayerSvg(layer, interactive){
   const p = layer.params;
   let inner = '';
@@ -873,28 +913,36 @@ function renderLayerSvg(layer, interactive){
   else if(layer.type==='box') inner = boxElement(p);
   else if(layer.type==='shape') inner = shapeElement(p);
   else if(layer.type==='custom') inner = customElement(p);
+  
   let hit = '';
   if(interactive){
-    // Invisible padded rect used only on the live canvas so thin/empty
-    // shapes are still easy to click and drag. Left out of the exported
-    // SVG so the exported markup's bounding box is as tight as possible.
-    const bbox = localBBox(layer);
-    hit = `<rect data-id="${layer.id}" data-role="move" x="${bbox.x-4}" y="${bbox.y-4}" width="${bbox.w+8}" height="${bbox.h+8}" fill="transparent"/>`;
+    if(layer.type === 'custom') {
+      const pts = p.points || [];
+      if (pts.length) {
+        const xs = pts.map(pt=>pt.x), ys = pts.map(pt=>pt.y);
+        const minX = Math.min(...xs), maxX = Math.max(...xs);
+        const minY = Math.min(...ys), maxY = Math.max(...ys);
+        hit = `<rect data-id="${layer.id}" data-role="move" x="${minX-10}" y="${minY-10}" width="${maxX-minX+20}" height="${maxY-minY+20}" fill="transparent"/>`;
+      } else {
+        hit = `<rect data-id="${layer.id}" data-role="move" x="-20" y="-20" width="40" height="40" fill="transparent"/>`;
+      }
+    } else {
+      const w = p.length || p.width || 40;
+      const h = p.height || Math.max(20, p.amplitude * 2 || 20);
+      hit = `<rect data-id="${layer.id}" data-role="move" x="0" y="${p.height ? 0 : -h/2}" width="${w}" height="${h}" fill="transparent"/>`;
+    }
   }
   return `<g class="layer-group" data-id="${layer.id}" transform="translate(${p.x},${p.y}) rotate(${p.rotation})">${hit}${inner}</g>`;
 }
+
 function handleRect(id, role, x, y, extraClass){
   return `<rect class="handle ${extraClass||''}" data-id="${id}" data-role="${role}" x="${x}" y="${y}" width="10" height="10"/>`;
 }
+
 function selectionOverlaySvg(layer){
   const p = layer.params;
   let outline = '', handles = '';
-  if(layer.type==='box'){
-    outline = `<rect class="sel-outline" x="0" y="0" width="${p.width}" height="${p.height}"/>`;
-    handles += handleRect(layer.id,'resize-e', p.width-5, p.height/2-5);
-    handles += handleRect(layer.id,'resize-s', p.width/2-5, p.height-5);
-    handles += handleRect(layer.id,'resize-se', p.width-5, p.height-5);
-  } else if(layer.type==='shape'){
+  if(layer.type==='box' || layer.type==='shape'){
     outline = `<rect class="sel-outline" x="0" y="0" width="${p.width}" height="${p.height}"/>`;
     handles += handleRect(layer.id,'resize-e', p.width-5, p.height/2-5);
     handles += handleRect(layer.id,'resize-s', p.width/2-5, p.height-5);
@@ -929,7 +977,7 @@ function addLayer(type){
   renderAll();
 }
 function deleteLayer(id, ev){
-  ev.stopPropagation();
+  if(ev) ev.stopPropagation();
   layers = layers.filter(l=>l.id!==id);
   if(selectedId===id) selectedId = layers.length ? layers[layers.length-1].id : null;
   renderAll();
@@ -941,16 +989,13 @@ function duplicateLayer(id, ev){
   const copy = JSON.parse(JSON.stringify(src));
   copy.id = 'el' + (uid++);
   copy.name = src.name + ' copy';
-  copy.params.x = Math.min(canvasW, src.params.x + 10);
-  copy.params.y = Math.min(canvasH, src.params.y + 10);
+  copy.params.x = Math.min(canvasW, src.params.x + 20);
+  copy.params.y = Math.min(canvasH, src.params.y + 20);
   layers.push(copy);
   selectedId = copy.id;
   renderAll();
 }
-function selectLayer(id){
-  selectedId = id;
-  renderAll();
-}
+function selectLayer(id){ selectedId = id; renderAll(); }
 function moveLayer(id, dir, ev){
   ev.stopPropagation();
   const i = layers.findIndex(l=>l.id===id);
@@ -964,20 +1009,21 @@ function moveLayer(id, dir, ev){
 function buildLayerList(){
   const el = document.getElementById('layerList');
   if(!layers.length){
-    el.innerHTML = '<div class="empty-note">No elements yet — add a line, box or shape above.</div>';
+    el.innerHTML = '<div class="empty-note">No elements yet.</div>';
     return;
   }
   el.innerHTML = layers.map((l)=>`
     <div class="layer-row ${l.id===selectedId?'selected':''}" onclick="selectLayer('${l.id}')">
       <span class="tag">${l.type}</span>
       <span class="name">${l.name}</span>
-      <button title="Move up" onclick="moveLayer('${l.id}',1,event)">↑</button>
-      <button title="Move down" onclick="moveLayer('${l.id}',-1,event)">↓</button>
-      <button title="Duplicate" onclick="duplicateLayer('${l.id}',event)">⧉</button>
-      <button title="Delete" onclick="deleteLayer('${l.id}',event)">✕</button>
+      <button onclick="moveLayer('${l.id}',1,event)">↑</button>
+      <button onclick="moveLayer('${l.id}',-1,event)">↓</button>
+      <button onclick="duplicateLayer('${l.id}',event)">⧉</button>
+      <button onclick="deleteLayer('${l.id}',event)">✕</button>
     </div>
   `).join('');
 }
+
 function renderField(f, layer){
   const val = layer.params[f.key];
   if(f.type==='range'){
@@ -1008,48 +1054,34 @@ function renderField(f, layer){
       </div>`;
   }
   if(f.type==='checkbox'){
-    const cid = `chk_${layer.id}_${f.key}`;
     return `
       <div class="field checkbox">
-        <input type="checkbox" id="${cid}" ${val?'checked':''} onchange="updateParam('${layer.id}','${f.key}', this.checked, false)">
-        <label for="${cid}" style="margin:0;">${f.label}</label>
+        <input type="checkbox" id="chk_${layer.id}_${f.key}" ${val?'checked':''} onchange="updateParam('${layer.id}','${f.key}', this.checked, false)">
+        <label for="chk_${layer.id}_${f.key}">${f.label}</label>
       </div>`;
   }
   return '';
 }
+
 function onFieldRangeInput(rangeEl, id, key){
-  // Slider dragged: mirror the value into the number box live, without a
-  // full panel rebuild (which would blow away the number input mid-drag).
-  const field = rangeEl.closest('.field');
-  const numEl = field && field.querySelector('.val-input');
+  const numEl = rangeEl.closest('.field').querySelector('.val-input');
   if(numEl) numEl.value = rangeEl.value;
   updateParam(id, key, rangeEl.value, true, true);
 }
+
 function onFieldNumberChange(numEl, id, key){
-  let v = parseFloat(numEl.value);
-  if(isNaN(v)) v = parseFloat(numEl.min) || 0;
-  if(numEl.min!=='') v = Math.max(v, parseFloat(numEl.min));
-  if(numEl.max!=='') v = Math.min(v, parseFloat(numEl.max));
-  numEl.value = v;
-  const field = numEl.closest('.field');
-  const rangeEl = field && field.querySelector('input[type=range]');
-  if(rangeEl) rangeEl.value = v;
+  let v = parseFloat(numEl.value) || 0;
   updateParam(id, key, v, true, false);
 }
-const PAIR_KEYS = [['x','y'], ['width','height'], ['cycles','phase'], ['chirpRate','damping'], ['dash','cap']];
+
+const PAIR_KEYS = [['x','y'], ['width','height'], ['cycles','phase'], ['dash','cap']];
 function areFieldsPaired(keyA, keyB){
   return PAIR_KEYS.some(([a,b]) => (a===keyA && b===keyB) || (a===keyB && b===keyA));
 }
+
 function renderSchemaFields(schema, layer){
-  // Each field's group (shape/stroke/arrow/position) becomes its own boxed,
-  // titled card (see .field-group), and the cards are laid out in a
-  // responsive grid (see .param-groups) that fills the available width
-  // instead of one long crowded column. Within a card, genuinely-related
-  // pairs (x/y, width/height, cycles/phase, chirpRate/damping, dash/cap)
-  // still sit two-per-row.
-  let html = '';
-  let openGroup = null;
-  for(let i=0;i<schema.length;i++){
+  let html = ''; let openGroup = null;
+  for(let i=0; i<schema.length; i++){
     const f = schema[i], next = schema[i+1];
     if(f.group !== openGroup){
       if(openGroup !== null) html += '</div>';
@@ -1066,21 +1098,23 @@ function renderSchemaFields(schema, layer){
   if(openGroup !== null) html += '</div>';
   return `<div class="param-groups">${html}</div>`;
 }
+
 function buildParamPanel(){
   const title = document.getElementById('paramTitle');
   const body = document.getElementById('paramBody');
   const layer = layers.find(l=>l.id===selectedId);
   if(!layer){
     title.textContent = 'Parameters';
-    body.innerHTML = '<div class="no-selection">Select or add an element to edit its parameters.</div>';
+    body.innerHTML = '<div class="no-selection">Select an element to edit parameters.</div>';
     return;
   }
   title.textContent = layer.name + ' — parameters';
-  const schema = schemaFor(layer);
+  
   let note = '<div class="mouse-note">Drag the shape on canvas to move it. Drag the red squares to resize';
   if(layer.type==='line') note += ' — the end square sets length &amp; angle, the green square sets amplitude.</div>';
   else if(layer.type==='custom') note = '<div class="mouse-note">Hold Ctrl while dragging any handle (or while adding dots) to keep it on the same horizontal line.</div>';
   else note += ' (hold Ctrl on the corner square to keep width &amp; height equal).</div>';
+  
   let customControls = '';
   if(layer.type==='custom'){
     const active = addPointMode && addPointLayerId===layer.id;
@@ -1088,19 +1122,24 @@ function buildParamPanel(){
     customControls = `
       <div class="field checkbox">
         <input type="checkbox" id="${cid}" ${active?'checked':''} onchange="toggleAddPoint('${layer.id}', this.checked)">
-        <label for="${cid}" style="margin:0;">Click canvas to add dots${active?' (active)':''}</label>
+        <label for="${cid}" style="margin:0; font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink-soft);">Click canvas to add dots${active?' (active)':''}</label>
       </div>
       <div style="display:flex; gap:8px; margin-bottom:14px;">
         <button class="btn secondary" style="flex:1;" onclick="undoLastPoint('${layer.id}')">Undo last dot</button>
         <button class="btn secondary" style="flex:1;" onclick="clearPoints('${layer.id}')">Clear dots</button>
       </div>`;
   }
-  body.innerHTML = note + customControls + renderSchemaFields(schema, layer);
+  
+  body.innerHTML = note + customControls + renderSchemaFields(schemaFor(layer), layer);
 }
+
 function toggleAddPoint(id, checked){
   addPointMode = checked;
   addPointLayerId = checked ? id : null;
   selectedId = id;
+  const stage = document.getElementById('stage');
+  if (checked) stage.classList.add('adding-points');
+  else stage.classList.remove('adding-points');
   renderAll();
 }
 function undoLastPoint(id){
@@ -1115,14 +1154,12 @@ function clearPoints(id){
   layer.params.points = [];
   renderAll();
 }
+
 function updateParam(id, key, value, numeric, liveOnly){
   const layer = layers.find(l=>l.id===id);
   if(!layer) return;
   layer.params[key] = numeric ? parseFloat(value) : value;
   if(liveOnly){
-    // Slider drag: update the canvas + export text only. Rebuilding the param
-    // panel here would replace the <input> mid-drag and turn dragging into
-    // click-to-jump, so skip buildParamPanel()/buildLayerList() entirely.
     renderStage();
     document.getElementById('svgOut').value = fullSvgSource();
   } else {
@@ -1131,212 +1168,183 @@ function updateParam(id, key, value, numeric, liveOnly){
 }
 
 /* ============================= STAGE / EXPORT ============================= */
-function svgBody(interactive){
-  return layers.filter(l=>l.visible).map(l=>renderLayerSvg(l, interactive)).join('\n  ');
-}
 function fullSvgSource(){
-  // Crop to the actual drawn content (plus a small margin) rather than the
-  // full design canvas, so the exported image's bounding box — and the
-  // hit/selection box it produces when embedded elsewhere — matches the
-  // visible element instead of a mostly-empty canvas.
   const b = contentBBox();
-  const margin = 2;
-  const minX = +(b.minX - margin).toFixed(2);
-  const minY = +(b.minY - margin).toFixed(2);
-  const w = Math.max(1, +(b.maxX - b.minX + margin*2).toFixed(2));
-  const h = Math.max(1, +(b.maxY - b.minY + margin*2).toFixed(2));
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${w} ${h}" width="${w}" height="${h}">\n  ${svgBody(false)}\n</svg>`;
+  const w = Math.max(10, b.maxX - b.minX);
+  const h = Math.max(10, b.maxY - b.minY);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${b.minX.toFixed(1)} ${b.minY.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}">\n  ${layers.map(l=>renderLayerSvg(l, false)).join('\n  ')}\n</svg>`;
 }
+
 function renderStage(){
   const stage = document.getElementById('stage');
   stage.setAttribute('viewBox', `0 0 ${canvasW} ${canvasH}`);
-  const zoom = parseFloat(document.getElementById('zoom').value || 1.6);
-  stage.setAttribute('width', canvasW*zoom);
-  stage.setAttribute('height', canvasH*zoom);
-  stage.classList.toggle('adding-points', !!addPointMode);
-  const selLayer = layers.find(l=>l.id===selectedId && l.visible);
-  stage.innerHTML = svgBody(true) + (selLayer ? selectionOverlaySvg(selLayer) : '');
+  const zoom = parseFloat(document.getElementById('zoom').value || 1.0);
+  stage.setAttribute('width', canvasW * zoom);
+  stage.setAttribute('height', canvasH * zoom);
+  const selLayer = layers.find(l=>l.id===selectedId);
+  stage.innerHTML = layers.map(l=>renderLayerSvg(l, true)).join('\n') + (selLayer ? selectionOverlaySvg(selLayer) : '');
 }
+
 function renderAll(){
   buildLayerList();
   buildParamPanel();
   renderStage();
   document.getElementById('svgOut').value = fullSvgSource();
 }
+
 function resizeCanvasFromInputs(){
-  canvasW = parseInt(document.getElementById('canvasW').value) || 320;
+  canvasW = parseInt(document.getElementById('canvasW').value) || 1000;
   canvasH = parseInt(document.getElementById('canvasH').value) || 160;
   renderAll();
 }
 function applyZoom(){ renderStage(); }
-function toggleGrid(){
-  const wrap = document.getElementById('canvasWrap');
-  const on = document.getElementById('gridToggle').checked;
-  wrap.classList.toggle('no-grid', !on);
-}
+function toggleGrid(){ document.getElementById('canvasWrap').classList.toggle('no-grid', !document.getElementById('gridToggle').checked); }
+
 function copySvg(){
-  const ta = document.getElementById('svgOut');
-  ta.select();
+  const ta = document.getElementById('svgOut'); ta.select();
   navigator.clipboard.writeText(ta.value).then(()=>{
-    const flash = document.getElementById('copyFlash');
-    flash.textContent = 'Copied to clipboard.';
+    const flash = document.getElementById('copyFlash'); flash.textContent = 'Copied to clipboard.';
     setTimeout(()=>flash.textContent='', 1800);
-  }).catch(()=>{ document.execCommand('copy'); });
+  });
 }
 function downloadSvg(){
-  const blob = new Blob([fullSvgSource()], {type:'image/svg+xml'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'aleatoric-element.svg';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([fullSvgSource()], {type:'image/svg+xml'}));
+  a.download = 'aleatoric-element.svg'; a.click();
 }
 
-/* ============================= MOUSE INTERACTION ============================= */
+/* ============================= INTERACTION DRAG ENGINE ============================= */
 function onStageMouseDown(e){
   if(addPointMode && addPointLayerId){
     const layer = layers.find(l=>l.id===addPointLayerId);
-    if(layer){
+    if(layer && layer.type==='custom'){
       const pt = svgPointFromClient(e.clientX, e.clientY);
-      const {lx,ly} = toLocal(pt.x, pt.y, layer.params.x, layer.params.y, layer.params.rotation);
-      const pts = layer.params.points;
-      const lockY = e.ctrlKey || e.metaKey;
-      const finalY = (lockY && pts.length) ? pts[pts.length-1].y : ly;
-      pts.push({x: lx, y: finalY});
-      selectedId = layer.id;
+      const local = toLocal(pt.x, pt.y, layer.params.x, layer.params.y, layer.params.rotation);
+      let nx = local.lx;
+      let ny = local.ly;
+      if(e.ctrlKey && layer.params.points.length > 0){
+        ny = layer.params.points[layer.params.points.length - 1].y;
+      }
+      layer.params.points.push({x: nx, y: ny});
       renderAll();
       e.preventDefault();
       return;
     }
   }
+
   const hitEl = e.target.closest && e.target.closest('[data-id]');
-  if(!hitEl){
-    if(selectedId!==null){ selectedId = null; renderAll(); }
-    return;
-  }
+  if(!hitEl){ selectedId = null; renderAll(); return; }
+  
   const id = hitEl.getAttribute('data-id');
-  let role = hitEl.getAttribute('data-role') || 'move';
-  let pointIndex = null;
-  if(role.indexOf('point:')===0){
-    pointIndex = parseInt(role.slice(6), 10);
-    role = 'point';
-  }
+  const role = hitEl.getAttribute('data-role') || 'move';
   if(id !== selectedId){ selectedId = id; renderAll(); }
-  const layer = layers.find(l=>l.id===id);
-  if(!layer) return;
+  
+  const layer = layers.find(l=>l.id===id); if(!layer) return;
   const pt = svgPointFromClient(e.clientX, e.clientY);
-  dragState = {
-    id, role, pointIndex, startPt: pt,
-    startX: layer.params.x, startY: layer.params.y,
-    startRotation: layer.params.rotation,
-    startPointY: pointIndex!==null && layer.params.points[pointIndex] ? layer.params.points[pointIndex].y : null
-  };
+  
+  dragState = { id, role, startPt: pt, startX: layer.params.x, startY: layer.params.y, startLength: layer.params.length, startRotation: layer.params.rotation, startW: layer.params.width, startH: layer.params.height };
+  
+  if(role.startsWith('point:')){
+    const idx = parseInt(role.split(':')[1]);
+    dragState.pointIdx = idx;
+    dragState.startPtX = layer.params.points[idx].x;
+    dragState.startPtY = layer.params.points[idx].y;
+  }
+  
   e.preventDefault();
 }
+
 function onDocMouseMove(e){
-  if(canvasDragState){
-    const zoom = parseFloat(document.getElementById('zoom').value || 1.6);
-    const dx = (e.clientX - canvasDragState.startClientX) / zoom;
-    const dy = (e.clientY - canvasDragState.startClientY) / zoom;
-    canvasW = Math.round(clamp(canvasDragState.startW + dx, 40, 2000));
-    canvasH = Math.round(clamp(canvasDragState.startH + dy, 40, 2000));
+  // Handle Global Canvas Framing Resize Engine
+  if (canvasDragState) {
+    const dx = (e.clientX - canvasDragState.startX) / canvasDragState.zoom;
+    const dy = (e.clientY - canvasDragState.startY) / canvasDragState.zoom;
+    canvasW = Math.max(40, Math.round(canvasDragState.startW + dx));
+    canvasH = Math.max(40, Math.round(canvasDragState.startH + dy));
     document.getElementById('canvasW').value = canvasW;
     document.getElementById('canvasH').value = canvasH;
-    renderStage();
+    renderAll();
     return;
   }
+
   if(!dragState) return;
-  const layer = layers.find(l=>l.id===dragState.id);
-  if(!layer) return;
+  const layer = layers.find(l=>l.id===dragState.id); if(!layer) return;
   const pt = svgPointFromClient(e.clientX, e.clientY);
   const p = layer.params;
+  
   if(dragState.role==='move'){
-    const lockY = e.ctrlKey || e.metaKey;
-    p.x = dragState.startX + (pt.x - dragState.startPt.x);
-    if(!lockY){
-      p.y = dragState.startY + (pt.y - dragState.startPt.y);
-    }
-  } else if(dragState.role==='resize-e'){
-    const {lx} = toLocal(pt.x, pt.y, dragState.startX, dragState.startY, dragState.startRotation);
-    if(layer.type==='box') p.width = clamp(lx, 10, 2000);
-    else if(layer.type==='shape') p.width = clamp(lx, 5, 600);
-  } else if(dragState.role==='resize-s'){
-    const {ly} = toLocal(pt.x, pt.y, dragState.startX, dragState.startY, dragState.startRotation);
-    if(layer.type==='box') p.height = clamp(ly, 10, 2000);
-    else if(layer.type==='shape') p.height = clamp(ly, 5, 600);
-  } else if(dragState.role==='resize-se'){
-    const {lx,ly} = toLocal(pt.x, pt.y, dragState.startX, dragState.startY, dragState.startRotation);
-    const square = e.ctrlKey || e.metaKey;
-    if(layer.type==='box'){
-      if(square){ const s = clamp(Math.max(lx,ly), 10, 2000); p.width = s; p.height = s; }
-      else { p.width = clamp(lx,10,2000); p.height = clamp(ly,10,2000); }
-    } else if(layer.type==='shape'){
-      if(square){ const s = clamp(Math.max(lx,ly), 5, 600); p.width = s; p.height = s; }
-      else { p.width = clamp(lx,5,600); p.height = clamp(ly,5,600); }
-    }
+    const snapped = getSnapCoordinates(dragState.startX + (pt.x - dragState.startPt.x), dragState.startY + (pt.y - dragState.startPt.y), layer.id);
+    p.x = snapped.x;
+    p.y = snapped.y;
   } else if(dragState.role==='line-end'){
-    const dx = pt.x - p.x;
-    let dy = pt.y - p.y;
-    if(e.ctrlKey || e.metaKey){ dy = 0; }
-    p.length = clamp(Math.hypot(dx,dy), 5, 3000);
-    let rot = Math.atan2(dy,dx) * 180/Math.PI;
-    if(rot<0) rot += 360;
-    p.rotation = rot;
+    const snapped = getSnapCoordinates(pt.x, pt.y, layer.id);
+    const dx = snapped.x - p.x;
+    const dy = snapped.y - p.y;
+    p.length = clamp(Math.hypot(dx, dy), 10, 2000);
+    p.rotation = Math.atan2(dy, dx) * 180 / Math.PI;
   } else if(dragState.role==='line-amp'){
-    const {ly} = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
-    p.amplitude = clamp(Math.abs(ly), 0, 300);
-  } else if(dragState.role==='point'){
-    const idx = dragState.pointIndex;
-    const target = p.points && p.points[idx];
-    if(target){
-      const {lx,ly} = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
-      const lockY = e.ctrlKey || e.metaKey;
-      target.x = lx;
-      target.y = lockY ? dragState.startPointY : ly;
+    const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
+    p.amplitude = clamp(Math.abs(local.ly), 0, 300);
+  } else if(dragState.role==='resize-e'){
+    const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
+    p.width = clamp(local.lx, 10, 2000);
+  } else if(dragState.role==='resize-s'){
+    const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
+    p.height = clamp(local.ly, 10, 2000);
+  } else if(dragState.role==='resize-se'){
+    const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
+    if(e.ctrlKey) {
+      const sz = clamp(Math.max(local.lx, local.ly), 10, 2000);
+      p.width = sz;
+      p.height = sz;
+    } else {
+      p.width = clamp(local.lx, 10, 2000);
+      p.height = clamp(local.ly, 10, 2000);
     }
+  } else if(dragState.role.startsWith('point:')){
+    const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
+    const idx = dragState.pointIdx;
+    let nx = local.lx;
+    let ny = local.ly;
+    if(e.ctrlKey && idx > 0) {
+      ny = p.points[idx - 1].y;
+    }
+    p.points[idx].x = nx;
+    p.points[idx].y = ny;
   }
   renderStage();
-  buildParamPanel();
+  document.getElementById('svgOut').value = fullSvgSource();
 }
-function onDocMouseUp(){
-  if(dragState){ dragState = null; renderAll(); }
+
+function onDocMouseUp(){ 
   if(canvasDragState){ canvasDragState = null; renderAll(); }
+  if(dragState){ dragState = null; renderAll(); } 
 }
+
+// Bind Canvas Frame Resize Handle
+document.getElementById('canvasResizeHandle').addEventListener('mousedown', function(e) {
+  const zoom = parseFloat(document.getElementById('zoom').value || 1.0);
+  canvasDragState = {
+    startX: e.clientX,
+    startY: e.clientY,
+    startW: canvasW,
+    startH: canvasH,
+    zoom: zoom
+  };
+  e.preventDefault();
+  e.stopPropagation();
+});
 
 document.getElementById('stage').addEventListener('mousedown', onStageMouseDown);
 document.addEventListener('mousemove', onDocMouseMove);
 document.addEventListener('mouseup', onDocMouseUp);
-document.getElementById('canvasResizeHandle').addEventListener('mousedown', function(e){
-  canvasDragState = {startClientX:e.clientX, startClientY:e.clientY, startW:canvasW, startH:canvasH};
-  e.preventDefault();
-  e.stopPropagation();
-});
 document.addEventListener('keydown', function(e){
-  if(e.key !== 'Backspace' && e.key !== 'Delete') return;
-  const active = document.activeElement;
-  const tag = active ? active.tagName : '';
-  // Don't hijack Backspace while the user is typing in a field (number box,
-  // select, text/color input) — only treat it as "delete element" when
-  // focus is elsewhere (canvas, layer list, body, etc.).
-  const isEditable = tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT' || (active && active.isContentEditable);
-  if(isEditable) return;
-  if(!selectedId) return;
-  e.preventDefault();
-  deleteLayer(selectedId, {stopPropagation(){}});
+  if((e.key === 'Backspace' || e.key === 'Delete') && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)){
+    if(selectedId) { deleteLayer(selectedId); e.preventDefault(); }
+  }
 });
 
-/* ============================= INIT ============================= */
-addLayer('box');
+/* ============================= INITIAL STATE ============================= */
 addLayer('line');
-layers[1].params.lineType = 'chirp';
-layers[1].params.x = 30; layers[1].params.y = 55;
-layers[1].params.length = 80;
-layers[0].params.width = 100; layers[0].params.height = 44;
-layers[0].params.x = 20; layers[0].params.y = 40;
-selectedId = layers[1].id;
 renderAll();
 </script>
 </body>
