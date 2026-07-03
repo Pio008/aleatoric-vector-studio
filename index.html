@@ -1246,6 +1246,29 @@ function customElement(p){
   return out;
 }
 
+// Returns the exact reach of a rendered arrowhead beyond its anchor point (tip + both
+// barb tips), given the outward-facing angle used to draw it. Used so the export bounding
+// box only grows where an arrowhead actually extends, instead of padding every side.
+function arrowExtentPoints(anchorX, anchorY, outwardAngle, p){
+  const size = p.arrowSize || 14;
+  const style = p.arrowType;
+  const barbAngleDeg = p.arrowBarbAngle;
+  let spread;
+  if(style === 'flat'){
+    spread = size * 0.5;
+  } else if(barbAngleDeg !== undefined && (style==='stroke' || style==='hollow')){
+    spread = size * Math.tan(clamp(barbAngleDeg,4,80) * Math.PI/180);
+  } else {
+    spread = size * 0.42;
+  }
+  const cos = Math.cos(outwardAngle), sin = Math.sin(outwardAngle);
+  return [
+    { x: anchorX + size*cos,     y: anchorY + size*sin },
+    { x: anchorX + spread*sin,   y: anchorY - spread*cos },
+    { x: anchorX - spread*sin,   y: anchorY + spread*cos }
+  ];
+}
+
 function rotatedWorldBBox(localMinX, localMinY, localMaxX, localMaxY, ox, oy, rotDeg, pad){
   const rad = (rotDeg || 0) * Math.PI / 180;
   const cos = Math.cos(rad), sin = Math.sin(rad);
@@ -1293,19 +1316,46 @@ function worldBBoxForLayer(layer){
   const margin = 2; // tiny buffer only, to avoid clipping anti-aliased stroke edges
 
   if (layer.type === 'line') {
-    const hasArrow = p.arrowType && p.arrowType !== 'none';
-    const arrowExtra = hasArrow ? (p.arrowSize || 14) : 0;
-    const pad = strokeHalf + arrowExtra + margin;
-    const ext = localExtentOf(getLinePoints(p));
+    const pad = strokeHalf + margin;
+    const pts = getLinePoints(p);
+    const hasArrow = p.arrowType && p.arrowType !== 'none' && pts.length >= 2;
+    let extraPts = [];
+    if (hasArrow) {
+      const placement = p.arrowPlacement || 'end';
+      if (placement === 'end' || placement === 'both') {
+        const last = pts[pts.length - 1];
+        extraPts = extraPts.concat(arrowExtentPoints(last.x, last.y, 0, p));
+      }
+      if (placement === 'start' || placement === 'both') {
+        const first = pts[0];
+        extraPts = extraPts.concat(arrowExtentPoints(first.x, first.y, Math.PI, p));
+      }
+    }
+    const ext = localExtentOf(pts.concat(extraPts));
     return rotatedWorldBBox(ext.minX, ext.minY, ext.maxX, ext.maxY, p.x, p.y, p.rotation, pad);
   }
   if (layer.type === 'custom') {
-    const hasArrow = !p.closed && p.arrowType && p.arrowType !== 'none';
-    const arrowExtra = hasArrow ? (p.arrowSize || 14) : 0;
-    const pad = strokeHalf + arrowExtra + margin;
+    const pad = strokeHalf + margin;
     const pts = customLocalPoints(p);
     if (!pts.length) return { minX: p.x - pad, minY: p.y - pad, maxX: p.x + pad, maxY: p.y + pad };
-    const ext = localExtentOf(pts);
+    const hasArrow = !p.closed && p.arrowType && p.arrowType !== 'none';
+    let extraPts = [];
+    if (hasArrow && p.points && p.points.length >= 2) {
+      const placement = p.arrowPlacement || 'end';
+      const p0 = p.points[0], p1 = p.points[1];
+      const pL = p.points[p.points.length-1], pL_prev = p.points[p.points.length-2];
+      if (placement === 'end' || placement === 'both') {
+        const angleEnd = Math.atan2(pL.y - pL_prev.y, pL.x - pL_prev.x);
+        const last = pts[pts.length - 1];
+        extraPts = extraPts.concat(arrowExtentPoints(last.x, last.y, angleEnd, p));
+      }
+      if (placement === 'start' || placement === 'both') {
+        const angleStart = Math.atan2(p0.y - p1.y, p0.x - p1.x);
+        const first = pts[0];
+        extraPts = extraPts.concat(arrowExtentPoints(first.x, first.y, angleStart, p));
+      }
+    }
+    const ext = localExtentOf(pts.concat(extraPts));
     return rotatedWorldBBox(ext.minX, ext.minY, ext.maxX, ext.maxY, p.x, p.y, p.rotation, pad);
   }
   // box / shape — local geometry is exactly the 0..width, 0..height rect
