@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Aleatoric Vector Studio</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3EEE2;
+    --paper-deep:#EAE3D2;
+    --ruled:#DDD3B8;
+    --panel:#FBF9F3;
+    --ink:#211D18;
+    --ink-soft:#6B6255;
+    --ink-faint:#948A78;
+    --rubric:#9C3D2E;
+    --rubric-soft:#C97361;
+    --border:#D8CFB8;
+    --good:#4B6350;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{
+    max-width:1400px;
+    margin:0 auto;
+    padding:28px 24px 60px;
+  }
+  header{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+    border-bottom:1px solid var(--border);
+    padding-bottom:16px;
+    margin-bottom:22px;
+  }
+  h1{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:28px;
+    letter-spacing:-0.01em;
+    margin:0;
+  }
+  h1 em{
+    font-style:italic;
+    color:var(--rubric);
+    font-weight:500;
+  }
+  .subtitle{
+    font-size:13px;
+    color:var(--ink-soft);
+    font-family:'IBM Plex Mono',monospace;
+    letter-spacing:0.01em;
+  }
+  .layout{
+    display:grid;
+    grid-template-columns:230px 1fr 300px;
+    grid-template-areas:
+      "elements canvas export"
+      "params params params";
+    gap:18px;
+    align-items:start;
+  }
+  .panel-elements{grid-area:elements;}
+  .panel-canvas{grid-area:canvas;}
+  .panel-export{grid-area:export;}
+  .panel-params{grid-area:params;}
+  @media (max-width:1080px){
+    .layout{
+      grid-template-columns:1fr;
+      grid-template-areas:
+        "elements"
+        "canvas"
+        "export"
+        "params";
+    }
+  }
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:3px;
+  }
+  .panel-head{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--ink-soft);
+    padding:12px 14px;
+    border-bottom:1px solid var(--border);
+  }
+  .panel-body{padding:12px 14px;}
+
+  /* ---- add buttons ---- */
+  .add-row{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+  .add-btn{
+    display:flex;align-items:center;gap:8px;
+    background:var(--paper);
+    border:1px solid var(--border);
+    border-radius:3px;
+    padding:8px 10px;
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    font-weight:500;
+    color:var(--ink);
+    cursor:pointer;
+    text-align:left;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .add-btn:hover{border-color:var(--rubric-soft); background:#fff;}
+  .add-btn .icon{
+    width:16px;height:16px;flex:none;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .add-btn svg{width:16px;height:16px;stroke:var(--ink-soft);}
+
+  /* ---- layers list ---- */
+  .layers{display:flex;flex-direction:column;gap:5px;}
+  .layer-row{
+    display:flex;align-items:center;gap:7px;
+    padding:7px 8px;
+    border:1px solid transparent;
+    border-radius:3px;
+    cursor:pointer;
+    font-size:12.5px;
+  }
+  .layer-row:hover{background:var(--paper-deep);}
+  .layer-row.selected{
+    border-color:var(--rubric-soft);
+    background:#fff;
+  }
+  .layer-row .name{flex:1; overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .layer-row .tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:9.5px;
+    color:var(--ink-faint);
+    text-transform:uppercase;
+    background:var(--paper-deep);
+    padding:2px 5px;
+    border-radius:2px;
+  }
+  .layer-row button{
+    background:none;border:none;cursor:pointer;
+    color:var(--ink-faint);
+    font-size:13px;
+    line-height:1;
+    padding:2px 4px;
+  }
+  .layer-row button:hover{color:var(--rubric);}
+  .empty-note{
+    font-size:12px;color:var(--ink-faint);
+    font-style:italic;
+    padding:6px 2px;
+  }
+
+  /* ---- canvas area ---- */
+  .canvas-toolbar{
+    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+    padding:10px 14px;
+    border-bottom:1px solid var(--border);
+    font-size:12px;
+    color:var(--ink-soft);
+  }
+  .canvas-toolbar label{display:flex;align-items:center;gap:6px;}
+  .canvas-toolbar input[type=number]{width:56px;}
+  .canvas-toolbar .hint{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    color:var(--ink-faint);
+  }
+  .canvas-wrap{
+    padding:34px;
+    display:flex;
+    justify-content:center;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 23px, var(--ruled) 23px, var(--ruled) 24px);
+    background-size:100% 24px;
+  }
+  .canvas-wrap.no-grid{background:none;}
+  .canvas-frame{
+    position:relative;
+    display:inline-block;
+    background:var(--paper);
+    box-shadow:0 1px 3px rgba(33,29,24,0.15), 0 0 0 1px var(--border);
+    border-radius:2px;
+  }
+  svg#stage{display:block;}
+  svg#stage.adding-points{cursor:crosshair;}
+  .canvas-resize-handle{
+    position:absolute;
+    width:14px;height:14px;
+    right:-7px;bottom:-7px;
+    background:var(--rubric);
+    border:2px solid var(--panel);
+    border-radius:2px;
+    cursor:nwse-resize;
+    z-index:5;
+  }
+
+  /* selection / handles inside svg */
+  .layer-group, .layer-group *{cursor:move;}
+  .sel-outline{fill:none; stroke:var(--rubric-soft); stroke-width:1; stroke-dasharray:4,3; pointer-events:none; vector-effect:non-scaling-stroke;}
+  .handle{fill:var(--rubric); stroke:#fff; stroke-width:1; cursor:grab;}
+  .handle.amp{fill:var(--good);}
+  .handle[data-role="resize-e"], .handle[data-role="line-end"]{cursor:ew-resize;}
+  .handle[data-role="resize-s"], .handle[data-role="line-amp"]{cursor:ns-resize;}
+  .handle[data-role="resize-se"]{cursor:nwse-resize;}
+
+  /* ---- param controls ---- */
+  .param-groups{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));
+    gap:16px;
+    align-items:start;
+  }
+  .field-group{
+    background:var(--paper);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:14px 16px 16px;
+  }
+  .field-group-title{
+    display:flex;align-items:center;gap:7px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:0.1em;
+    color:var(--rubric);
+    margin:0 0 12px;
+    padding-bottom:10px;
+    border-bottom:1px solid var(--border);
+  }
+  .field-group-title::before{
+    content:'';
+    width:6px;height:6px;
+    border-radius:1px;
+    background:var(--rubric-soft);
+    flex:none;
+  }
+  .field{margin-bottom:16px;}
+  .field:last-child{margin-bottom:0;}
+  .field-row{display:flex; gap:12px; margin-bottom:16px;}
+  .field-row:last-child{margin-bottom:0;}
+  .field-row .field{flex:1; margin-bottom:0; min-width:0;}
+  .field label{
+    display:flex;justify-content:space-between;align-items:center;
+    gap:6px;
+    font-size:11.5px;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .field label .val-input{
+    width:56px !important;
+    flex:none;
+    padding:2px 5px !important;
+    border:1px solid var(--border);
+    border-radius:2px;
+    background:#fff;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--ink);
+    text-align:right;
+  }
+  .field label .val-input:focus{border-color:var(--rubric-soft); outline:none;}
+  .field input[type=range]{
+    width:100%;
+    accent-color:var(--rubric);
+  }
+  .field select, .field input[type=number], .field input[type=text]{
+    width:100%;
+    padding:6px 8px;
+    border:1px solid var(--border);
+    border-radius:3px;
+    background:#fff;
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    color:var(--ink);
+  }
+  .field input[type=color]{
+    width:100%;height:30px;border:1px solid var(--border);border-radius:3px;background:#fff;padding:2px;
+  }
+  .field.checkbox{display:flex;align-items:center;gap:8px;}
+  .field.checkbox label{margin:0;}
+  .divider{
+    border:none;border-top:1px solid var(--border);
+    margin:14px 0;
+  }
+  .no-selection{
+    color:var(--ink-faint);
+    font-size:13px;
+    font-style:italic;
+    padding:20px 4px;
+    text-align:center;
+  }
+  .mouse-note{
+    font-size:11px;
+    color:var(--ink-faint);
+    font-style:italic;
+    margin:-4px 0 12px;
+    line-height:1.4;
+  }
+
+  /* ---- export ---- */
+  .export-btns{display:flex;gap:8px;margin-bottom:10px;}
+  .btn{
+    flex:1;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    border-radius:3px;
+    padding:9px 10px;
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    letter-spacing:0.01em;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  .btn:hover{background:var(--rubric);}
+  .btn.secondary{
+    background:var(--paper);
+    color:var(--ink);
+    border:1px solid var(--border);
+  }
+  .btn.secondary:hover{background:var(--paper-deep); color:var(--ink);}
+  textarea#svgOut{
+    width:100%;
+    height:130px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    line-height:1.5;
+    padding:8px;
+    border:1px solid var(--border);
+    border-radius:3px;
+    background:var(--paper-deep);
+    color:var(--ink-soft);
+    resize:vertical;
+  }
+  .copy-flash{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--good);
+    height:14px;
+    margin-top:4px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>Aleatoric Vector <em>Studio</em></h1>
+    </div>
+    <div class="subtitle">lines · boxes · shapes → SVG for MuseScore</div>
+  </header>
+
+  <div class="layout">
+    <!-- LEFT: add + layers -->
+    <div class="panel panel-elements">
+      <div class="panel-head">Elements</div>
+      <div class="panel-body">
+        <div class="add-row">
+          <button class="add-btn" onclick="addLayer('line')">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M2 17c3-9 5 9 8 0s5 9 8 0 4 4 4 4"/></svg></span>
+            Add line
+          </button>
+          <button class="add-btn" onclick="addLayer('box')">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><rect x="4" y="6" width="16" height="12" rx="1"/></svg></span>
+            Add box
+          </button>
+          <button class="add-btn" onclick="addLayer('shape')">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M12 3l9 18H3z"/></svg></span>
+            Add shape
+          </button>
+          <button class="add-btn" onclick="addLayer('custom')">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M5 18L12 6L19 15" stroke-dasharray="1 3.2"/><circle cx="5" cy="18" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="15" r="1.6" fill="currentColor" stroke="none"/></svg></span>
+            Add custom (dots)
+          </button>
+        </div>
+        <div class="layers" id="layerList"></div>
+      </div>
+    </div>
+
+    <!-- CENTER: canvas -->
+    <div class="panel panel-canvas">
+      <div class="canvas-toolbar">
+        <label><input type="checkbox" id="gridToggle" checked onchange="toggleGrid()"> Ruled guide</label>
+        <label>Canvas W <input type="number" id="canvasW" value="320" min="40" max="2000" onchange="resizeCanvasFromInputs()"></label>
+        <label>Canvas H <input type="number" id="canvasH" value="160" min="40" max="2000" onchange="resizeCanvasFromInputs()"></label>
+        <label>Zoom <input type="range" id="zoom" min="1" max="4" step="0.1" value="1.6" oninput="applyZoom()"></label>
+        <span class="hint">drag shapes to move (hold Ctrl to keep on the same horizontal line) · drag squares to resize (hold Ctrl on the corner square for equal width/height) · drag corner to resize canvas</span>
+      </div>
+      <div class="canvas-wrap" id="canvasWrap">
+        <div class="canvas-frame">
+          <svg id="stage" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div class="canvas-resize-handle" id="canvasResizeHandle" title="Drag to resize canvas"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: export -->
+    <div class="panel panel-export">
+      <div class="panel-head">Export</div>
+      <div class="panel-body">
+        <div class="export-btns">
+          <button class="btn" onclick="copySvg()">Copy SVG</button>
+          <button class="btn secondary" onclick="downloadSvg()">Download</button>
+        </div>
+        <div class="copy-flash" id="copyFlash"></div>
+        <textarea id="svgOut" readonly></textarea>
+      </div>
+    </div>
+
+    <!-- BOTTOM: parameters, spanning full width so field groups can sit side by side -->
+    <div class="panel panel-params">
+      <div class="panel-head" id="paramTitle">Parameters</div>
+      <div class="panel-body" id="paramBody">
+        <div class="no-selection">Select or add an element to edit its parameters.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================= STATE ============================= */
+let layers = [];
+let selectedId = null;
+let uid = 1;
+let canvasW = 320, canvasH = 160;
+let dragState = null;
+let canvasDragState = null;
+let addPointMode = false;
+let addPointLayerId = null;
+
+const DEFAULTS = {
+  line: {
+    lineType:'wavy', x:20, y:80, rotation:0,
+    length:120, amplitude:12, cycles:3, phase:0,
+    chirpRate:-1, damping:0.6,
+    thickness:1.6, dash:'solid', cap:'round', color:'#211D18',
+    fixedStroke:false, arrowType:'none', arrowSize:14
+  },
+  box: {
+    x:40, y:30, rotation:0,
+    width:100, height:50, cornerRadius:0, thickness:2.2,
+    color:'#211D18', fixedStroke:true
+  },
+  shape: {
+    x:60, y:60, rotation:0,
+    shapeType:'circle', width:22, height:22, thickness:2, fillMode:'filled', color:'#211D18',
+    fixedStroke:true
+  },
+  custom: {
+    x:0, y:0, rotation:0,
+    points:[], closed:false,
+    lineType:'straight', amplitude:12, cycles:2, phase:0, chirpRate:-1, damping:0.6,
+    thickness:1.8, dash:'solid', cap:'round', color:'#211D18', fixedStroke:true,
+    arrowType:'none', arrowSize:14
+  }
+};
+
+const LABELS = { line:'Line', box:'Box', shape:'Shape', custom:'Custom' };
+
+/* ============================= MATH HELPERS ============================= */
+function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+function toLocal(px,py,ox,oy,rotDeg){
+  const rad = -rotDeg*Math.PI/180;
+  const dx = px-ox, dy = py-oy;
+  return {
+    lx: dx*Math.cos(rad) - dy*Math.sin(rad),
+    ly: dx*Math.sin(rad) + dy*Math.cos(rad)
+  };
+}
+function svgPointFromClient(clientX, clientY){
+  const stage = document.getElementById('stage');
+  const pt = stage.createSVGPoint();
+  pt.x = clientX; pt.y = clientY;
+  const ctm = stage.getScreenCTM();
+  if(!ctm) return {x:0,y:0};
+  const p = pt.matrixTransform(ctm.inverse());
+  return {x:p.x, y:p.y};
+}
+
+/* ============================= SCHEMAS ============================= */
+// Every field carries a `group` tag (shape | stroke | arrow | position) so
+// the param panel can render them as clearly separated, labeled sections
+// instead of one long crowded list.
+const GROUP_LABELS = { shape:'Shape', stroke:'Stroke & fill', arrow:'Arrowhead', position:'Position & rotation' };
+function schemaFor(layer){
+  const common = [
+    {key:'x', label:'X', type:'range', min:0, max:canvasW, step:1, group:'position'},
+    {key:'y', label:'Y', type:'range', min:0, max:canvasH, step:1, group:'position'},
+    {key:'rotation', label:'Rotation°', type:'range', min:0, max:360, step:1, group:'position'}
+  ];
+  if(layer.type==='line'){
+    const t = layer.params.lineType;
+    const fields = [
+      {key:'lineType', label:'Line type', type:'select', options:['straight','wavy','zigzag','chirp','arc'], group:'shape'},
+      {key:'length', label:'Length', type:'range', min:10, max:Math.max(canvasW,300), step:1, group:'shape'}
+    ];
+    if(t!=='straight'){
+      fields.push({key:'amplitude', label:'Amplitude', type:'range', min:0, max:100, step:1, group:'shape'});
+    }
+    if(t==='wavy'||t==='zigzag'||t==='chirp'){
+      fields.push({key:'cycles', label:'Cycles', type:'range', min:0.5, max:12, step:0.5, group:'shape'});
+      fields.push({key:'phase', label:'Phase°', type:'range', min:0, max:360, step:5, group:'shape'});
+    }
+    if(t==='chirp'){
+      fields.push({key:'chirpRate', label:'Chirp rate (– slows down)', type:'range', min:-3, max:3, step:0.1, group:'shape'});
+      fields.push({key:'damping', label:'Damping (– grows)', type:'range', min:-2, max:2, step:0.1, group:'shape'});
+    }
+    fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:8, step:0.1, group:'stroke'});
+    fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted'], group:'stroke'});
+    fields.push({key:'cap', label:'Line cap', type:'select', options:['butt','round','square'], group:'stroke'});
+    fields.push({key:'fixedStroke', label:'Fixed stroke width (ignore scaling)', type:'checkbox', group:'stroke'});
+    fields.push({key:'color', label:'Ink colour', type:'color', group:'stroke'});
+    fields.push({key:'arrowType', label:'Arrowhead', type:'select', options:['none','triangle','flat','hollow','stroke'], group:'arrow'});
+    if(layer.params.arrowType && layer.params.arrowType!=='none'){
+      fields.push({key:'arrowSize', label:'Arrowhead size', type:'range', min:4, max:60, step:1, group:'arrow'});
+    }
+    return [...fields, ...common];
+  }
+  if(layer.type==='box'){
+    return [
+      {key:'width', label:'Width', type:'range', min:10, max:Math.max(canvasW,300), step:1, group:'shape'},
+      {key:'height', label:'Height', type:'range', min:10, max:Math.max(canvasH,300), step:1, group:'shape'},
+      {key:'cornerRadius', label:'Corner radius', type:'range', min:0, max:40, step:1, group:'shape'},
+      {key:'thickness', label:'Border thickness', type:'range', min:0.5, max:14, step:0.1, group:'stroke'},
+      {key:'fixedStroke', label:'Fixed stroke width (ignore scaling)', type:'checkbox', group:'stroke'},
+      {key:'color', label:'Ink colour', type:'color', group:'stroke'},
+      ...common
+    ];
+  }
+  if(layer.type==='shape'){
+    const fields = [
+      {key:'shapeType', label:'Shape', type:'select', options:['circle','triangle','diamond','arrow','cross','star'], group:'shape'},
+      {key:'width', label:'Width', type:'range', min:5, max:400, step:1, group:'shape'},
+      {key:'height', label:'Height', type:'range', min:5, max:400, step:1, group:'shape'}
+    ];
+    if(layer.params.shapeType!=='cross'){
+      fields.push({key:'fillMode', label:'Fill mode', type:'select', options:['filled','outline'], group:'stroke'});
+    }
+    fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.5, max:10, step:0.1, group:'stroke'});
+    fields.push({key:'fixedStroke', label:'Fixed stroke width (ignore scaling)', type:'checkbox', group:'stroke'});
+    fields.push({key:'color', label:'Ink colour', type:'color', group:'stroke'});
+    return [...fields, ...common];
+  }
+  if(layer.type==='custom'){
+    const t = layer.params.lineType;
+    const fields = [
+      {key:'lineType', label:'Line style', type:'select', options:['straight','wavy','zigzag','chirp','arc'], group:'shape'},
+      {key:'closed', label:'Close shape (connect last dot back to first)', type:'checkbox', group:'shape'}
+    ];
+    if(t!=='straight'){
+      fields.push({key:'amplitude', label:'Amplitude', type:'range', min:0, max:100, step:1, group:'shape'});
+    }
+    if(t==='wavy'||t==='zigzag'||t==='chirp'){
+      fields.push({key:'cycles', label:'Cycles per segment', type:'range', min:0.5, max:12, step:0.5, group:'shape'});
+      fields.push({key:'phase', label:'Phase°', type:'range', min:0, max:360, step:5, group:'shape'});
+    }
+    if(t==='chirp'){
+      fields.push({key:'chirpRate', label:'Chirp rate (– slows down)', type:'range', min:-3, max:3, step:0.1, group:'shape'});
+      fields.push({key:'damping', label:'Damping (– grows)', type:'range', min:-2, max:2, step:0.1, group:'shape'});
+    }
+    fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:8, step:0.1, group:'stroke'});
+    fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted'], group:'stroke'});
+    fields.push({key:'cap', label:'Line cap', type:'select', options:['butt','round','square'], group:'stroke'});
+    fields.push({key:'fixedStroke', label:'Fixed stroke width (ignore scaling)', type:'checkbox', group:'stroke'});
+    fields.push({key:'color', label:'Ink colour', type:'color', group:'stroke'});
+    if(!layer.params.closed){
+      fields.push({key:'arrowType', label:'Arrowhead', type:'select', options:['none','triangle','flat','hollow','stroke'], group:'arrow'});
+      if(layer.params.arrowType && layer.params.arrowType!=='none'){
+        fields.push({key:'arrowSize', label:'Arrowhead size', type:'range', min:4, max:60, step:1, group:'arrow'});
+      }
+    }
+    return [...fields, ...common];
+  }
+  return common;
+}
+
+/* ============================= GEOMETRY / RENDER HELPERS ============================= */
+function catmullRomPath(points){
+  if(points.length<2) return '';
+  if(points.length===2){
+    return `M ${points[0].x.toFixed(2)},${points[0].y.toFixed(2)} L ${points[1].x.toFixed(2)},${points[1].y.toFixed(2)}`;
+  }
+  let d = `M ${points[0].x.toFixed(2)},${points[0].y.toFixed(2)} `;
+  for(let i=0;i<points.length-1;i++){
+    const p0 = points[i-1] || points[i];
+    const p1 = points[i];
+    const p2 = points[i+1];
+    const p3 = points[i+2] || p2;
+    const c1x = p1.x + (p2.x-p0.x)/6;
+    const c1y = p1.y + (p2.y-p0.y)/6;
+    const c2x = p2.x - (p3.x-p1.x)/6;
+    const c2y = p2.y - (p3.y-p1.y)/6;
+    d += `C ${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(2)},${c2y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)} `;
+  }
+  return d.trim();
+}
+function samplePoints(p){
+  const N = 140;
+  const pts = [];
+  for(let i=0;i<=N;i++){
+    const t = i/N;
+    const x = t*p.length;
+    let y = 0;
+    if(p.lineType==='wavy'){
+      y = p.amplitude * Math.sin(2*Math.PI*p.cycles*t + p.phase*Math.PI/180);
+    } else if(p.lineType==='chirp'){
+      const f0 = p.cycles, k = p.chirpRate;
+      const phase = 2*Math.PI*f0*(t + k*t*t/2) + p.phase*Math.PI/180;
+      const env = p.amplitude * Math.exp(-p.damping*t);
+      y = env * Math.sin(phase);
+    } else if(p.lineType==='arc'){
+      y = -p.amplitude * Math.sin(Math.PI*t);
+    }
+    pts.push({x,y});
+  }
+  return pts;
+}
+function zigzagPoints(p){
+  const segments = Math.max(2, Math.round(p.cycles*2));
+  const pts = [{x:0,y:0}];
+  for(let i=1;i<segments;i++){
+    const x = (i/segments)*p.length;
+    const y = (i%2===1) ? p.amplitude : -p.amplitude;
+    pts.push({x,y});
+  }
+  pts.push({x:p.length,y:0});
+  return pts;
+}
+function dashArrayFor(style, thickness){
+  if(style==='dashed') return `${(thickness*3).toFixed(1)},${(thickness*2.2).toFixed(1)}`;
+  if(style==='dotted') return `${(thickness*0.1).toFixed(1)},${(thickness*2.4).toFixed(1)}`;
+  return 'none';
+}
+function getLinePoints(p){
+  if(p.lineType==='straight') return [{x:0,y:0},{x:p.length,y:0}];
+  if(p.lineType==='zigzag') return zigzagPoints(p);
+  return samplePoints(p);
+}
+/* Arrowheads always point world-horizontal and are anchored exactly at the
+   path's real endpoint. Pivoting the counter-rotation around the anchor
+   (rather than the tip) guarantees the anchor lands on the same world point
+   the path itself ends at — even when the group is rotated — so the head
+   never floats free of a wavy/zigzag/chirp curve whose end isn't at y=0,
+   and its orientation never tilts to follow the curve's local tangent. */
+function arrowHeadWorldStraight(anchorX, anchorY, size, color, groupRotationDeg, style, strokeW){
+  const tipX = anchorX + size, tipY = anchorY;
+  const spread = size*0.42;
+  const leftX = anchorX, leftY = anchorY - spread;
+  const rightX = anchorX, rightY = anchorY + spread;
+  let shape;
+  if(style==='hollow'){
+    shape = `<path d="M${tipX.toFixed(2)},${tipY.toFixed(2)} L${leftX.toFixed(2)},${leftY.toFixed(2)} L${rightX.toFixed(2)},${rightY.toFixed(2)} Z" fill="none" stroke="${color}" stroke-width="${strokeW}" stroke-linejoin="round"/>`;
+  } else if(style==='flat'){
+    // T-style cap: a single crossbar perpendicular to the line, sitting
+    // right at the endpoint — like a "T" rather than an arrow shape.
+    const barHalf = size*0.5;
+    shape = `<line x1="${anchorX.toFixed(2)}" y1="${(anchorY-barHalf).toFixed(2)}" x2="${anchorX.toFixed(2)}" y2="${(anchorY+barHalf).toFixed(2)}" stroke="${color}" stroke-width="${strokeW}" stroke-linecap="butt"/>`;
+  } else if(style==='stroke'){
+    shape = `<path d="M${tipX.toFixed(2)},${tipY.toFixed(2)} L${leftX.toFixed(2)},${leftY.toFixed(2)} M${tipX.toFixed(2)},${tipY.toFixed(2)} L${rightX.toFixed(2)},${rightY.toFixed(2)}" fill="none" stroke="${color}" stroke-width="${strokeW}" stroke-linecap="round"/>`;
+  } else {
+    shape = `<path d="M${tipX.toFixed(2)},${tipY.toFixed(2)} L${leftX.toFixed(2)},${leftY.toFixed(2)} L${rightX.toFixed(2)},${rightY.toFixed(2)} Z" fill="${color}"/>`;
+  }
+  return `<g transform="rotate(${(-groupRotationDeg).toFixed(2)} ${anchorX.toFixed(2)} ${anchorY.toFixed(2)})">${shape}</g>`;
+}
+function lineElement(p){
+  const pts = getLinePoints(p);
+  let d;
+  if(p.lineType==='straight' || p.lineType==='zigzag'){
+    d = 'M ' + pts.map(pt=>`${pt.x.toFixed(2)},${pt.y.toFixed(2)}`).join(' L ');
+  } else {
+    d = catmullRomPath(pts);
+  }
+  const dash = dashArrayFor(p.dash, p.thickness);
+  const vecEffect = p.fixedStroke ? ' vector-effect="non-scaling-stroke"' : '';
+  let out = `<path d="${d}" fill="none" stroke="${p.color}" stroke-width="${p.thickness}" stroke-linecap="${p.cap}"${dash!=='none' ? ` stroke-dasharray="${dash}"`:''}${vecEffect}/>`;
+  if(p.arrowType && p.arrowType!=='none'){
+    const arrowSize = p.arrowSize || 14;
+    const strokeW = Math.max(p.thickness, arrowSize*0.12);
+    const last = pts[pts.length-1];
+    out += arrowHeadWorldStraight(last.x, last.y, arrowSize, p.color, p.rotation, p.arrowType, strokeW);
+  }
+  return out;
+}
+function roundedRectPath(x,y,w,h,r){
+  r = Math.max(0, Math.min(r, w/2, h/2));
+  if(r<=0.01){
+    return `M${x},${y} H${x+w} V${y+h} H${x} Z`;
+  }
+  return `M${x+r},${y} H${x+w-r} A${r},${r} 0 0 1 ${x+w},${y+r} V${y+h-r} A${r},${r} 0 0 1 ${x+w-r},${y+h} H${x+r} A${r},${r} 0 0 1 ${x},${y+h-r} V${y+r} A${r},${r} 0 0 1 ${x+r},${y} Z`;
+}
+function boxElement(p){
+  const vecEffect = p.fixedStroke ? ' vector-effect="non-scaling-stroke"' : '';
+  const d = roundedRectPath(0,0,p.width,p.height,p.cornerRadius);
+  return `<path d="${d}" fill="none" fill-rule="evenodd" clip-rule="evenodd" stroke="${p.color}" stroke-width="${p.thickness}"${vecEffect}/>`;
+}
+function starPathD(w,h){
+  const cx=w/2, cy=h/2, outerRx=w/2, outerRy=h/2, innerRx=outerRx*0.382, innerRy=outerRy*0.382;
+  let d='';
+  for(let i=0;i<10;i++){
+    const rx = i%2===0 ? outerRx : innerRx;
+    const ry = i%2===0 ? outerRy : innerRy;
+    const angle = -Math.PI/2 + i*Math.PI/5;
+    const x = cx + rx*Math.cos(angle);
+    const y = cy + ry*Math.sin(angle);
+    d += (i===0?'M':'L') + x.toFixed(2) + ',' + y.toFixed(2) + ' ';
+  }
+  return d + 'Z';
+}
+function ellipsePathD(cx, cy, rx, ry){
+  return `M${(cx-rx).toFixed(2)},${cy.toFixed(2)} A${rx.toFixed(2)},${ry.toFixed(2)} 0 1 0 ${(cx+rx).toFixed(2)},${cy.toFixed(2)} A${rx.toFixed(2)},${ry.toFixed(2)} 0 1 0 ${(cx-rx).toFixed(2)},${cy.toFixed(2)} Z`;
+}
+function shapeElement(p){
+  const w = p.width, h = p.height;
+  const outline = p.fillMode==='outline';
+  const fillAttr = outline ? 'none' : p.color;
+  const vecEffect = p.fixedStroke ? ' vector-effect="non-scaling-stroke"' : '';
+  const strokeAttr = outline ? `stroke="${p.color}" stroke-width="${p.thickness}"${vecEffect}` : '';
+  if(p.shapeType==='circle'){
+    const rx = Math.max(0.5, w/2 - (outline?p.thickness/2:0));
+    const ry = Math.max(0.5, h/2 - (outline?p.thickness/2:0));
+    if(outline){
+      return `<path d="${ellipsePathD(w/2,h/2,rx,ry)}" fill="none" fill-rule="evenodd" clip-rule="evenodd" stroke="${p.color}" stroke-width="${p.thickness}"${vecEffect}/>`;
+    }
+    return `<ellipse cx="${w/2}" cy="${h/2}" rx="${rx}" ry="${ry}" fill="${fillAttr}"/>`;
+  }
+  if(p.shapeType==='triangle'){
+    return `<path d="M${w/2},0 L${w},${h} L0,${h} Z" fill="${fillAttr}" ${strokeAttr}/>`;
+  }
+  if(p.shapeType==='diamond'){
+    return `<path d="M${w/2},0 L${w},${h/2} L${w/2},${h} L0,${h/2} Z" fill="${fillAttr}" ${strokeAttr}/>`;
+  }
+  if(p.shapeType==='arrow'){
+    const d = `M0,${h*0.4} L${w*0.6},${h*0.4} L${w*0.6},${h*0.2} L${w},${h*0.5} L${w*0.6},${h*0.8} L${w*0.6},${h*0.6} L0,${h*0.6} Z`;
+    return `<path d="${d}" fill="${fillAttr}" ${strokeAttr}/>`;
+  }
+  if(p.shapeType==='cross'){
+    return `<path d="M${w/2},0 L${w/2},${h} M0,${h/2} L${w},${h/2}" fill="none" stroke="${p.color}" stroke-width="${p.thickness}" stroke-linecap="round"${vecEffect}/>`;
+  }
+  if(p.shapeType==='star'){
+    return `<path d="${starPathD(w,h)}" fill="${fillAttr}" ${strokeAttr}/>`;
+  }
+  return '';
+}
+function waveSegmentPoints(p0, p1, lineParams){
+  const dx = p1.x-p0.x, dy = p1.y-p0.y;
+  const segLen = Math.hypot(dx,dy);
+  if(lineParams.lineType==='straight' || segLen<0.01){
+    return [{x:p0.x,y:p0.y},{x:p1.x,y:p1.y}];
+  }
+  const angle = Math.atan2(dy,dx);
+  const segParams = Object.assign({}, lineParams, {length:segLen});
+  const localPts = lineParams.lineType==='zigzag' ? zigzagPoints(segParams) : samplePoints(segParams);
+  const cos = Math.cos(angle), sin = Math.sin(angle);
+  return localPts.map(pt=>({
+    x: p0.x + pt.x*cos - pt.y*sin,
+    y: p0.y + pt.x*sin + pt.y*cos
+  }));
+}
+function customElement(p){
+  const pts = p.points||[];
+  if(pts.length<2) return '';
+  const segCount = pts.length-1 + (p.closed && pts.length>2 ? 1 : 0);
+  let allPts = [];
+  for(let i=0;i<segCount;i++){
+    const a = pts[i % pts.length];
+    const b = pts[(i+1) % pts.length];
+    let segPts = waveSegmentPoints(a, b, p);
+    if(i>0) segPts = segPts.slice(1); // drop duplicate joint point
+    allPts = allPts.concat(segPts);
+  }
+  let d;
+  if(p.lineType==='straight' || p.lineType==='zigzag'){
+    d = 'M ' + allPts.map(pt=>`${pt.x.toFixed(2)},${pt.y.toFixed(2)}`).join(' L ');
+  } else {
+    d = catmullRomPath(allPts);
+  }
+  if(p.closed) d += ' Z';
+  const dash = dashArrayFor(p.dash, p.thickness);
+  const vecEffect = p.fixedStroke ? ' vector-effect="non-scaling-stroke"' : '';
+  let out = `<path d="${d}" fill="none" fill-rule="evenodd" clip-rule="evenodd" stroke="${p.color}" stroke-width="${p.thickness}" stroke-linecap="${p.cap}" stroke-linejoin="round"${dash!=='none' ? ` stroke-dasharray="${dash}"`:''}${vecEffect}/>`;
+  if(!p.closed && p.arrowType && p.arrowType!=='none' && allPts.length){
+    const last = allPts[allPts.length-1];
+    const arrowSize = p.arrowSize || 14;
+    const strokeW = Math.max(p.thickness, arrowSize*0.12);
+    out += arrowHeadWorldStraight(last.x, last.y, arrowSize, p.color, p.rotation, p.arrowType, strokeW);
+  }
+  return out;
+}
+function localBBox(layer){
+  const p = layer.params;
+  if(layer.type==='box') return {x:0,y:0,w:p.width,h:p.height};
+  if(layer.type==='shape') return {x:0,y:0,w:p.width,h:p.height};
+  if(layer.type==='line'){
+    const amp = (p.lineType==='straight') ? 0 : p.amplitude;
+    const arrowPad = ((p.arrowType && p.arrowType!=='none')) ? (p.arrowSize||14) : 0;
+    return {x:0,y:-amp,w:p.length+arrowPad,h:amp*2};
+  }
+  if(layer.type==='custom'){
+    const pts = p.points||[];
+    if(!pts.length) return {x:-5,y:-5,w:10,h:10};
+    const pad = (p.lineType && p.lineType!=='straight') ? (p.amplitude||0) : 0;
+    const arrowPad = (!p.closed && (p.arrowType && p.arrowType!=='none')) ? (p.arrowSize||14) : 0;
+    const totalPad = Math.max(pad, arrowPad);
+    const xs = pts.map(pt=>pt.x), ys = pts.map(pt=>pt.y);
+    const minX = Math.min(...xs) - totalPad, maxX = Math.max(...xs) + totalPad;
+    const minY = Math.min(...ys) - totalPad, maxY = Math.max(...ys) + totalPad;
+    return {x:minX, y:minY, w:Math.max(1,maxX-minX), h:Math.max(1,maxY-minY)};
+  }
+  return {x:0,y:0,w:10,h:10};
+}
+/* World-space bounding box for a layer, used to crop the exported SVG to the
+   actual drawn content instead of the full design canvas. Programs that embed
+   an SVG as an image (e.g. MuseScore) use its width/height as the element's
+   selection/hit box, so a canvas full of empty margin makes that box far
+   bigger than the visible drawing. */
+function worldBBoxForLayer(layer){
+  const p = layer.params;
+  const b = localBBox(layer);
+  const pad = (typeof p.thickness === 'number') ? p.thickness/2 : 0;
+  const corners = [
+    {x:b.x-pad, y:b.y-pad},
+    {x:b.x+b.w+pad, y:b.y-pad},
+    {x:b.x+b.w+pad, y:b.y+b.h+pad},
+    {x:b.x-pad, y:b.y+b.h+pad}
+  ];
+  const rad = p.rotation*Math.PI/180;
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  corners.forEach(c=>{
+    const wx = p.x + c.x*cos - c.y*sin;
+    const wy = p.y + c.x*sin + c.y*cos;
+    if(wx<minX) minX=wx; if(wx>maxX) maxX=wx;
+    if(wy<minY) minY=wy; if(wy>maxY) maxY=wy;
+  });
+  return {minX,minY,maxX,maxY};
+}
+function contentBBox(){
+  const visible = layers.filter(l=>l.visible);
+  if(!visible.length) return {minX:0,minY:0,maxX:canvasW,maxY:canvasH};
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  visible.forEach(l=>{
+    const b = worldBBoxForLayer(l);
+    if(b.minX<minX) minX=b.minX; if(b.maxX>maxX) maxX=b.maxX;
+    if(b.minY<minY) minY=b.minY; if(b.maxY>maxY) maxY=b.maxY;
+  });
+  return {minX,minY,maxX,maxY};
+}
+function renderLayerSvg(layer, interactive){
+  const p = layer.params;
+  let inner = '';
+  if(layer.type==='line') inner = lineElement(p);
+  else if(layer.type==='box') inner = boxElement(p);
+  else if(layer.type==='shape') inner = shapeElement(p);
+  else if(layer.type==='custom') inner = customElement(p);
+  let hit = '';
+  if(interactive){
+    // Invisible padded rect used only on the live canvas so thin/empty
+    // shapes are still easy to click and drag. Left out of the exported
+    // SVG so the exported markup's bounding box is as tight as possible.
+    const bbox = localBBox(layer);
+    hit = `<rect data-id="${layer.id}" data-role="move" x="${bbox.x-4}" y="${bbox.y-4}" width="${bbox.w+8}" height="${bbox.h+8}" fill="transparent"/>`;
+  }
+  return `<g class="layer-group" data-id="${layer.id}" transform="translate(${p.x},${p.y}) rotate(${p.rotation})">${hit}${inner}</g>`;
+}
+function handleRect(id, role, x, y, extraClass){
+  return `<rect class="handle ${extraClass||''}" data-id="${id}" data-role="${role}" x="${x}" y="${y}" width="10" height="10"/>`;
+}
+function selectionOverlaySvg(layer){
+  const p = layer.params;
+  let outline = '', handles = '';
+  if(layer.type==='box'){
+    outline = `<rect class="sel-outline" x="0" y="0" width="${p.width}" height="${p.height}"/>`;
+    handles += handleRect(layer.id,'resize-e', p.width-5, p.height/2-5);
+    handles += handleRect(layer.id,'resize-s', p.width/2-5, p.height-5);
+    handles += handleRect(layer.id,'resize-se', p.width-5, p.height-5);
+  } else if(layer.type==='shape'){
+    outline = `<rect class="sel-outline" x="0" y="0" width="${p.width}" height="${p.height}"/>`;
+    handles += handleRect(layer.id,'resize-e', p.width-5, p.height/2-5);
+    handles += handleRect(layer.id,'resize-s', p.width/2-5, p.height-5);
+    handles += handleRect(layer.id,'resize-se', p.width-5, p.height-5);
+  } else if(layer.type==='line'){
+    const amp = (p.lineType==='straight') ? 0 : p.amplitude;
+    outline = `<rect class="sel-outline" x="0" y="${-amp-4}" width="${p.length}" height="${amp*2+8}"/>`;
+    handles += handleRect(layer.id,'line-end', p.length-5, -5);
+    if(p.lineType!=='straight'){
+      handles += handleRect(layer.id,'line-amp', p.length/2-5, -amp-5, 'amp');
+    }
+  } else if(layer.type==='custom'){
+    const pts = p.points||[];
+    if(pts.length){
+      const xs = pts.map(pt=>pt.x), ys = pts.map(pt=>pt.y);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      outline = `<rect class="sel-outline" x="${minX-4}" y="${minY-4}" width="${maxX-minX+8}" height="${maxY-minY+8}"/>`;
+    }
+    handles += pts.map((pt,i)=>handleRect(layer.id, 'point:'+i, pt.x-5, pt.y-5, 'pt')).join('');
+  }
+  return `<g class="selection-overlay" transform="translate(${p.x},${p.y}) rotate(${p.rotation})">${outline}${handles}</g>`;
+}
+
+/* ============================= LAYER MANAGEMENT ============================= */
+function addLayer(type){
+  const id = 'el' + (uid++);
+  const params = JSON.parse(JSON.stringify(DEFAULTS[type]));
+  const count = layers.filter(l=>l.type===type).length + 1;
+  layers.push({id, type, name:`${LABELS[type]} ${count}`, visible:true, params});
+  selectedId = id;
+  renderAll();
+}
+function deleteLayer(id, ev){
+  ev.stopPropagation();
+  layers = layers.filter(l=>l.id!==id);
+  if(selectedId===id) selectedId = layers.length ? layers[layers.length-1].id : null;
+  renderAll();
+}
+function duplicateLayer(id, ev){
+  ev.stopPropagation();
+  const src = layers.find(l=>l.id===id);
+  if(!src) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = 'el' + (uid++);
+  copy.name = src.name + ' copy';
+  copy.params.x = Math.min(canvasW, src.params.x + 10);
+  copy.params.y = Math.min(canvasH, src.params.y + 10);
+  layers.push(copy);
+  selectedId = copy.id;
+  renderAll();
+}
+function selectLayer(id){
+  selectedId = id;
+  renderAll();
+}
+function moveLayer(id, dir, ev){
+  ev.stopPropagation();
+  const i = layers.findIndex(l=>l.id===id);
+  const j = i + dir;
+  if(j<0 || j>=layers.length) return;
+  [layers[i], layers[j]] = [layers[j], layers[i]];
+  renderAll();
+}
+
+/* ============================= UI BUILD ============================= */
+function buildLayerList(){
+  const el = document.getElementById('layerList');
+  if(!layers.length){
+    el.innerHTML = '<div class="empty-note">No elements yet — add a line, box or shape above.</div>';
+    return;
+  }
+  el.innerHTML = layers.map((l)=>`
+    <div class="layer-row ${l.id===selectedId?'selected':''}" onclick="selectLayer('${l.id}')">
+      <span class="tag">${l.type}</span>
+      <span class="name">${l.name}</span>
+      <button title="Move up" onclick="moveLayer('${l.id}',1,event)">↑</button>
+      <button title="Move down" onclick="moveLayer('${l.id}',-1,event)">↓</button>
+      <button title="Duplicate" onclick="duplicateLayer('${l.id}',event)">⧉</button>
+      <button title="Delete" onclick="deleteLayer('${l.id}',event)">✕</button>
+    </div>
+  `).join('');
+}
+function renderField(f, layer){
+  const val = layer.params[f.key];
+  if(f.type==='range'){
+    return `
+      <div class="field">
+        <label>${f.label}
+          <input type="number" class="val-input" min="${f.min}" max="${f.max}" step="${f.step}" value="${val}"
+            onchange="onFieldNumberChange(this,'${layer.id}','${f.key}')">
+        </label>
+        <input type="range" min="${f.min}" max="${f.max}" step="${f.step}" value="${val}"
+          oninput="onFieldRangeInput(this,'${layer.id}','${f.key}')">
+      </div>`;
+  }
+  if(f.type==='select'){
+    return `
+      <div class="field">
+        <label>${f.label}</label>
+        <select onchange="updateParam('${layer.id}','${f.key}', this.value, false)">
+          ${f.options.map(o=>`<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('')}
+        </select>
+      </div>`;
+  }
+  if(f.type==='color'){
+    return `
+      <div class="field">
+        <label>${f.label}</label>
+        <input type="color" value="${val}" oninput="updateParam('${layer.id}','${f.key}', this.value, false)">
+      </div>`;
+  }
+  if(f.type==='checkbox'){
+    const cid = `chk_${layer.id}_${f.key}`;
+    return `
+      <div class="field checkbox">
+        <input type="checkbox" id="${cid}" ${val?'checked':''} onchange="updateParam('${layer.id}','${f.key}', this.checked, false)">
+        <label for="${cid}" style="margin:0;">${f.label}</label>
+      </div>`;
+  }
+  return '';
+}
+function onFieldRangeInput(rangeEl, id, key){
+  // Slider dragged: mirror the value into the number box live, without a
+  // full panel rebuild (which would blow away the number input mid-drag).
+  const field = rangeEl.closest('.field');
+  const numEl = field && field.querySelector('.val-input');
+  if(numEl) numEl.value = rangeEl.value;
+  updateParam(id, key, rangeEl.value, true, true);
+}
+function onFieldNumberChange(numEl, id, key){
+  let v = parseFloat(numEl.value);
+  if(isNaN(v)) v = parseFloat(numEl.min) || 0;
+  if(numEl.min!=='') v = Math.max(v, parseFloat(numEl.min));
+  if(numEl.max!=='') v = Math.min(v, parseFloat(numEl.max));
+  numEl.value = v;
+  const field = numEl.closest('.field');
+  const rangeEl = field && field.querySelector('input[type=range]');
+  if(rangeEl) rangeEl.value = v;
+  updateParam(id, key, v, true, false);
+}
+const PAIR_KEYS = [['x','y'], ['width','height'], ['cycles','phase'], ['chirpRate','damping'], ['dash','cap']];
+function areFieldsPaired(keyA, keyB){
+  return PAIR_KEYS.some(([a,b]) => (a===keyA && b===keyB) || (a===keyB && b===keyA));
+}
+function renderSchemaFields(schema, layer){
+  // Each field's group (shape/stroke/arrow/position) becomes its own boxed,
+  // titled card (see .field-group), and the cards are laid out in a
+  // responsive grid (see .param-groups) that fills the available width
+  // instead of one long crowded column. Within a card, genuinely-related
+  // pairs (x/y, width/height, cycles/phase, chirpRate/damping, dash/cap)
+  // still sit two-per-row.
+  let html = '';
+  let openGroup = null;
+  for(let i=0;i<schema.length;i++){
+    const f = schema[i], next = schema[i+1];
+    if(f.group !== openGroup){
+      if(openGroup !== null) html += '</div>';
+      html += `<div class="field-group"><div class="field-group-title">${GROUP_LABELS[f.group] || ''}</div>`;
+      openGroup = f.group;
+    }
+    if(f.type===next?.type && (f.type==='range'||f.type==='select') && next.group===f.group && areFieldsPaired(f.key, next.key)){
+      html += `<div class="field-row">${renderField(f, layer)}${renderField(next, layer)}</div>`;
+      i++;
+    } else {
+      html += renderField(f, layer);
+    }
+  }
+  if(openGroup !== null) html += '</div>';
+  return `<div class="param-groups">${html}</div>`;
+}
+function buildParamPanel(){
+  const title = document.getElementById('paramTitle');
+  const body = document.getElementById('paramBody');
+  const layer = layers.find(l=>l.id===selectedId);
+  if(!layer){
+    title.textContent = 'Parameters';
+    body.innerHTML = '<div class="no-selection">Select or add an element to edit its parameters.</div>';
+    return;
+  }
+  title.textContent = layer.name + ' — parameters';
+  const schema = schemaFor(layer);
+  let note = '<div class="mouse-note">Drag the shape on canvas to move it. Drag the red squares to resize';
+  if(layer.type==='line') note += ' — the end square sets length &amp; angle, the green square sets amplitude.</div>';
+  else if(layer.type==='custom') note = '<div class="mouse-note">Hold Ctrl while dragging any handle (or while adding dots) to keep it on the same horizontal line.</div>';
+  else note += ' (hold Ctrl on the corner square to keep width &amp; height equal).</div>';
+  let customControls = '';
+  if(layer.type==='custom'){
+    const active = addPointMode && addPointLayerId===layer.id;
+    const cid = `addpt_${layer.id}`;
+    customControls = `
+      <div class="field checkbox">
+        <input type="checkbox" id="${cid}" ${active?'checked':''} onchange="toggleAddPoint('${layer.id}', this.checked)">
+        <label for="${cid}" style="margin:0;">Click canvas to add dots${active?' (active)':''}</label>
+      </div>
+      <div style="display:flex; gap:8px; margin-bottom:14px;">
+        <button class="btn secondary" style="flex:1;" onclick="undoLastPoint('${layer.id}')">Undo last dot</button>
+        <button class="btn secondary" style="flex:1;" onclick="clearPoints('${layer.id}')">Clear dots</button>
+      </div>`;
+  }
+  body.innerHTML = note + customControls + renderSchemaFields(schema, layer);
+}
+function toggleAddPoint(id, checked){
+  addPointMode = checked;
+  addPointLayerId = checked ? id : null;
+  selectedId = id;
+  renderAll();
+}
+function undoLastPoint(id){
+  const layer = layers.find(l=>l.id===id);
+  if(!layer || !layer.params.points.length) return;
+  layer.params.points.pop();
+  renderAll();
+}
+function clearPoints(id){
+  const layer = layers.find(l=>l.id===id);
+  if(!layer) return;
+  layer.params.points = [];
+  renderAll();
+}
+function updateParam(id, key, value, numeric, liveOnly){
+  const layer = layers.find(l=>l.id===id);
+  if(!layer) return;
+  layer.params[key] = numeric ? parseFloat(value) : value;
+  if(liveOnly){
+    // Slider drag: update the canvas + export text only. Rebuilding the param
+    // panel here would replace the <input> mid-drag and turn dragging into
+    // click-to-jump, so skip buildParamPanel()/buildLayerList() entirely.
+    renderStage();
+    document.getElementById('svgOut').value = fullSvgSource();
+  } else {
+    renderAll();
+  }
+}
+
+/* ============================= STAGE / EXPORT ============================= */
+function svgBody(interactive){
+  return layers.filter(l=>l.visible).map(l=>renderLayerSvg(l, interactive)).join('\n  ');
+}
+function fullSvgSource(){
+  // Crop to the actual drawn content (plus a small margin) rather than the
+  // full design canvas, so the exported image's bounding box — and the
+  // hit/selection box it produces when embedded elsewhere — matches the
+  // visible element instead of a mostly-empty canvas.
+  const b = contentBBox();
+  const margin = 2;
+  const minX = +(b.minX - margin).toFixed(2);
+  const minY = +(b.minY - margin).toFixed(2);
+  const w = Math.max(1, +(b.maxX - b.minX + margin*2).toFixed(2));
+  const h = Math.max(1, +(b.maxY - b.minY + margin*2).toFixed(2));
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${w} ${h}" width="${w}" height="${h}">\n  ${svgBody(false)}\n</svg>`;
+}
+function renderStage(){
+  const stage = document.getElementById('stage');
+  stage.setAttribute('viewBox', `0 0 ${canvasW} ${canvasH}`);
+  const zoom = parseFloat(document.getElementById('zoom').value || 1.6);
+  stage.setAttribute('width', canvasW*zoom);
+  stage.setAttribute('height', canvasH*zoom);
+  stage.classList.toggle('adding-points', !!addPointMode);
+  const selLayer = layers.find(l=>l.id===selectedId && l.visible);
+  stage.innerHTML = svgBody(true) + (selLayer ? selectionOverlaySvg(selLayer) : '');
+}
+function renderAll(){
+  buildLayerList();
+  buildParamPanel();
+  renderStage();
+  document.getElementById('svgOut').value = fullSvgSource();
+}
+function resizeCanvasFromInputs(){
+  canvasW = parseInt(document.getElementById('canvasW').value) || 320;
+  canvasH = parseInt(document.getElementById('canvasH').value) || 160;
+  renderAll();
+}
+function applyZoom(){ renderStage(); }
+function toggleGrid(){
+  const wrap = document.getElementById('canvasWrap');
+  const on = document.getElementById('gridToggle').checked;
+  wrap.classList.toggle('no-grid', !on);
+}
+function copySvg(){
+  const ta = document.getElementById('svgOut');
+  ta.select();
+  navigator.clipboard.writeText(ta.value).then(()=>{
+    const flash = document.getElementById('copyFlash');
+    flash.textContent = 'Copied to clipboard.';
+    setTimeout(()=>flash.textContent='', 1800);
+  }).catch(()=>{ document.execCommand('copy'); });
+}
+function downloadSvg(){
+  const blob = new Blob([fullSvgSource()], {type:'image/svg+xml'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'aleatoric-element.svg';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ============================= MOUSE INTERACTION ============================= */
+function onStageMouseDown(e){
+  if(addPointMode && addPointLayerId){
+    const layer = layers.find(l=>l.id===addPointLayerId);
+    if(layer){
+      const pt = svgPointFromClient(e.clientX, e.clientY);
+      const {lx,ly} = toLocal(pt.x, pt.y, layer.params.x, layer.params.y, layer.params.rotation);
+      const pts = layer.params.points;
+      const lockY = e.ctrlKey || e.metaKey;
+      const finalY = (lockY && pts.length) ? pts[pts.length-1].y : ly;
+      pts.push({x: lx, y: finalY});
+      selectedId = layer.id;
+      renderAll();
+      e.preventDefault();
+      return;
+    }
+  }
+  const hitEl = e.target.closest && e.target.closest('[data-id]');
+  if(!hitEl){
+    if(selectedId!==null){ selectedId = null; renderAll(); }
+    return;
+  }
+  const id = hitEl.getAttribute('data-id');
+  let role = hitEl.getAttribute('data-role') || 'move';
+  let pointIndex = null;
+  if(role.indexOf('point:')===0){
+    pointIndex = parseInt(role.slice(6), 10);
+    role = 'point';
+  }
+  if(id !== selectedId){ selectedId = id; renderAll(); }
+  const layer = layers.find(l=>l.id===id);
+  if(!layer) return;
+  const pt = svgPointFromClient(e.clientX, e.clientY);
+  dragState = {
+    id, role, pointIndex, startPt: pt,
+    startX: layer.params.x, startY: layer.params.y,
+    startRotation: layer.params.rotation,
+    startPointY: pointIndex!==null && layer.params.points[pointIndex] ? layer.params.points[pointIndex].y : null
+  };
+  e.preventDefault();
+}
+function onDocMouseMove(e){
+  if(canvasDragState){
+    const zoom = parseFloat(document.getElementById('zoom').value || 1.6);
+    const dx = (e.clientX - canvasDragState.startClientX) / zoom;
+    const dy = (e.clientY - canvasDragState.startClientY) / zoom;
+    canvasW = Math.round(clamp(canvasDragState.startW + dx, 40, 2000));
+    canvasH = Math.round(clamp(canvasDragState.startH + dy, 40, 2000));
+    document.getElementById('canvasW').value = canvasW;
+    document.getElementById('canvasH').value = canvasH;
+    renderStage();
+    return;
+  }
+  if(!dragState) return;
+  const layer = layers.find(l=>l.id===dragState.id);
+  if(!layer) return;
+  const pt = svgPointFromClient(e.clientX, e.clientY);
+  const p = layer.params;
+  if(dragState.role==='move'){
+    const lockY = e.ctrlKey || e.metaKey;
+    p.x = dragState.startX + (pt.x - dragState.startPt.x);
+    if(!lockY){
+      p.y = dragState.startY + (pt.y - dragState.startPt.y);
+    }
+  } else if(dragState.role==='resize-e'){
+    const {lx} = toLocal(pt.x, pt.y, dragState.startX, dragState.startY, dragState.startRotation);
+    if(layer.type==='box') p.width = clamp(lx, 10, 2000);
+    else if(layer.type==='shape') p.width = clamp(lx, 5, 600);
+  } else if(dragState.role==='resize-s'){
+    const {ly} = toLocal(pt.x, pt.y, dragState.startX, dragState.startY, dragState.startRotation);
+    if(layer.type==='box') p.height = clamp(ly, 10, 2000);
+    else if(layer.type==='shape') p.height = clamp(ly, 5, 600);
+  } else if(dragState.role==='resize-se'){
+    const {lx,ly} = toLocal(pt.x, pt.y, dragState.startX, dragState.startY, dragState.startRotation);
+    const square = e.ctrlKey || e.metaKey;
+    if(layer.type==='box'){
+      if(square){ const s = clamp(Math.max(lx,ly), 10, 2000); p.width = s; p.height = s; }
+      else { p.width = clamp(lx,10,2000); p.height = clamp(ly,10,2000); }
+    } else if(layer.type==='shape'){
+      if(square){ const s = clamp(Math.max(lx,ly), 5, 600); p.width = s; p.height = s; }
+      else { p.width = clamp(lx,5,600); p.height = clamp(ly,5,600); }
+    }
+  } else if(dragState.role==='line-end'){
+    const dx = pt.x - p.x;
+    let dy = pt.y - p.y;
+    if(e.ctrlKey || e.metaKey){ dy = 0; }
+    p.length = clamp(Math.hypot(dx,dy), 5, 3000);
+    let rot = Math.atan2(dy,dx) * 180/Math.PI;
+    if(rot<0) rot += 360;
+    p.rotation = rot;
+  } else if(dragState.role==='line-amp'){
+    const {ly} = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
+    p.amplitude = clamp(Math.abs(ly), 0, 300);
+  } else if(dragState.role==='point'){
+    const idx = dragState.pointIndex;
+    const target = p.points && p.points[idx];
+    if(target){
+      const {lx,ly} = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
+      const lockY = e.ctrlKey || e.metaKey;
+      target.x = lx;
+      target.y = lockY ? dragState.startPointY : ly;
+    }
+  }
+  renderStage();
+  buildParamPanel();
+}
+function onDocMouseUp(){
+  if(dragState){ dragState = null; renderAll(); }
+  if(canvasDragState){ canvasDragState = null; renderAll(); }
+}
+
+document.getElementById('stage').addEventListener('mousedown', onStageMouseDown);
+document.addEventListener('mousemove', onDocMouseMove);
+document.addEventListener('mouseup', onDocMouseUp);
+document.getElementById('canvasResizeHandle').addEventListener('mousedown', function(e){
+  canvasDragState = {startClientX:e.clientX, startClientY:e.clientY, startW:canvasW, startH:canvasH};
+  e.preventDefault();
+  e.stopPropagation();
+});
+document.addEventListener('keydown', function(e){
+  if(e.key !== 'Backspace' && e.key !== 'Delete') return;
+  const active = document.activeElement;
+  const tag = active ? active.tagName : '';
+  // Don't hijack Backspace while the user is typing in a field (number box,
+  // select, text/color input) — only treat it as "delete element" when
+  // focus is elsewhere (canvas, layer list, body, etc.).
+  const isEditable = tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT' || (active && active.isContentEditable);
+  if(isEditable) return;
+  if(!selectedId) return;
+  e.preventDefault();
+  deleteLayer(selectedId, {stopPropagation(){}});
+});
+
+/* ============================= INIT ============================= */
+addLayer('box');
+addLayer('line');
+layers[1].params.lineType = 'chirp';
+layers[1].params.x = 30; layers[1].params.y = 55;
+layers[1].params.length = 80;
+layers[0].params.width = 100; layers[0].params.height = 44;
+layers[0].params.x = 20; layers[0].params.y = 40;
+selectedId = layers[1].id;
+renderAll();
+</script>
+</body>
+</html>
