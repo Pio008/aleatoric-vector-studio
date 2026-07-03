@@ -219,36 +219,42 @@
   .handle[data-role="resize-se"]{cursor:nwse-resize;}
 
   /* ---- param controls ---- */
-  .param-groups{
-    display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));
-    gap:16px;
-    align-items:start;
-  }
-  .field-group{
-    background:var(--paper);
+  .param-tabs{
+    display:inline-flex; gap:2px; flex-wrap:wrap;
+    margin-bottom:18px;
+    padding:3px;
+    background:var(--paper-deep);
     border:1px solid var(--border);
-    border-radius:4px;
-    padding:14px 16px 16px;
+    border-radius:5px;
   }
-  .field-group-title{
-    display:flex;align-items:center;gap:7px;
+  .param-tab{
+    background:none;border:none;cursor:pointer;
+    padding:7px 13px;
+    border-radius:3px;
     font-family:'IBM Plex Mono',monospace;
-    font-size:10.5px;
-    text-transform:uppercase;
-    letter-spacing:0.1em;
-    color:var(--rubric);
-    margin:0 0 12px;
-    padding-bottom:10px;
-    border-bottom:1px solid var(--border);
+    font-size:10.5px;text-transform:uppercase;letter-spacing:0.06em;
+    color:var(--ink-soft);
+    transition:background .15s ease, color .15s ease;
   }
-  .field-group-title::before{
-    content:'';
-    width:6px;height:6px;
-    border-radius:1px;
-    background:var(--rubric-soft);
-    flex:none;
+  .param-tab:hover{color:var(--ink); background:rgba(255,255,255,0.55);}
+  .param-tab.active{color:var(--rubric); background:#fff; box-shadow:0 1px 2px rgba(33,29,24,0.14);}
+  .param-tab-panel{display:none;}
+  .param-tab-panel.active{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(200px, 1fr));
+    gap:6px 22px;
+    align-items:start;
+    max-width:900px;
   }
+  .param-subhead{
+    grid-column:1/-1;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;text-transform:uppercase;letter-spacing:0.08em;
+    color:var(--ink-faint);
+    border-top:1px solid var(--border);
+    margin-top:10px; padding-top:12px;
+  }
+  .param-subhead:first-child{border-top:none; margin-top:0; padding-top:0;}
   .field{margin-bottom:16px;}
   .field:last-child{margin-bottom:0;}
   .field-row{display:flex; gap:12px; margin-bottom:16px;}
@@ -356,6 +362,175 @@
     height:14px;
     margin-top:4px;
   }
+
+  /* ---- toolbar ---- */
+  .toolbar{
+    display:flex;align-items:center;gap:2px;
+    padding:6px 8px;
+    margin-bottom:20px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:5px;
+  }
+  .tsep{width:1px;align-self:stretch;margin:4px 5px;background:var(--border);}
+  .tbtn{
+    display:flex;align-items:center;gap:6px;
+    background:none;border:none;border-radius:3px;
+    padding:6px 9px;
+    font-family:'Inter',sans-serif;
+    font-size:12px;font-weight:500;
+    color:var(--ink);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .tbtn.icon-only{
+    font-size:14px;
+    padding:6px 8px;
+    line-height:1;
+  }
+  .tbtn:hover:not(:disabled){background:var(--paper-deep);}
+  .tbtn:disabled{color:var(--ink-faint); cursor:not-allowed; opacity:0.4;}
+  .toolbar-spacer{flex:1;}
+  .autosave-indicator{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;color:var(--ink-faint);
+    display:flex;align-items:center;gap:5px;
+    padding-right:4px;
+  }
+  .autosave-dot{width:6px;height:6px;border-radius:50%;background:var(--good); opacity:0.35; transition:opacity .3s ease;}
+  .autosave-dot.pulse{opacity:1;}
+
+  .tmenu-wrap{position:relative;}
+  .tmenu{
+    position:absolute; top:calc(100% + 4px); left:0;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:5px;
+    box-shadow:0 6px 18px rgba(33,29,24,0.15);
+    display:flex; flex-direction:column;
+    min-width:210px;
+    z-index:50;
+    padding:4px;
+  }
+  .tmenu.hidden{display:none;}
+  .tmenu button{
+    text-align:left; background:none; border:none; cursor:pointer;
+    padding:8px 10px; border-radius:3px;
+    font-family:'Inter',sans-serif; font-size:12.5px; color:var(--ink);
+  }
+  .tmenu button:hover{background:var(--paper-deep);}
+
+  /* ---- toast ---- */
+  .toast-wrap{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    z-index:200;
+    display:flex; flex-direction:column; gap:6px;
+    align-items:center;
+    pointer-events:none;
+  }
+  .toast{
+    background:var(--ink); color:var(--paper);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    padding:8px 16px;
+    border-radius:20px;
+    box-shadow:0 3px 10px rgba(0,0,0,0.25);
+    opacity:0; transform:translateY(6px);
+    transition:opacity .18s ease, transform .18s ease;
+  }
+  .toast.show{opacity:1; transform:translateY(0);}
+
+  /* ---- modal ---- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(33,29,24,0.45);
+    display:flex; align-items:center; justify-content:center;
+    z-index:150; padding:20px;
+  }
+  .modal-overlay.hidden{display:none;}
+  .modal{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:6px;
+    width:100%; max-width:480px;
+    max-height:80vh;
+    display:flex; flex-direction:column;
+    box-shadow:0 12px 30px rgba(0,0,0,0.25);
+  }
+  .modal-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 18px;
+    border-bottom:1px solid var(--border);
+    font-family:'Fraunces',serif; font-size:17px; font-weight:600;
+  }
+  .modal-head button{
+    background:none;border:none;font-size:18px;cursor:pointer;color:var(--ink-soft);
+    line-height:1; padding:2px 6px;
+  }
+  .modal-head button:hover{color:var(--rubric);}
+  .modal-body{padding:16px 18px; overflow-y:auto;}
+  .modal-foot{padding:12px 18px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end;}
+
+  .shortcut-list{display:flex; flex-direction:column; gap:2px;}
+  .shortcut-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:7px 2px;
+    border-bottom:1px solid var(--paper-deep);
+    font-size:13px;
+  }
+  .shortcut-row:last-child{border-bottom:none;}
+  .shortcut-row .keys{display:flex; gap:4px;}
+  .shortcut-row .keys kbd{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    background:var(--paper-deep);
+    border:1px solid var(--border);
+    border-bottom-width:2px;
+    border-radius:3px;
+    padding:2px 6px;
+    color:var(--ink);
+  }
+
+  .project-row{
+    display:flex;align-items:center;gap:8px;
+    padding:9px 8px;
+    border:1px solid var(--border);
+    border-radius:3px;
+    margin-bottom:6px;
+    font-size:13px;
+  }
+  .project-row .pname{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500;}
+  .project-row .pmeta{font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-faint);}
+  .project-row button{
+    background:none;border:1px solid var(--border);border-radius:3px;
+    cursor:pointer; font-size:11px; padding:4px 8px; color:var(--ink-soft);
+    font-family:'Inter',sans-serif;
+  }
+  .project-row button:hover{border-color:var(--rubric-soft); color:var(--rubric);}
+  .save-name-row{display:flex; gap:8px; margin-bottom:14px;}
+  .save-name-row input{
+    flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:3px;
+    font-family:'Inter',sans-serif; font-size:13px;
+  }
+
+  .wave-readout{
+    display:flex; flex-wrap:wrap; gap:0;
+    border:1px solid var(--border); border-radius:3px;
+    margin:-2px 0 14px; overflow:hidden;
+  }
+  .wave-readout .cell{
+    flex:1; min-width:80px;
+    padding:7px 10px;
+    border-right:1px solid var(--border);
+    background:var(--paper);
+  }
+  .wave-readout .cell:last-child{border-right:none;}
+  .wave-readout .l{
+    font-family:'IBM Plex Mono',monospace; font-size:9px; text-transform:uppercase;
+    letter-spacing:0.06em; color:var(--ink-faint);
+  }
+  .wave-readout .v{
+    font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--rubric); margin-top:1px;
+  }
 </style>
 </head>
 <body>
@@ -366,6 +541,29 @@
     </div>
     <div class="subtitle">lines · boxes · shapes → SVG for MuseScore</div>
   </header>
+
+  <div class="toolbar">
+    <button class="tbtn icon-only" onclick="newProject()" title="New project">✚</button>
+    <div class="tsep"></div>
+    <button class="tbtn icon-only" id="undoBtn" onclick="undo()" title="Undo (Ctrl Z)">↶</button>
+    <button class="tbtn icon-only" id="redoBtn" onclick="redo()" title="Redo (Ctrl Y)">↷</button>
+    <div class="tsep"></div>
+    <button class="tbtn icon-only" onclick="openSaveModal()" title="Save project (Ctrl S)">💾</button>
+    <button class="tbtn icon-only" onclick="openLoadModal()" title="Open project (Ctrl O)">📂</button>
+    <div class="tsep"></div>
+    <div class="tmenu-wrap">
+      <button class="tbtn icon-only" onclick="toggleMoreMenu(event)" title="More">⋯</button>
+      <div class="tmenu hidden" id="moreMenu">
+        <button onclick="exportProjectFile(); closeMoreMenu();">⇩ Export project (.json)</button>
+        <button onclick="document.getElementById('importFile').click(); closeMoreMenu();">⇧ Import project (.json)</button>
+        <button onclick="openShortcutsModal(); closeMoreMenu();">⌨ Keyboard shortcuts</button>
+      </div>
+    </div>
+    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importProjectFile(this.files[0])">
+    <div class="toolbar-spacer"></div>
+    <div class="autosave-indicator" id="autosaveIndicator" title="Autosaves to this browser as you work"><span class="autosave-dot" id="autosaveDot"></span>Autosaved</div>
+  </div>
+
 
   <div class="layout">
     <div class="panel panel-elements">
@@ -431,6 +629,43 @@
   </div>
 </div>
 
+<!-- Shortcuts modal -->
+<div class="modal-overlay hidden" id="shortcutsModal" onclick="if(event.target===this) closeModal('shortcutsModal')">
+  <div class="modal">
+    <div class="modal-head">Keyboard shortcuts<button onclick="closeModal('shortcutsModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="shortcut-list" id="shortcutList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Save As modal -->
+<div class="modal-overlay hidden" id="saveModal" onclick="if(event.target===this) closeModal('saveModal')">
+  <div class="modal">
+    <div class="modal-head">Save project<button onclick="closeModal('saveModal')">✕</button></div>
+    <div class="modal-body">
+      <div class="save-name-row">
+        <input type="text" id="saveNameInput" placeholder="Project name" onkeydown="if(event.key==='Enter') doSaveProject()">
+        <button class="btn" style="flex:none; padding:8px 14px;" onclick="doSaveProject()">Save</button>
+      </div>
+      <div id="saveModalList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Open/Load modal -->
+<div class="modal-overlay hidden" id="loadModal" onclick="if(event.target===this) closeModal('loadModal')">
+  <div class="modal">
+    <div class="modal-head">Open saved project<button onclick="closeModal('loadModal')">✕</button></div>
+    <div class="modal-body">
+      <div id="loadModalList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+
 <script>
 /* ============================= STATE ============================= */
 let layers = [];
@@ -445,14 +680,31 @@ let addPointLayerId = null;
 // Clipboard storage for parameters
 let parameterClipboard = null;
 
+// Full-layer clipboard (Ctrl+C / Ctrl+X / Ctrl+V)
+let layerClipboard = null;
+
+// Undo / redo history
+let undoStack = [];
+let redoStack = [];
+let historyPending = false;
+let isRestoringHistory = false;
+const HISTORY_LIMIT = 60;
+
+// Autosave
+const AUTOSAVE_KEY = 'aleatoricStudio.autosave';
+const PROJECTS_KEY = 'aleatoricStudio.projects';
+let autosaveTimer = null;
+let autosaveArmed = false;
+
 const DEFAULTS = {
   line: {
     lineType:'straight', x:40, y:80, rotation:0,
     length:200, amplitude:20, cycles:26, phase:0, decay:1.0,
     chirpRate:-1, damping:0.6,
     ampStart:40, ampEnd:1, ampShape:1.7, periodStart:28, periodEnd:100, periodShape:1.0, tailLength:20,
+    startDirection:'up', reverseProgression:false, waveform:'sine',
     thickness:4.2, dash:'solid', cap:'round', color:'#211D18',
-    fixedStroke:false, arrowType:'stroke', arrowPlacement:'end', arrowSize:14, arrowStrokeWidth:4.2, arrowStrokeColor:'#211D18', arrowFillColor:'#211D18'
+    fixedStroke:false, arrowType:'stroke', arrowPlacement:'end', arrowSize:14, arrowBarbAngle:24, arrowStrokeWidth:4.2, arrowStrokeColor:'#211D18', arrowFillColor:'#211D18'
   },
   box: {
     x:40, y:30, rotation:0,
@@ -469,8 +721,9 @@ const DEFAULTS = {
     points:[], closed:false,
     lineType:'straight', amplitude:12, cycles:2, phase:0, decay:0, chirpRate:-1, damping:0.6,
     ampStart:24, ampEnd:1, ampShape:1.7, periodStart:20, periodEnd:60, periodShape:1.0, tailLength:10,
+    startDirection:'up', reverseProgression:false, waveform:'sine',
     thickness:1.8, dash:'solid', cap:'round', color:'#211D18', fixedStroke:true,
-    arrowType:'none', arrowPlacement:'end', arrowSize:14
+    arrowType:'none', arrowPlacement:'end', arrowSize:14, arrowBarbAngle:24
   }
 };
 
@@ -532,6 +785,7 @@ function getSnapCoordinates(targetX, targetY, skipId) {
 
 /* ============================= SCHEMAS ============================= */
 const GROUP_LABELS = { shape:'Shape', stroke:'Stroke', arrow:'Arrowhead', position:'Position & rotation' };
+const SUBHEADS = { ampStart:'Envelope', waveform:'Direction', arrowPlacement:'Placement', arrowStrokeWidth:'Arrow style' };
 function schemaFor(layer){
   const common = [
     {key:'x', label:'X', type:'range', min:0, max:canvasW, step:1, group:'position'},
@@ -566,6 +820,9 @@ function schemaFor(layer){
       fields.push({key:'periodEnd', label:'Wavelength end', type:'range', min:4, max:400, step:1, group:'shape'});
       fields.push({key:'periodShape', label:'Growth shape', type:'range', min:0.3, max:4, step:0.1, group:'shape'});
       fields.push({key:'tailLength', label:'Straight tail', type:'range', min:0, max:200, step:1, group:'shape'});
+      fields.push({key:'waveform', label:'Wave shape', type:'select', options:['sine','zigzag'], group:'shape'});
+      fields.push({key:'startDirection', label:'First swing', type:'select', options:['up','down'], group:'shape'});
+      fields.push({key:'reverseProgression', label:'Reverse (swap wide/narrow ends)', type:'checkbox', group:'shape'});
     }
     fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:12, step:0.1, group:'stroke'});
     fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted'], group:'stroke'});
@@ -576,6 +833,9 @@ function schemaFor(layer){
     if(layer.params.arrowType && layer.params.arrowType!=='none'){
       fields.push({key:'arrowPlacement', label:'Arrowhead placement', type:'select', options:['end','start','both'], group:'arrow'});
       fields.push({key:'arrowSize', label:'Arrowhead size', type:'range', min:4, max:60, step:1, group:'arrow'});
+      if(layer.params.arrowType==='stroke' || layer.params.arrowType==='hollow'){
+        fields.push({key:'arrowBarbAngle', label:'Barb angle°', type:'range', min:4, max:70, step:1, group:'arrow'});
+      }
       fields.push({key:'arrowStrokeWidth', label:'Stroke width', type:'range', min:0.2, max:12, step:0.1, group:'arrow'});
       fields.push({key:'arrowStrokeColor', label:'Stroke colour', type:'color', group:'arrow'});
       fields.push({key:'arrowFillColor', label:'Fill colour', type:'color', group:'arrow'});
@@ -635,6 +895,9 @@ function schemaFor(layer){
       fields.push({key:'periodEnd', label:'Wavelength end', type:'range', min:4, max:400, step:1, group:'shape'});
       fields.push({key:'periodShape', label:'Growth shape', type:'range', min:0.3, max:4, step:0.1, group:'shape'});
       fields.push({key:'tailLength', label:'Straight tail (per segment)', type:'range', min:0, max:200, step:1, group:'shape'});
+      fields.push({key:'waveform', label:'Wave shape', type:'select', options:['sine','zigzag'], group:'shape'});
+      fields.push({key:'startDirection', label:'First swing', type:'select', options:['up','down'], group:'shape'});
+      fields.push({key:'reverseProgression', label:'Reverse (swap wide/narrow ends)', type:'checkbox', group:'shape'});
     }
     fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:12, step:0.1, group:'stroke'});
     fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted'], group:'stroke'});
@@ -646,6 +909,9 @@ function schemaFor(layer){
       if(layer.params.arrowType && layer.params.arrowType!=='none'){
         fields.push({key:'arrowPlacement', label:'Arrowhead placement', type:'select', options:['end','start','both'], group:'arrow'});
         fields.push({key:'arrowSize', label:'Arrowhead size', type:'range', min:4, max:60, step:1, group:'arrow'});
+        if(layer.params.arrowType==='stroke' || layer.params.arrowType==='hollow'){
+          fields.push({key:'arrowBarbAngle', label:'Barb angle°', type:'range', min:4, max:70, step:1, group:'arrow'});
+        }
         fields.push({key:'arrowStrokeWidth', label:'Stroke width', type:'range', min:0.2, max:12, step:0.1, group:'arrow'});
         fields.push({key:'arrowStrokeColor', label:'Stroke colour', type:'color', group:'arrow'});
         fields.push({key:'arrowFillColor', label:'Fill colour', type:'color', group:'arrow'});
@@ -702,6 +968,14 @@ function samplePoints(p){
   return pts;
 }
 
+function triangleWave(phase){
+  let t = (phase / (2*Math.PI)) % 1;
+  if(t < 0) t += 1;
+  if(t < 0.25) return t*4;
+  if(t < 0.75) return 1 - (t-0.25)*4;
+  return -1 + (t-0.75)*4;
+}
+
 function dampedWavePoints(p){
   const N = 300;
   const totalLen = Math.max(1, p.length);
@@ -713,6 +987,8 @@ function dampedWavePoints(p){
   const periodStart = p.periodStart !== undefined ? p.periodStart : 30;
   const periodEnd = p.periodEnd !== undefined ? p.periodEnd : 110;
   const periodShape = p.periodShape !== undefined ? p.periodShape : 1.0;
+  const dirMul = (p.startDirection === 'down') ? -1 : 1;
+  const isZigzag = p.waveform === 'zigzag';
   const dx = waveLength / N;
   let phase = 0;
   const pts = [{x:0, y:0}];
@@ -724,14 +1000,34 @@ function dampedWavePoints(p){
     const x = i * dx;
     const u = x / waveLength;
     const amp = ampEnd + (ampStart - ampEnd) * Math.pow(1 - u, ampShape);
-    const y = -amp * Math.sin(phase);
+    const shapeVal = isZigzag ? triangleWave(phase) : Math.sin(phase);
+    const y = -amp * shapeVal * dirMul;
     pts.push({x, y});
   }
   if(tailLength > 0){
     const last = pts[pts.length-1];
     pts.push({x: last.x + tailLength, y: last.y});
   }
+  if(p.reverseProgression){
+    const end = pts[pts.length-1].x;
+    return pts.map(pt=>({x: end - pt.x, y: pt.y})).reverse();
+  }
   return pts;
+}
+
+function computeDampedWaveStats(p){
+  const totalLen = Math.max(1, p.length || 0);
+  const tailLength = clamp(p.tailLength !== undefined ? p.tailLength : 0, 0, totalLen - 5);
+  const waveLength = Math.max(5, totalLen - tailLength);
+  const N = 200;
+  const dx = waveLength / N;
+  let phase = 0;
+  for(let i=1; i<=N; i++){
+    const xMid = (i - 0.5) * dx;
+    const per = Math.max(1, p.periodStart + (p.periodEnd - p.periodStart) * Math.pow(xMid/waveLength, p.periodShape));
+    phase += (2*Math.PI/per) * dx;
+  }
+  return { cycles: phase/(2*Math.PI), waveLength, tailLength, totalLen };
 }
 
 function zigzagPoints(p){
@@ -762,9 +1058,11 @@ function getLinePoints(p){
   return samplePoints(p);
 }
 
-function generateArrowheadHtml(anchorX, anchorY, angleRad, size, colors, style, strokeW){
+function generateArrowheadHtml(anchorX, anchorY, angleRad, size, colors, style, strokeW, barbAngleDeg){
   const stroke = colors.stroke; const fill = colors.fill;
-  const spread = size * 0.42;
+  const spread = (barbAngleDeg !== undefined && (style==='stroke' || style==='hollow'))
+    ? size * Math.tan(clamp(barbAngleDeg,4,80) * Math.PI/180)
+    : size * 0.42;
   
   // Base triangle facing right at (0,0)
   const tipX = size, tipY = 0;
@@ -795,17 +1093,18 @@ function renderArrowheads(pts, p, angleStart, angleEnd) {
   const size = p.arrowSize || 14;
   const strokeW = p.arrowStrokeWidth || p.thickness;
   const colors = { stroke: p.arrowStrokeColor || p.color, fill: p.arrowFillColor || p.color };
+  const barbAngle = p.arrowBarbAngle;
 
   // End Head
   if (placement === 'end' || placement === 'both') {
     const last = pts[pts.length - 1];
-    out += generateArrowheadHtml(last.x, last.y, angleEnd, size, colors, p.arrowType, strokeW);
+    out += generateArrowheadHtml(last.x, last.y, angleEnd, size, colors, p.arrowType, strokeW, barbAngle);
   }
   
   // Start Head
   if (placement === 'start' || placement === 'both') {
     const first = pts[0];
-    out += generateArrowheadHtml(first.x, first.y, angleStart, size, colors, p.arrowType, strokeW);
+    out += generateArrowheadHtml(first.x, first.y, angleStart, size, colors, p.arrowType, strokeW, barbAngle);
   }
   
   return out;
@@ -930,26 +1229,72 @@ function customElement(p){
   return out;
 }
 
+function rotatedWorldBBox(localMinX, localMinY, localMaxX, localMaxY, ox, oy, rotDeg, pad){
+  const rad = (rotDeg || 0) * Math.PI / 180;
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+  const corners = [
+    {x:localMinX, y:localMinY}, {x:localMaxX, y:localMinY},
+    {x:localMaxX, y:localMaxY}, {x:localMinX, y:localMaxY}
+  ];
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  corners.forEach(c => {
+    const wx = ox + c.x * cos - c.y * sin;
+    const wy = oy + c.x * sin + c.y * cos;
+    if(wx < minX) minX = wx; if(wx > maxX) maxX = wx;
+    if(wy < minY) minY = wy; if(wy > maxY) maxY = wy;
+  });
+  return { minX: minX - pad, minY: minY - pad, maxX: maxX + pad, maxY: maxY + pad };
+}
+
+function customLocalPoints(p){
+  const pts = p.points || [];
+  if(pts.length < 2) return pts.slice();
+  const segCount = pts.length - 1 + (p.closed && pts.length > 2 ? 1 : 0);
+  let allPts = [];
+  for(let i=0; i<segCount; i++){
+    const a = pts[i % pts.length];
+    const b = pts[(i+1) % pts.length];
+    let segPts = waveSegmentPoints(a, b, p);
+    if(i>0) segPts = segPts.slice(1);
+    allPts = allPts.concat(segPts);
+  }
+  return allPts;
+}
+
+function localExtentOf(pts){
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  pts.forEach(pt => {
+    if(pt.x < minX) minX = pt.x; if(pt.x > maxX) maxX = pt.x;
+    if(pt.y < minY) minY = pt.y; if(pt.y > maxY) maxY = pt.y;
+  });
+  return { minX, minY, maxX, maxY };
+}
+
 function worldBBoxForLayer(layer){
   const p = layer.params;
-  const pad = (typeof p.thickness === 'number') ? p.thickness/2 + 20 : 20;
-  if (layer.type === 'custom') {
-    const pts = p.points || [];
-    if (!pts.length) return { minX: p.x - pad, minY: p.y - pad, maxX: p.x + pad, maxY: p.y + pad };
-    const rad = p.rotation * Math.PI / 180;
-    const cos = Math.cos(rad), sin = Math.sin(rad);
-    let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
-    pts.forEach(pt => {
-      const wx = p.x + pt.x * cos - pt.y * sin;
-      const wy = p.y + pt.x * sin + pt.y * cos;
-      if(wx < minX) minX = wx; if(wx > maxX) maxX = wx;
-      if(wy < minY) minY = wy; if(wy > maxY) maxY = wy;
-    });
-    const amp = (p.lineType !== 'straight') ? (p.amplitude || 0) : 0;
-    const extra = pad + amp;
-    return { minX: minX - extra, minY: minY - extra, maxX: maxX + extra, maxY: maxY + extra };
+  const strokeHalf = (typeof p.thickness === 'number') ? p.thickness/2 : 0;
+  const margin = 2; // tiny buffer only, to avoid clipping anti-aliased stroke edges
+
+  if (layer.type === 'line') {
+    const hasArrow = p.arrowType && p.arrowType !== 'none';
+    const arrowExtra = hasArrow ? (p.arrowSize || 14) : 0;
+    const pad = strokeHalf + arrowExtra + margin;
+    const ext = localExtentOf(getLinePoints(p));
+    return rotatedWorldBBox(ext.minX, ext.minY, ext.maxX, ext.maxY, p.x, p.y, p.rotation, pad);
   }
-  return { minX: p.x - pad, minY: p.y - pad, maxX: p.x + (p.length || p.width || 100) + pad, maxY: p.y + (p.height || 50) + pad };
+  if (layer.type === 'custom') {
+    const hasArrow = !p.closed && p.arrowType && p.arrowType !== 'none';
+    const arrowExtra = hasArrow ? (p.arrowSize || 14) : 0;
+    const pad = strokeHalf + arrowExtra + margin;
+    const pts = customLocalPoints(p);
+    if (!pts.length) return { minX: p.x - pad, minY: p.y - pad, maxX: p.x + pad, maxY: p.y + pad };
+    const ext = localExtentOf(pts);
+    return rotatedWorldBBox(ext.minX, ext.minY, ext.maxX, ext.maxY, p.x, p.y, p.rotation, pad);
+  }
+  // box / shape — local geometry is exactly the 0..width, 0..height rect
+  const pad = strokeHalf + margin;
+  const w = p.width || 100, h = p.height || 50;
+  return rotatedWorldBBox(0, 0, w, h, p.x, p.y, p.rotation, pad);
 }
 
 function contentBBox(){
@@ -1027,6 +1372,7 @@ function selectionOverlaySvg(layer){
 
 /* ============================= LAYER MANAGEMENT ============================= */
 function addLayer(type){
+  pushHistory();
   const id = 'el' + (uid++);
   const params = JSON.parse(JSON.stringify(DEFAULTS[type]));
   const count = layers.filter(l=>l.type===type).length + 1;
@@ -1036,12 +1382,14 @@ function addLayer(type){
 }
 function deleteLayer(id, ev){
   if(ev) ev.stopPropagation();
+  pushHistory();
   layers = layers.filter(l=>l.id!==id);
   if(selectedId===id) selectedId = layers.length ? layers[layers.length-1].id : null;
   renderAll();
 }
 function duplicateLayer(id, ev){
-  ev.stopPropagation();
+  if(ev) ev.stopPropagation();
+  pushHistory();
   const src = layers.find(l=>l.id===id);
   if(!src) return;
   const copy = JSON.parse(JSON.stringify(src));
@@ -1059,6 +1407,7 @@ function moveLayer(id, dir, ev){
   const i = layers.findIndex(l=>l.id===id);
   const j = i + dir;
   if(j<0 || j>=layers.length) return;
+  pushHistory();
   [layers[i], layers[j]] = [layers[j], layers[i]];
   renderAll();
 }
@@ -1086,6 +1435,7 @@ function pasteElementParams(id) {
   if (!parameterClipboard) return;
   const layer = layers.find(l => l.id === id);
   if (!layer) return;
+  pushHistory();
   
   // Blend matching variables over without rewriting layout positioning
   if (layer.type === parameterClipboard.sourceType) {
@@ -1131,7 +1481,9 @@ function renderField(f, layer){
             onchange="onFieldNumberChange(this,'${layer.id}','${f.key}')">
         </label>
         <input type="range" min="${f.min}" max="${f.max}" step="${f.step}" value="${val}"
-          oninput="onFieldRangeInput(this,'${layer.id}','${f.key}')">
+          onmousedown="ensureHistorySnapshot()" ontouchstart="ensureHistorySnapshot()"
+          oninput="onFieldRangeInput(this,'${layer.id}','${f.key}')"
+          onchange="finalizeHistory()">
       </div>`;
   }
   if(f.type==='select'){
@@ -1171,29 +1523,50 @@ function onFieldNumberChange(numEl, id, key){
   updateParam(id, key, v, true, false);
 }
 
-const PAIR_KEYS = [['x','y'], ['width','height'], ['cycles','phase'], ['dash','cap']];
+const PAIR_KEYS = [['x','y'], ['width','height'], ['cycles','phase'], ['dash','cap'], ['waveform','startDirection']];
 function areFieldsPaired(keyA, keyB){
   return PAIR_KEYS.some(([a,b]) => (a===keyA && b===keyB) || (a===keyB && b===keyA));
 }
 
+let activeParamGroup = null;
+function switchParamTab(g){
+  activeParamGroup = g;
+  document.querySelectorAll('#paramBody .param-tab').forEach(el=> el.classList.toggle('active', el.dataset.group===g));
+  document.querySelectorAll('#paramBody .param-tab-panel').forEach(el=> el.classList.toggle('active', el.dataset.group===g));
+}
+
 function renderSchemaFields(schema, layer){
-  let html = ''; let openGroup = null;
-  for(let i=0; i<schema.length; i++){
-    const f = schema[i], next = schema[i+1];
-    if(f.group !== openGroup){
-      if(openGroup !== null) html += '</div>';
-      html += `<div class="field-group"><div class="field-group-title">${GROUP_LABELS[f.group] || ''}</div>`;
-      openGroup = f.group;
+  const groups = [];
+  const byGroup = {};
+  schema.forEach(f=>{
+    if(!byGroup[f.group]){ byGroup[f.group] = []; groups.push(f.group); }
+    byGroup[f.group].push(f);
+  });
+  if(!groups.includes(activeParamGroup)) activeParamGroup = groups[0];
+
+  const tabs = groups.map(g=>
+    `<button type="button" class="param-tab ${g===activeParamGroup?'active':''}" data-group="${g}" onclick="switchParamTab('${g}')">${GROUP_LABELS[g] || g}</button>`
+  ).join('');
+
+  const panels = groups.map(g=>{
+    const fields = byGroup[g];
+    let html = '';
+    for(let i=0; i<fields.length; i++){
+      const f = fields[i], next = fields[i+1];
+      if(SUBHEADS[f.key]){
+        html += `<div class="param-subhead">${SUBHEADS[f.key]}</div>`;
+      }
+      if(f.type===next?.type && (f.type==='range'||f.type==='select') && areFieldsPaired(f.key, next.key) && !SUBHEADS[next.key]){
+        html += `<div class="field-row">${renderField(f, layer)}${renderField(next, layer)}</div>`;
+        i++;
+      } else {
+        html += renderField(f, layer);
+      }
     }
-    if(f.type===next?.type && (f.type==='range'||f.type==='select') && next.group===f.group && areFieldsPaired(f.key, next.key)){
-      html += `<div class="field-row">${renderField(f, layer)}${renderField(next, layer)}</div>`;
-      i++;
-    } else {
-      html += renderField(f, layer);
-    }
-  }
-  if(openGroup !== null) html += '</div>';
-  return `<div class="param-groups">${html}</div>`;
+    return `<div class="param-tab-panel ${g===activeParamGroup?'active':''}" data-group="${g}">${html}</div>`;
+  }).join('');
+
+  return `<div class="param-tabs">${tabs}</div>${panels}`;
 }
 
 function buildParamPanel(){
@@ -1214,10 +1587,13 @@ function buildParamPanel(){
   
   // Clipboard Operations Bar
   const isClipboardEmpty = parameterClipboard === null;
+  const pasteLabel = (!isClipboardEmpty && parameterClipboard.sourceType !== layer.type)
+    ? `📥 Paste style (from ${parameterClipboard.sourceType})`
+    : '📥 Paste style';
   const clipboardHtml = `
     <div style="display:flex; gap:8px; margin-bottom:14px; background:var(--paper-deep); padding:8px; border-radius:3px; border:1px solid var(--border);">
-      <button class="btn secondary" style="font-size:12px; padding:6px 10px; flex:1;" onclick="copyElementParams('${layer.id}')">📋 Copy Line Details</button>
-      <button class="btn" style="font-size:12px; padding:6px 10px; flex:1;" ${isClipboardEmpty ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} onclick="pasteElementParams('${layer.id}')">📥 Paste to This Line</button>
+      <button class="btn secondary" style="font-size:12px; padding:6px 10px; flex:1;" onclick="copyElementParams('${layer.id}')" title="Copies this element's stroke &amp; shape settings — not its position">📋 Copy style</button>
+      <button class="btn" style="font-size:12px; padding:6px 10px; flex:1;" ${isClipboardEmpty ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} onclick="pasteElementParams('${layer.id}')" title="Applies the copied style to this element">${pasteLabel}</button>
     </div>
   `;
 
@@ -1235,8 +1611,19 @@ function buildParamPanel(){
         <button class="btn secondary" style="flex:1;" onclick="clearPoints('${layer.id}')">Clear dots</button>
       </div>`;
   }
+
+  let waveReadout = '';
+  if(layer.params.lineType==='dampedWave' && layer.type!=='custom'){
+    const stats = computeDampedWaveStats(layer.params);
+    waveReadout = `<div class="wave-readout">
+      <div class="cell"><div class="l">Cycles</div><div class="v">${stats.cycles.toFixed(2)}</div></div>
+      <div class="cell"><div class="l">Wave span</div><div class="v">${stats.waveLength.toFixed(0)}px</div></div>
+      <div class="cell"><div class="l">Amp ratio</div><div class="v">${layer.params.ampStart}→${layer.params.ampEnd}</div></div>
+      <div class="cell"><div class="l">λ ratio</div><div class="v">${layer.params.periodStart}→${layer.params.periodEnd}</div></div>
+    </div>`;
+  }
   
-  body.innerHTML = note + clipboardHtml + customControls + renderSchemaFields(schemaFor(layer), layer);
+  body.innerHTML = note + waveReadout + clipboardHtml + customControls + renderSchemaFields(schemaFor(layer), layer);
 }
 
 function toggleAddPoint(id, checked){
@@ -1251,12 +1638,14 @@ function toggleAddPoint(id, checked){
 function undoLastPoint(id){
   const layer = layers.find(l=>l.id===id);
   if(!layer || !layer.params.points.length) return;
+  pushHistory();
   layer.params.points.pop();
   renderAll();
 }
 function clearPoints(id){
   const layer = layers.find(l=>l.id===id);
   if(!layer) return;
+  pushHistory();
   layer.params.points = [];
   renderAll();
 }
@@ -1264,6 +1653,7 @@ function clearPoints(id){
 function updateParam(id, key, value, numeric, liveOnly){
   const layer = layers.find(l=>l.id===id);
   if(!layer) return;
+  if(!liveOnly && !historyPending) pushHistory();
   layer.params[key] = numeric ? parseFloat(value) : value;
   if(liveOnly){
     renderStage();
@@ -1296,9 +1686,12 @@ function renderAll(){
   buildParamPanel();
   renderStage();
   document.getElementById('svgOut').value = fullSvgSource();
+  updateHistoryButtons();
+  scheduleAutosave();
 }
 
 function resizeCanvasFromInputs(){
+  pushHistory();
   canvasW = parseInt(document.getElementById('canvasW').value) || 1000;
   canvasH = parseInt(document.getElementById('canvasH').value) || 160;
   renderAll();
@@ -1323,6 +1716,7 @@ function onStageMouseDown(e){
   if(addPointMode && addPointLayerId){
     const layer = layers.find(l=>l.id===addPointLayerId);
     if(layer && layer.type==='custom'){
+      pushHistory();
       const pt = svgPointFromClient(e.clientX, e.clientY);
       const local = toLocal(pt.x, pt.y, layer.params.x, layer.params.y, layer.params.rotation);
       let nx = local.lx;
@@ -1347,6 +1741,7 @@ function onStageMouseDown(e){
   const layer = layers.find(l=>l.id===id); if(!layer) return;
   const pt = svgPointFromClient(e.clientX, e.clientY);
   
+  ensureHistorySnapshot();
   dragState = { id, role, startPt: pt, startX: layer.params.x, startY: layer.params.y, startLength: layer.params.length, startRotation: layer.params.rotation, startW: layer.params.width, startH: layer.params.height };
   
   if(role.startsWith('point:')){
@@ -1422,13 +1817,14 @@ function onDocMouseMove(e){
 }
 
 function onDocMouseUp(){ 
-  if(canvasDragState){ canvasDragState = null; renderAll(); }
-  if(dragState){ dragState = null; renderAll(); } 
+  if(canvasDragState){ canvasDragState = null; renderAll(); finalizeHistory(); }
+  if(dragState){ dragState = null; renderAll(); finalizeHistory(); } 
 }
 
 // Bind Canvas Frame Resize Handle
 document.getElementById('canvasResizeHandle').addEventListener('mousedown', function(e) {
   const zoom = parseFloat(document.getElementById('zoom').value || 1.0);
+  ensureHistorySnapshot();
   canvasDragState = {
     startX: e.clientX,
     startY: e.clientY,
@@ -1443,15 +1839,336 @@ document.getElementById('canvasResizeHandle').addEventListener('mousedown', func
 document.getElementById('stage').addEventListener('mousedown', onStageMouseDown);
 document.addEventListener('mousemove', onDocMouseMove);
 document.addEventListener('mouseup', onDocMouseUp);
+
+/* ============================= HISTORY (UNDO / REDO) ============================= */
+function snapshotState(){
+  return JSON.stringify({ layers, canvasW, canvasH, selectedId, uid });
+}
+function applySnapshot(json){
+  const s = JSON.parse(json);
+  layers = s.layers; canvasW = s.canvasW; canvasH = s.canvasH; selectedId = s.selectedId; uid = s.uid;
+  document.getElementById('canvasW').value = canvasW;
+  document.getElementById('canvasH').value = canvasH;
+}
+function pushHistory(){
+  if(isRestoringHistory) return;
+  undoStack.push(snapshotState());
+  if(undoStack.length > HISTORY_LIMIT) undoStack.shift();
+  redoStack = [];
+  historyPending = true;
+  updateHistoryButtons();
+}
+function ensureHistorySnapshot(){
+  if(historyPending || isRestoringHistory) return;
+  pushHistory();
+}
+function finalizeHistory(){
+  historyPending = false;
+}
+function undo(){
+  if(!undoStack.length) return;
+  finalizeHistory();
+  redoStack.push(snapshotState());
+  const prev = undoStack.pop();
+  isRestoringHistory = true;
+  applySnapshot(prev);
+  isRestoringHistory = false;
+  renderAll();
+  updateHistoryButtons();
+  showToast('Undo');
+}
+function redo(){
+  if(!redoStack.length) return;
+  undoStack.push(snapshotState());
+  const next = redoStack.pop();
+  isRestoringHistory = true;
+  applySnapshot(next);
+  isRestoringHistory = false;
+  renderAll();
+  updateHistoryButtons();
+  showToast('Redo');
+}
+function updateHistoryButtons(){
+  const u = document.getElementById('undoBtn'), r = document.getElementById('redoBtn');
+  if(u) u.disabled = !undoStack.length;
+  if(r) r.disabled = !redoStack.length;
+}
+
+/* ============================= LAYER CLIPBOARD (Ctrl+C/X/V) ============================= */
+function copyLayerToClipboard(){
+  const layer = layers.find(l=>l.id===selectedId);
+  if(!layer) return;
+  layerClipboard = JSON.parse(JSON.stringify(layer));
+  showToast('Copied ' + layer.name);
+}
+function cutLayerToClipboard(){
+  const layer = layers.find(l=>l.id===selectedId);
+  if(!layer) return;
+  layerClipboard = JSON.parse(JSON.stringify(layer));
+  deleteLayer(layer.id);
+  showToast('Cut ' + layer.name);
+}
+function pasteLayerFromClipboard(){
+  if(!layerClipboard) return;
+  pushHistory();
+  const copy = JSON.parse(JSON.stringify(layerClipboard));
+  copy.id = 'el' + (uid++);
+  copy.name = layerClipboard.name + ' copy';
+  copy.params.x = Math.min(canvasW, (layerClipboard.params.x||0) + 20);
+  copy.params.y = Math.min(canvasH, (layerClipboard.params.y||0) + 20);
+  layers.push(copy);
+  selectedId = copy.id;
+  renderAll();
+  showToast('Pasted ' + copy.name);
+}
+
+/* ============================= NUDGE ============================= */
+function nudgeSelected(dx, dy){
+  const layer = layers.find(l=>l.id===selectedId);
+  if(!layer) return;
+  ensureHistorySnapshot();
+  layer.params.x = (layer.params.x||0) + dx;
+  layer.params.y = (layer.params.y||0) + dy;
+  renderAll();
+}
+
+/* ============================= TOASTS ============================= */
+function showToast(msg){
+  const wrap = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  wrap.appendChild(t);
+  requestAnimationFrame(()=> t.classList.add('show'));
+  setTimeout(()=>{
+    t.classList.remove('show');
+    setTimeout(()=> t.remove(), 250);
+  }, 1800);
+}
+
+/* ============================= MODALS ============================= */
+function openModal(id){ document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+function closeAllModals(){
+  ['shortcutsModal','saveModal','loadModal'].forEach(closeModal);
+}
+function toggleMoreMenu(e){
+  e.stopPropagation();
+  document.getElementById('moreMenu').classList.toggle('hidden');
+}
+function closeMoreMenu(){ document.getElementById('moreMenu').classList.add('hidden'); }
+document.addEventListener('click', function(e){
+  const menu = document.getElementById('moreMenu');
+  if(menu && !menu.classList.contains('hidden') && !e.target.closest('.tmenu-wrap')) closeMoreMenu();
+});
+
+const SHORTCUTS = [
+  ['Undo', 'Ctrl Z'], ['Redo', 'Ctrl Y / Ctrl Shift Z'],
+  ['Copy element', 'Ctrl C'], ['Cut element', 'Ctrl X'], ['Paste element', 'Ctrl V'],
+  ['Duplicate element', 'Ctrl D'], ['Delete element', 'Delete / Backspace'],
+  ['Nudge element', '↑ ↓ ← →'], ['Nudge by 10px', 'Shift + Arrow'],
+  ['Deselect / cancel', 'Esc'],
+  ['Save project', 'Ctrl S'], ['Open project', 'Ctrl O'],
+  ['Show this list', '?']
+];
+function openShortcutsModal(){
+  document.getElementById('shortcutList').innerHTML = SHORTCUTS.map(([label,keys])=>`
+    <div class="shortcut-row">
+      <span>${label}</span>
+      <span class="keys">${keys.split(' / ').map(combo=>`<kbd>${combo}</kbd>`).join('<span style="align-self:center;color:var(--ink-faint);font-size:11px;">or</span>')}</span>
+    </div>`).join('');
+  openModal('shortcutsModal');
+}
+
+/* ============================= SAVE / LOAD PROJECTS ============================= */
+function currentProjectData(){
+  return { layers, canvasW, canvasH, savedAt: Date.now() };
+}
+function loadProjects(){
+  try{
+    return JSON.parse(localStorage.getItem(PROJECTS_KEY) || '{}');
+  } catch(e){ return {}; }
+}
+function saveProjects(projects){
+  try{ localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects)); }
+  catch(e){ showToast('Could not save — storage may be full'); }
+}
+function openSaveModal(){
+  document.getElementById('saveNameInput').value = '';
+  renderSaveModalList();
+  openModal('saveModal');
+  setTimeout(()=>document.getElementById('saveNameInput').focus(), 50);
+}
+function renderSaveModalList(){
+  const projects = loadProjects();
+  const names = Object.keys(projects);
+  const list = document.getElementById('saveModalList');
+  if(!names.length){ list.innerHTML = '<div class="empty-note">No saved projects yet.</div>'; return; }
+  list.innerHTML = '<div class="empty-note" style="margin-bottom:6px;">Or overwrite an existing save:</div>' + names.map(n=>`
+    <div class="project-row">
+      <span class="pname">${escapeHtml(n)}</span>
+      <span class="pmeta">${new Date(projects[n].savedAt).toLocaleDateString()}</span>
+      <button onclick="doSaveProject('${escapeAttr(n)}')">Overwrite</button>
+    </div>`).join('');
+}
+function doSaveProject(existingName){
+  const name = existingName || document.getElementById('saveNameInput').value.trim();
+  if(!name){ showToast('Give the project a name first'); return; }
+  const projects = loadProjects();
+  projects[name] = currentProjectData();
+  saveProjects(projects);
+  closeModal('saveModal');
+  showToast('Saved "' + name + '"');
+}
+function openLoadModal(){
+  renderLoadModalList();
+  openModal('loadModal');
+}
+function renderLoadModalList(){
+  const projects = loadProjects();
+  const names = Object.keys(projects).sort((a,b)=>projects[b].savedAt - projects[a].savedAt);
+  const list = document.getElementById('loadModalList');
+  if(!names.length){ list.innerHTML = '<div class="empty-note">No saved projects yet. Use Save to create one.</div>'; return; }
+  list.innerHTML = names.map(n=>`
+    <div class="project-row">
+      <span class="pname">${escapeHtml(n)}</span>
+      <span class="pmeta">${new Date(projects[n].savedAt).toLocaleString()}</span>
+      <button onclick="doLoadProject('${escapeAttr(n)}')">Load</button>
+      <button onclick="doDeleteProject('${escapeAttr(n)}')">Delete</button>
+    </div>`).join('');
+}
+function doLoadProject(name){
+  const projects = loadProjects();
+  const data = projects[name];
+  if(!data) return;
+  pushHistory();
+  layers = JSON.parse(JSON.stringify(data.layers));
+  canvasW = data.canvasW; canvasH = data.canvasH;
+  selectedId = layers.length ? layers[0].id : null;
+  document.getElementById('canvasW').value = canvasW;
+  document.getElementById('canvasH').value = canvasH;
+  renderAll();
+  closeModal('loadModal');
+  showToast('Loaded "' + name + '"');
+}
+function doDeleteProject(name){
+  const projects = loadProjects();
+  delete projects[name];
+  saveProjects(projects);
+  renderLoadModalList();
+}
+function newProject(){
+  if(layers.length && !confirm('Start a new project? Unsaved changes will be lost unless already saved.')) return;
+  pushHistory();
+  layers = [];
+  selectedId = null;
+  addLayer('line');
+  showToast('New project started');
+}
+function exportProjectFile(){
+  const data = currentProjectData();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], {type:'application/json'}));
+  a.download = 'aleatoric-project.json';
+  a.click();
+  showToast('Project exported');
+}
+function importProjectFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!data.layers) throw new Error('bad format');
+      pushHistory();
+      layers = data.layers;
+      canvasW = data.canvasW || canvasW;
+      canvasH = data.canvasH || canvasH;
+      selectedId = layers.length ? layers[0].id : null;
+      document.getElementById('canvasW').value = canvasW;
+      document.getElementById('canvasH').value = canvasH;
+      renderAll();
+      showToast('Project imported');
+    } catch(err){
+      showToast('Could not read that file');
+    }
+  };
+  reader.readAsText(file);
+  document.getElementById('importFile').value = '';
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return String(s).replace(/'/g, "\\'"); }
+
+/* ============================= AUTOSAVE ============================= */
+function scheduleAutosave(){
+  if(!autosaveArmed) return;
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(doAutosave, 600);
+}
+function doAutosave(){
+  try{
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(currentProjectData()));
+    const dot = document.getElementById('autosaveDot');
+    if(dot){ dot.classList.add('pulse'); setTimeout(()=>dot.classList.remove('pulse'), 500); }
+  } catch(e){ /* storage unavailable — silently skip */ }
+}
+
+
+/* ============================= KEYBOARD SHORTCUTS ============================= */
 document.addEventListener('keydown', function(e){
-  if((e.key === 'Backspace' || e.key === 'Delete') && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)){
-    if(selectedId) { deleteLayer(selectedId); e.preventDefault(); }
+  const typing = ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable;
+  const mod = e.ctrlKey || e.metaKey;
+
+  // Modal escape / shortcuts help always available
+  if(e.key === 'Escape'){
+    const anyModalOpen = ['shortcutsModal','saveModal','loadModal'].some(id=>!document.getElementById(id).classList.contains('hidden'));
+    if(anyModalOpen){ closeAllModals(); e.preventDefault(); return; }
+    if(addPointMode){ toggleAddPoint(addPointLayerId, false); e.preventDefault(); return; }
+    if(selectedId){ selectedId = null; renderAll(); e.preventDefault(); }
+    return;
   }
+  if(typing) return;
+
+  if(e.key === '?'){ openShortcutsModal(); e.preventDefault(); return; }
+
+  if(mod && (e.key==='z' || e.key==='Z')){
+    if(e.shiftKey) redo(); else undo();
+    e.preventDefault(); return;
+  }
+  if(mod && (e.key==='y' || e.key==='Y')){ redo(); e.preventDefault(); return; }
+  if(mod && (e.key==='c' || e.key==='C')){ if(selectedId){ copyLayerToClipboard(); e.preventDefault(); } return; }
+  if(mod && (e.key==='x' || e.key==='X')){ if(selectedId){ cutLayerToClipboard(); e.preventDefault(); } return; }
+  if(mod && (e.key==='v' || e.key==='V')){ if(layerClipboard){ pasteLayerFromClipboard(); e.preventDefault(); } return; }
+  if(mod && (e.key==='d' || e.key==='D')){ if(selectedId){ duplicateLayer(selectedId, {stopPropagation(){}}); e.preventDefault(); } return; }
+  if(mod && (e.key==='s' || e.key==='S')){ openSaveModal(); e.preventDefault(); return; }
+  if(mod && (e.key==='o' || e.key==='O')){ openLoadModal(); e.preventDefault(); return; }
+
+  if((e.key === 'Backspace' || e.key === 'Delete')){
+    if(selectedId) { deleteLayer(selectedId); e.preventDefault(); }
+    return;
+  }
+
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){
+    if(!selectedId) return;
+    const step = e.shiftKey ? 10 : 1;
+    const map = { ArrowUp:[0,-step], ArrowDown:[0,step], ArrowLeft:[-step,0], ArrowRight:[step,0] };
+    const [dx,dy] = map[e.key];
+    nudgeSelected(dx,dy);
+    e.preventDefault();
+  }
+});
+document.addEventListener('keyup', function(e){
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) finalizeHistory();
 });
 
 /* ============================= INITIAL STATE ============================= */
-addLayer('line');
-renderAll();
+(function init(){
+  try{ localStorage.removeItem(AUTOSAVE_KEY); } catch(e){}
+  autosaveArmed = true;
+  addLayer('line');
+  undoStack = []; redoStack = []; updateHistoryButtons();
+  renderAll();
+})();
 </script>
 </body>
 </html>
