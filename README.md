@@ -1,2 +1,2 @@
 # aleatoric-vector-studio
-I wanted a simple vecotr editor for aleatoric
+I wanted a simple vector editor for aleatoric
