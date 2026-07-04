@@ -19,6 +19,8 @@
     --rubric-soft:#C97361;
     --border:#D8CFB8;
     --good:#4B6350;
+    --period:#3D6B8A;
+    --tail:#8A6D2E;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -211,12 +213,20 @@
   /* selection / handles inside svg */
   .layer-group, .layer-group *{cursor:move;}
   .sel-outline{fill:none; stroke:var(--rubric); stroke-width:1; stroke-dasharray:3,4; opacity:0.35; pointer-events:none; vector-effect:non-scaling-stroke;}
-  .handle{fill:var(--rubric); stroke:#fff; stroke-width:1; cursor:grab;}
+  .handle{fill:var(--rubric); stroke:#fff; stroke-width:1; cursor:grab; opacity:0.5; transition:opacity .12s ease;}
+  .handle:hover{opacity:1;}
   .handle.amp{fill:var(--good);}
+  .handle.amp-mid{fill:var(--good); opacity:0.35;}
+  .handle.amp-mid:hover{opacity:0.9;}
+  .handle.period{fill:var(--period);}
+  .handle.tail{fill:var(--tail);}
   .handle.pt{cursor:move;}
   .handle[data-role="resize-e"], .handle[data-role="line-end"]{cursor:ew-resize;}
   .handle[data-role="resize-s"], .handle[data-role="line-amp"]{cursor:ns-resize;}
   .handle[data-role="resize-se"]{cursor:nwse-resize;}
+  .handle[data-role^="wave-amp-pt"]{cursor:move;}
+  .handle[data-role^="wave-period-pt"]{cursor:move;}
+  .handle[data-role="wave-tail"]{cursor:ew-resize;}
 
   /* ---- param controls ---- */
   .param-tabs{
@@ -300,6 +310,31 @@
   }
   .field.checkbox{display:flex;align-items:center;gap:8px;}
   .field.checkbox label{margin:0;}
+  .env-section{margin-bottom:14px;}
+  .env-section-head{
+    display:flex; align-items:center; justify-content:space-between;
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:6px;
+  }
+  .env-add-btn{
+    font-family:'Inter',sans-serif; font-size:11.5px; border:1px solid var(--border); background:var(--panel);
+    color:var(--ink); border-radius:3px; padding:3px 8px; cursor:pointer;
+  }
+  .env-add-btn:hover{border-color:var(--rubric-soft); color:var(--rubric);}
+  .env-pt-row{display:flex; align-items:center; gap:8px; margin-bottom:6px;}
+  .env-pt-idx{
+    width:18px; height:18px; line-height:18px; text-align:center; border-radius:50%;
+    background:var(--paper-deep); color:var(--ink-soft); font-size:10.5px; flex-shrink:0;
+  }
+  .env-pt-field{display:flex; align-items:center; gap:4px; font-size:11px; color:var(--ink-soft); flex:1;}
+  .env-pt-field input{width:100%; min-width:0; padding:3px 5px; font-size:12px; border:1px solid var(--border); border-radius:3px; background:var(--panel); color:var(--ink);}
+  .env-pt-field input:disabled{opacity:0.4;}
+  .env-pt-del{
+    flex-shrink:0; width:20px; height:20px; border:1px solid var(--border); background:var(--panel);
+    color:var(--ink-soft); border-radius:3px; cursor:pointer; font-size:11px; line-height:1;
+  }
+  .env-pt-del:hover:not(:disabled){border-color:var(--rubric-soft); color:var(--rubric);}
+  .env-pt-del:disabled{opacity:0.25; cursor:not-allowed;}
   .divider{
     border:none;border-top:1px solid var(--border);
     margin:14px 0;
@@ -716,7 +751,7 @@ const DEFAULTS = {
     lineType:'straight', x:40, y:80, rotation:0,
     length:200, amplitude:20, cycles:26, phase:0, decay:1.0,
     chirpRate:-1, damping:0.6,
-    ampStart:40, ampEnd:1, ampShape:1.7, periodStart:28, periodEnd:100, periodShape:1.0, tailLength:20,
+    ampPoints:[{u:0,amp:40},{u:1,amp:1}], periodPoints:[{u:0,period:28},{u:1,period:100}], tailLength:20,
     startDirection:'up', reverseProgression:false, waveform:'sine',
     thickness:4.2, dash:'solid', cap:'round', color:'#000000',
     fixedStroke:false, arrowType:'stroke', arrowPlacement:'end', arrowSize:14, arrowBarbAngle:24, arrowStrokeWidth:4.2, arrowStrokeColor:'#000000', arrowFillColor:'#000000'
@@ -735,7 +770,7 @@ const DEFAULTS = {
     x:100, y:80, rotation:0,
     points:[], closed:false,
     lineType:'straight', amplitude:12, cycles:2, phase:0, decay:0, chirpRate:-1, damping:0.6,
-    ampStart:24, ampEnd:1, ampShape:1.7, periodStart:20, periodEnd:60, periodShape:1.0, tailLength:10,
+    ampPoints:[{u:0,amp:24},{u:1,amp:1}], periodPoints:[{u:0,period:20},{u:1,period:60}], tailLength:10,
     startDirection:'up', reverseProgression:false, waveform:'sine',
     thickness:1.8, dash:'solid', cap:'round', color:'#000000', fixedStroke:true,
     arrowType:'none', arrowPlacement:'end', arrowSize:14, arrowBarbAngle:24
@@ -800,7 +835,7 @@ function getSnapCoordinates(targetX, targetY, skipId) {
 
 /* ============================= SCHEMAS ============================= */
 const GROUP_LABELS = { shape:'Shape', stroke:'Stroke', arrow:'Arrowhead', position:'Position & rotation' };
-const SUBHEADS = { ampStart:'Envelope', waveform:'Direction', arrowPlacement:'Placement', arrowStrokeWidth:'Arrow style' };
+const SUBHEADS = { waveform:'Direction', arrowPlacement:'Placement', arrowStrokeWidth:'Arrow style' };
 function schemaFor(layer){
   const common = [
     {key:'x', label:'X', type:'range', min:0, max:canvasW, step:1, group:'position'},
@@ -828,12 +863,7 @@ function schemaFor(layer){
       fields.push({key:'damping', label:'Damping', type:'range', min:-2, max:2, step:0.1, group:'shape'});
     }
     if(t==='dampedWave'){
-      fields.push({key:'ampStart', label:'Amplitude start', type:'range', min:0, max:150, step:1, group:'shape'});
-      fields.push({key:'ampEnd', label:'Amplitude end', type:'range', min:0, max:150, step:1, group:'shape'});
-      fields.push({key:'ampShape', label:'Decay shape', type:'range', min:0.3, max:4, step:0.1, group:'shape'});
-      fields.push({key:'periodStart', label:'Wavelength start', type:'range', min:4, max:200, step:1, group:'shape'});
-      fields.push({key:'periodEnd', label:'Wavelength end', type:'range', min:4, max:400, step:1, group:'shape'});
-      fields.push({key:'periodShape', label:'Growth shape', type:'range', min:0.3, max:4, step:0.1, group:'shape'});
+      fields.push({key:'ampPoints', label:'Amplitude & wavelength envelope', type:'envelopeEditor', group:'shape'});
       fields.push({key:'tailLength', label:'Straight tail', type:'range', min:0, max:200, step:1, group:'shape'});
       fields.push({key:'waveform', label:'Wave shape', type:'select', options:['sine','zigzag'], group:'shape'});
       fields.push({key:'startDirection', label:'First swing', type:'select', options:['up','down'], group:'shape'});
@@ -842,7 +872,6 @@ function schemaFor(layer){
     fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:60, step:0.1, group:'stroke'});
     fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted'], group:'stroke'});
     fields.push({key:'cap', label:'Line cap', type:'select', options:['butt','round','square'], group:'stroke'});
-    fields.push({key:'fixedStroke', label:'Fixed stroke', type:'checkbox', group:'stroke'});
     fields.push({key:'color', label:'Ink colour', type:'color', group:'stroke'});
     fields.push({key:'arrowType', label:'Arrowhead', type:'select', options:['none','triangle','flat','hollow','stroke'], group:'arrow'});
     if(layer.params.arrowType && layer.params.arrowType!=='none'){
@@ -863,6 +892,7 @@ function schemaFor(layer){
       {key:'height', label:'Height', type:'range', min:10, max:Math.max(canvasH,300), step:1, group:'shape'},
       {key:'cornerRadius', label:'Corner radius', type:'range', min:0, max:40, step:1, group:'shape'},
       {key:'thickness', label:'Border thickness', type:'range', min:0.5, max:60, step:0.1, group:'stroke'},
+      {key:'fixedStroke', label:'Fixed stroke', type:'checkbox', group:'stroke'},
       {key:'color', label:'Ink colour', type:'color', group:'stroke'},
       ...common
     ];
@@ -901,12 +931,7 @@ function schemaFor(layer){
       fields.push({key:'damping', label:'Damping', type:'range', min:-2, max:2, step:0.1, group:'shape'});
     }
     if(t==='dampedWave'){
-      fields.push({key:'ampStart', label:'Amplitude start', type:'range', min:0, max:150, step:1, group:'shape'});
-      fields.push({key:'ampEnd', label:'Amplitude end', type:'range', min:0, max:150, step:1, group:'shape'});
-      fields.push({key:'ampShape', label:'Decay shape', type:'range', min:0.3, max:4, step:0.1, group:'shape'});
-      fields.push({key:'periodStart', label:'Wavelength start', type:'range', min:4, max:200, step:1, group:'shape'});
-      fields.push({key:'periodEnd', label:'Wavelength end', type:'range', min:4, max:400, step:1, group:'shape'});
-      fields.push({key:'periodShape', label:'Growth shape', type:'range', min:0.3, max:4, step:0.1, group:'shape'});
+      fields.push({key:'ampPoints', label:'Amplitude & wavelength envelope', type:'envelopeEditor', group:'shape'});
       fields.push({key:'tailLength', label:'Straight tail (per segment)', type:'range', min:0, max:200, step:1, group:'shape'});
       fields.push({key:'waveform', label:'Wave shape', type:'select', options:['sine','zigzag'], group:'shape'});
       fields.push({key:'startDirection', label:'First swing', type:'select', options:['up','down'], group:'shape'});
@@ -991,17 +1016,53 @@ function triangleWave(phase){
   return -1 + (t-0.75)*4;
 }
 
+const PERIOD_MIN = 4, PERIOD_MAX = 250;
+function periodToLaneY(period, laneTop, laneH){
+  return laneTop + laneH * (1 - (clamp(period,PERIOD_MIN,PERIOD_MAX)-PERIOD_MIN)/(PERIOD_MAX-PERIOD_MIN));
+}
+function laneYToPeriod(y, laneTop, laneH){
+  const t = clamp((y-laneTop)/laneH, 0, 1);
+  return PERIOD_MIN + (1-t)*(PERIOD_MAX-PERIOD_MIN);
+}
+
+function ensureWavePoints(p){
+  if(!p.ampPoints || !p.ampPoints.length){
+    const shape = p.ampShape !== undefined ? p.ampShape : 1.5;
+    const s = p.ampStart !== undefined ? p.ampStart : 40;
+    const e = p.ampEnd !== undefined ? p.ampEnd : 1;
+    p.ampPoints = [0,0.33,0.66,1].map(u=>({u, amp: Math.round((e + (s-e)*Math.pow(1-u, shape))*10)/10}));
+  }
+  if(!p.periodPoints || !p.periodPoints.length){
+    const shape = p.periodShape !== undefined ? p.periodShape : 1.0;
+    const s = p.periodStart !== undefined ? p.periodStart : 28;
+    const e = p.periodEnd !== undefined ? p.periodEnd : 100;
+    p.periodPoints = [0,0.5,1].map(u=>({u, period: Math.round((s + (e-s)*Math.pow(u, shape))*10)/10}));
+  }
+  p.ampPoints.sort((a,b)=>a.u-b.u);
+  p.periodPoints.sort((a,b)=>a.u-b.u);
+}
+
+function interpPoints(points, key, u){
+  const pts = points;
+  if(!pts.length) return 0;
+  if(u <= pts[0].u) return pts[0][key];
+  if(u >= pts[pts.length-1].u) return pts[pts.length-1][key];
+  for(let i=0; i<pts.length-1; i++){
+    if(u >= pts[i].u && u <= pts[i+1].u){
+      const span = pts[i+1].u - pts[i].u;
+      const t = span > 1e-6 ? (u-pts[i].u)/span : 0;
+      return pts[i][key] + (pts[i+1][key]-pts[i][key])*t;
+    }
+  }
+  return pts[pts.length-1][key];
+}
+
 function dampedWavePoints(p){
+  ensureWavePoints(p);
   const N = 300;
   const totalLen = Math.max(1, p.length);
   const tailLength = clamp(p.tailLength !== undefined ? p.tailLength : 0, 0, totalLen - 5);
   const waveLength = Math.max(5, totalLen - tailLength);
-  const ampStart = p.ampStart !== undefined ? p.ampStart : 20;
-  const ampEnd = p.ampEnd !== undefined ? p.ampEnd : 0;
-  const ampShape = p.ampShape !== undefined ? p.ampShape : 1.5;
-  const periodStart = p.periodStart !== undefined ? p.periodStart : 30;
-  const periodEnd = p.periodEnd !== undefined ? p.periodEnd : 110;
-  const periodShape = p.periodShape !== undefined ? p.periodShape : 1.0;
   const dirMul = (p.startDirection === 'down') ? -1 : 1;
   const isZigzag = p.waveform === 'zigzag';
   const dx = waveLength / N;
@@ -1010,11 +1071,11 @@ function dampedWavePoints(p){
   for(let i=1; i<=N; i++){
     const xMid = (i - 0.5) * dx;
     const uMid = xMid / waveLength;
-    const per = Math.max(1, periodStart + (periodEnd - periodStart) * Math.pow(uMid, periodShape));
+    const per = Math.max(1, interpPoints(p.periodPoints, 'period', uMid));
     phase += (2*Math.PI/per) * dx;
     const x = i * dx;
     const u = x / waveLength;
-    const amp = ampEnd + (ampStart - ampEnd) * Math.pow(1 - u, ampShape);
+    const amp = interpPoints(p.ampPoints, 'amp', u);
     const shapeVal = isZigzag ? triangleWave(phase) : Math.sin(phase);
     const y = -amp * shapeVal * dirMul;
     pts.push({x, y});
@@ -1031,6 +1092,7 @@ function dampedWavePoints(p){
 }
 
 function computeDampedWaveStats(p){
+  ensureWavePoints(p);
   const totalLen = Math.max(1, p.length || 0);
   const tailLength = clamp(p.tailLength !== undefined ? p.tailLength : 0, 0, totalLen - 5);
   const waveLength = Math.max(5, totalLen - tailLength);
@@ -1039,7 +1101,7 @@ function computeDampedWaveStats(p){
   let phase = 0;
   for(let i=1; i<=N; i++){
     const xMid = (i - 0.5) * dx;
-    const per = Math.max(1, p.periodStart + (p.periodEnd - p.periodStart) * Math.pow(xMid/waveLength, p.periodShape));
+    const per = Math.max(1, interpPoints(p.periodPoints, 'period', xMid/waveLength));
     phase += (2*Math.PI/per) * dx;
   }
   return { cycles: phase/(2*Math.PI), waveLength, tailLength, totalLen };
@@ -1405,8 +1467,9 @@ function renderLayerSvg(layer, interactive){
   return `<g class="layer-group" data-id="${layer.id}" transform="translate(${p.x},${p.y}) rotate(${p.rotation})">${hit}${inner}</g>`;
 }
 
-function handleRect(id, role, x, y, extraClass){
-  return `<rect class="handle ${extraClass||''}" data-id="${id}" data-role="${role}" x="${x}" y="${y}" width="10" height="10"/>`;
+function handleRect(id, role, x, y, extraClass, title){
+  const t = title ? `<title>${title}</title>` : '';
+  return `<rect class="handle ${extraClass||''}" data-id="${id}" data-role="${role}" x="${x}" y="${y}" width="10" height="10">${t}</rect>`;
 }
 
 function selectionOverlaySvg(layer){
@@ -1418,11 +1481,41 @@ function selectionOverlaySvg(layer){
     handles += handleRect(layer.id,'resize-s', p.width/2-5, p.height-5);
     handles += handleRect(layer.id,'resize-se', p.width-5, p.height-5);
   } else if(layer.type==='line'){
-    const amp = (p.lineType==='straight') ? 0 : (p.lineType==='dampedWave' ? Math.max(p.ampStart, p.ampEnd) : p.amplitude);
+    if(p.lineType==='dampedWave') ensureWavePoints(p);
+    const amp = (p.lineType==='straight') ? 0 : (p.lineType==='dampedWave' ? Math.max(...p.ampPoints.map(a=>a.amp)) : p.amplitude);
     outline = `<rect class="sel-outline" x="0" y="${-amp-4}" width="${p.length}" height="${amp*2+8}"/>`;
-    handles += handleRect(layer.id,'line-end', p.length-5, -5);
-    if(p.lineType!=='straight'){
-      handles += handleRect(layer.id,'line-amp', p.length/2-5, -amp-5, 'amp');
+    handles += handleRect(layer.id,'line-end', p.length-5, -5, '', 'Length & angle');
+    if(p.lineType==='dampedWave'){
+      ensureWavePoints(p);
+      const totalLen = Math.max(1, p.length);
+      const tailLength = clamp(p.tailLength !== undefined ? p.tailLength : 0, 0, totalLen - 5);
+      const waveLength = Math.max(5, totalLen - tailLength);
+      const dirMul = (p.startDirection === 'down') ? -1 : 1;
+      const maxAmp = Math.max(10, ...p.ampPoints.map(pt=>pt.amp));
+      const PERIOD_LANE_TOP = maxAmp + 24, PERIOD_LANE_H = 40;
+      const periodToY = per => periodToLaneY(per, PERIOD_LANE_TOP, PERIOD_LANE_H);
+
+      // invisible tracks — double-click to add a point
+      handles += `<rect data-id="${layer.id}" data-role="wave-amp-track" x="0" y="${-maxAmp-10}" width="${waveLength}" height="${(maxAmp+10)*2}" fill="transparent"/>`;
+      handles += `<rect data-id="${layer.id}" data-role="wave-period-track" x="0" y="${PERIOD_LANE_TOP-4}" width="${waveLength}" height="${PERIOD_LANE_H+8}" fill="var(--period)" opacity="0.06"/>`;
+
+      // dashed guide lines through the envelope points
+      const ampGuide = p.ampPoints.map(pt=>`${(pt.u*waveLength).toFixed(1)},${(-pt.amp*dirMul).toFixed(1)}`).join(' ');
+      handles += `<polyline points="${ampGuide}" fill="none" stroke="var(--good)" stroke-width="1" stroke-dasharray="3,3" opacity="0.5" pointer-events="none"/>`;
+      const perGuide = p.periodPoints.map(pt=>`${(pt.u*waveLength).toFixed(1)},${periodToY(pt.period).toFixed(1)}`).join(' ');
+      handles += `<polyline points="${perGuide}" fill="none" stroke="var(--period)" stroke-width="1" stroke-dasharray="3,3" opacity="0.6" pointer-events="none"/>`;
+
+      p.ampPoints.forEach((pt,i)=>{
+        const isEnd = i===0 || i===p.ampPoints.length-1;
+        handles += handleRect(layer.id, `wave-amp-pt:${i}`, pt.u*waveLength-5, -(pt.amp*dirMul)-5, isEnd?'amp':'amp-mid', `Amplitude ${pt.amp.toFixed(0)} @ ${(pt.u*100).toFixed(0)}% — drag${isEnd?'':' (dbl-click to delete)'}`);
+      });
+      p.periodPoints.forEach((pt,i)=>{
+        const isEnd = i===0 || i===p.periodPoints.length-1;
+        handles += handleRect(layer.id, `wave-period-pt:${i}`, pt.u*waveLength-5, periodToY(pt.period)-5, 'period', `Wavelength ${pt.period.toFixed(0)}px @ ${(pt.u*100).toFixed(0)}% — drag${isEnd?'':' (dbl-click to delete)'}`);
+      });
+      handles += handleRect(layer.id,'wave-tail', waveLength-5, PERIOD_LANE_TOP+PERIOD_LANE_H+15, 'tail', 'Straight tail length — double-click the wave/lane above to add points');
+    } else if(p.lineType!=='straight'){
+      handles += handleRect(layer.id,'line-amp', p.length/2-5, -amp-5, 'amp', 'Amplitude');
     }
   } else if(layer.type==='custom'){
     const pts = p.points||[];
@@ -1576,7 +1669,101 @@ function renderField(f, layer){
         <label for="chk_${layer.id}_${f.key}">${f.label}</label>
       </div>`;
   }
+  if(f.type==='envelopeEditor'){
+    return waveEnvelopeEditorHtml(layer);
+  }
   return '';
+}
+
+function envelopePointRowHtml(layer, which, idx, pts){
+  const pt = pts[idx];
+  const isEndpoint = idx===0 || idx===pts.length-1;
+  const valKey = which==='amp' ? 'amp' : 'period';
+  const valMax = which==='amp' ? 150 : 400;
+  const uPct = Math.round(pt.u*1000)/10;
+  return `
+    <div class="env-pt-row">
+      <span class="env-pt-idx">${idx+1}</span>
+      <label class="env-pt-field">u
+        <input type="number" min="0" max="100" step="0.5" value="${uPct}" ${isEndpoint?'disabled':''}
+          onchange="updateWavePoint('${layer.id}','${which}',${idx},'u', this.value/100)">%
+      </label>
+      <label class="env-pt-field">${which==='amp'?'amp':'λ'}
+        <input type="number" min="0" max="${valMax}" step="0.5" value="${pt[valKey]}"
+          onchange="updateWavePoint('${layer.id}','${which}',${idx},'${valKey}', this.value)">
+      </label>
+      <button type="button" class="env-pt-del" ${isEndpoint?'disabled title="Endpoints cannot be removed"':`onclick="removeWavePoint('${layer.id}','${which}',${idx})" title="Remove point"`}>✕</button>
+    </div>`;
+}
+
+function waveEnvelopeEditorHtml(layer){
+  const p = layer.params;
+  ensureWavePoints(p);
+  const ampRows = p.ampPoints.map((_,i)=>envelopePointRowHtml(layer,'amp',i,p.ampPoints)).join('');
+  const perRows = p.periodPoints.map((_,i)=>envelopePointRowHtml(layer,'period',i,p.periodPoints)).join('');
+  return `
+    <div class="param-subhead">Envelope</div>
+    <div class="env-section">
+      <div class="env-section-head">Amplitude points <button type="button" class="env-add-btn" onclick="addWavePoint('${layer.id}','amp')">+ Add point</button></div>
+      ${ampRows}
+    </div>
+    <div class="env-section">
+      <div class="env-section-head">Wavelength points <button type="button" class="env-add-btn" onclick="addWavePoint('${layer.id}','period')">+ Add point</button></div>
+      ${perRows}
+    </div>
+  `;
+}
+
+function updateWavePoint(id, which, idx, field, value){
+  const layer = layers.find(l=>l.id===id); if(!layer) return;
+  ensureWavePoints(layer.params);
+  pushHistory();
+  const arr = which==='amp' ? layer.params.ampPoints : layer.params.periodPoints;
+  const pt = arr[idx];
+  if(!pt) return;
+  if(field==='u'){
+    const isEndpoint = idx===0 || idx===arr.length-1;
+    if(isEndpoint){ finalizeHistory(); return; }
+    const lo = arr[idx-1].u + 0.001, hi = arr[idx+1].u - 0.001;
+    pt.u = clamp(parseFloat(value)||0, Math.max(0,lo), Math.min(1,hi));
+  } else {
+    const max = which==='amp' ? 150 : 400;
+    pt[field] = clamp(parseFloat(value)||0, 0, max);
+  }
+  arr.sort((a,b)=>a.u-b.u);
+  renderAll();
+  finalizeHistory();
+}
+
+function addWavePoint(id, which){
+  const layer = layers.find(l=>l.id===id); if(!layer) return;
+  ensureWavePoints(layer.params);
+  pushHistory();
+  const arr = which==='amp' ? layer.params.ampPoints : layer.params.periodPoints;
+  const key = which==='amp' ? 'amp' : 'period';
+  // find the largest gap between consecutive points and insert in the middle
+  let bestI = 0, bestGap = -1;
+  for(let i=0;i<arr.length-1;i++){
+    const gap = arr[i+1].u - arr[i].u;
+    if(gap > bestGap){ bestGap = gap; bestI = i; }
+  }
+  const u = (arr[bestI].u + arr[bestI+1].u) / 2;
+  const val = interpPoints(arr, key, u);
+  arr.push({u, [key]: Math.round(val*10)/10});
+  arr.sort((a,b)=>a.u-b.u);
+  renderAll();
+  finalizeHistory();
+}
+
+function removeWavePoint(id, which, idx){
+  const layer = layers.find(l=>l.id===id); if(!layer) return;
+  ensureWavePoints(layer.params);
+  const arr = which==='amp' ? layer.params.ampPoints : layer.params.periodPoints;
+  if(idx===0 || idx===arr.length-1) return;
+  pushHistory();
+  arr.splice(idx,1);
+  renderAll();
+  finalizeHistory();
 }
 
 function onFieldRangeInput(rangeEl, id, key){
@@ -1648,7 +1835,9 @@ function buildParamPanel(){
   title.textContent = layer.name + ' — parameters';
   
   let note = '<div class="mouse-note">Drag the shape on canvas to move it. Drag the red squares to resize';
-  if(layer.type==='line') note += ' — the end square sets length &amp; angle, the green square sets amplitude.</div>';
+  if(layer.type==='line' && layer.params.lineType==='dampedWave'){
+    note = '<div class="mouse-note">Handles are dimmed until you hover them. Drag the shape to move it, the red square to set length &amp; angle. Green squares are amplitude points on the wave itself; blue squares are wavelength points in the lane below it. Drag any point (except the two ends) sideways to move it along the wave, or up/down to change its value. Double-click empty space on the wave or lane to add a new point there; double-click a point to delete it. The amber square drags the straight tail in and out.</div>';
+  } else if(layer.type==='line') note += ' — the end square sets length &amp; angle, the green square sets amplitude.</div>';
   else if(layer.type==='custom') note = '<div class="mouse-note">Hold Ctrl while dragging any handle (or while adding dots) to keep it on the same horizontal line.</div>';
   else note += ' (hold Ctrl on the corner square to keep width &amp; height equal).</div>';
   
@@ -1681,12 +1870,14 @@ function buildParamPanel(){
 
   let waveReadout = '';
   if(layer.params.lineType==='dampedWave' && layer.type!=='custom'){
+    ensureWavePoints(layer.params);
     const stats = computeDampedWaveStats(layer.params);
+    const ap = layer.params.ampPoints, pp = layer.params.periodPoints;
     waveReadout = `<div class="wave-readout">
       <div class="cell"><div class="l">Cycles</div><div class="v">${stats.cycles.toFixed(2)}</div></div>
       <div class="cell"><div class="l">Wave span</div><div class="v">${stats.waveLength.toFixed(0)}px</div></div>
-      <div class="cell"><div class="l">Amp ratio</div><div class="v">${layer.params.ampStart}→${layer.params.ampEnd}</div></div>
-      <div class="cell"><div class="l">λ ratio</div><div class="v">${layer.params.periodStart}→${layer.params.periodEnd}</div></div>
+      <div class="cell"><div class="l">Amp pts</div><div class="v">${ap[0].amp.toFixed(0)}→${ap[ap.length-1].amp.toFixed(0)} (${ap.length})</div></div>
+      <div class="cell"><div class="l">λ pts</div><div class="v">${pp[0].period.toFixed(0)}→${pp[pp.length-1].period.toFixed(0)} (${pp.length})</div></div>
     </div>`;
   }
   
@@ -1884,11 +2075,17 @@ function onStageMouseDown(e){
   const role = hitEl.getAttribute('data-role') || 'move';
   if(id !== selectedId){ selectedId = id; renderAll(); }
   
+  if(role==='wave-amp-track' || role==='wave-period-track'){
+    e.preventDefault();
+    return;
+  }
+  
   const layer = layers.find(l=>l.id===id); if(!layer) return;
   const pt = svgPointFromClient(e.clientX, e.clientY);
   
   ensureHistorySnapshot();
-  dragState = { id, role, startPt: pt, startX: layer.params.x, startY: layer.params.y, startLength: layer.params.length, startRotation: layer.params.rotation, startW: layer.params.width, startH: layer.params.height };
+  dragState = { id, role, startPt: pt, startX: layer.params.x, startY: layer.params.y, startLength: layer.params.length, startRotation: layer.params.rotation, startW: layer.params.width, startH: layer.params.height,
+    startTailLength: layer.params.tailLength };
   
   if(role.startsWith('point:')){
     const idx = parseInt(role.split(':')[1]);
@@ -1931,6 +2128,31 @@ function onDocMouseMove(e){
   } else if(dragState.role==='line-amp'){
     const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
     p.amplitude = clamp(Math.abs(local.ly), 0, 300);
+  } else if(dragState.role.startsWith('wave-amp-pt:') || dragState.role.startsWith('wave-period-pt:')){
+    const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
+    const totalLen = Math.max(1, p.length);
+    const tailLength = clamp(p.tailLength !== undefined ? p.tailLength : 0, 0, totalLen - 5);
+    const waveLength = Math.max(5, totalLen - tailLength);
+    const idx = parseInt(dragState.role.split(':')[1]);
+    const dirMul = (p.startDirection === 'down') ? -1 : 1;
+    const isAmp = dragState.role.startsWith('wave-amp-pt:');
+    const arr = isAmp ? p.ampPoints : p.periodPoints;
+    const isEnd = idx===0 || idx===arr.length-1;
+    if(!isEnd){
+      const lo = arr[idx-1].u + 0.005, hi = arr[idx+1].u - 0.005;
+      arr[idx].u = clamp(local.lx / waveLength, Math.max(0,lo), Math.min(1,hi));
+    }
+    if(isAmp){
+      arr[idx].amp = clamp(Math.round(-local.ly * dirMul), 0, 150);
+    } else {
+      const maxAmp = Math.max(10, ...p.ampPoints.map(a=>a.amp));
+      const laneTop = maxAmp + 24, laneH = 40;
+      arr[idx].period = Math.round(laneYToPeriod(local.ly, laneTop, laneH));
+    }
+  } else if(dragState.role==='wave-tail'){
+    const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
+    const totalLen = Math.max(1, p.length);
+    p.tailLength = clamp(Math.round(totalLen - local.lx), 0, Math.max(0, totalLen - 5));
   } else if(dragState.role==='resize-e'){
     const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
     p.width = clamp(local.lx, 10, 2000);
@@ -1983,8 +2205,51 @@ document.getElementById('canvasResizeHandle').addEventListener('mousedown', func
 });
 
 document.getElementById('stage').addEventListener('mousedown', onStageMouseDown);
+document.getElementById('stage').addEventListener('dblclick', onStageDblClick);
 document.addEventListener('mousemove', onDocMouseMove);
 document.addEventListener('mouseup', onDocMouseUp);
+
+function onStageDblClick(e){
+  const hitEl = e.target.closest && e.target.closest('[data-id]');
+  if(!hitEl) return;
+  const id = hitEl.getAttribute('data-id');
+  const role = hitEl.getAttribute('data-role') || '';
+  const layer = layers.find(l=>l.id===id); if(!layer) return;
+  const p = layer.params;
+
+  if(role.startsWith('wave-amp-pt:') || role.startsWith('wave-period-pt:')){
+    const idx = parseInt(role.split(':')[1]);
+    const which = role.startsWith('wave-amp-pt:') ? 'amp' : 'period';
+    removeWavePoint(id, which, idx);
+    e.preventDefault();
+    return;
+  }
+
+  if(role==='wave-amp-track' || role==='wave-period-track'){
+    ensureWavePoints(p);
+    const pt = svgPointFromClient(e.clientX, e.clientY);
+    const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
+    const totalLen = Math.max(1, p.length);
+    const tailLength = clamp(p.tailLength !== undefined ? p.tailLength : 0, 0, totalLen - 5);
+    const waveLength = Math.max(5, totalLen - tailLength);
+    const u = clamp(local.lx / waveLength, 0.01, 0.99);
+    pushHistory();
+    if(role==='wave-amp-track'){
+      const dirMul = (p.startDirection === 'down') ? -1 : 1;
+      const amp = clamp(Math.round(-local.ly * dirMul), 0, 150);
+      p.ampPoints.push({u, amp});
+      p.ampPoints.sort((a,b)=>a.u-b.u);
+    } else {
+      const maxAmp = Math.max(10, ...p.ampPoints.map(a=>a.amp));
+      const period = Math.round(laneYToPeriod(local.ly, maxAmp+24, 40));
+      p.periodPoints.push({u, period});
+      p.periodPoints.sort((a,b)=>a.u-b.u);
+    }
+    renderAll();
+    finalizeHistory();
+    e.preventDefault();
+  }
+}
 
 /* ============================= HISTORY (UNDO / REDO) ============================= */
 function snapshotState(){
