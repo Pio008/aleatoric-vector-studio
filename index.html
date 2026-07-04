@@ -119,6 +119,11 @@
     transition:border-color .15s ease, background .15s ease;
   }
   .add-btn:hover{border-color:var(--rubric-soft); background:#fff;}
+  .add-btn.active{border-color:var(--rubric); background:#fff; box-shadow:inset 0 0 0 1px var(--rubric);}
+  .add-btn.active svg{stroke:var(--rubric);}
+  svg#stage.pen-mode{cursor:crosshair;}
+  .pen-hint{font-size:10px; color:var(--rubric); background:#fff; border:1px solid var(--rubric-soft); border-radius:3px; padding:3px 6px; margin:-6px 0 10px; line-height:1.3;}
+  .pen-hint.hidden{display:none;}
   .add-btn .icon{
     width:16px;height:16px;flex:none;
     display:flex;align-items:center;justify-content:center;
@@ -426,6 +431,39 @@
   .tbtn:hover:not(:disabled){background:var(--paper-deep);}
   .tbtn:disabled{color:var(--ink-faint); cursor:not-allowed; opacity:0.4;}
   .toolbar-spacer{flex:1;}
+
+  /* ---- pen / dot input-mode toggles (MuseScore-style note-input buttons) ---- */
+  .toolmode-btn{
+    display:flex;align-items:center;gap:6px;
+    border:1px solid var(--border);
+    background:var(--panel);
+    border-radius:4px;
+    padding:7px 12px 7px 10px;
+    font-weight:600;
+  }
+  .toolmode-btn .icon{width:15px;height:15px;flex:none;display:flex;}
+  .toolmode-btn .icon svg{width:15px;height:15px;stroke:var(--ink-soft);}
+  .toolmode-btn:hover:not(:disabled){background:var(--paper-deep); border-color:var(--rubric-soft);}
+  .toolmode-btn.pen.active{background:var(--period); border-color:var(--period); color:#fff;}
+  .toolmode-btn.pen.active .icon svg{stroke:#fff;}
+  .toolmode-btn.dot.active{background:var(--rubric); border-color:var(--rubric); color:#fff;}
+  .toolmode-btn.dot.active .icon svg{stroke:#fff; fill:#fff;}
+  .toolmode-group{display:flex;align-items:center;gap:4px;}
+  .mode-banner{
+    display:flex; align-items:center; gap:8px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; letter-spacing:0.02em;
+    color:#fff;
+    padding:7px 14px;
+  }
+  .mode-banner.hidden{display:none;}
+  .mode-banner.pen{background:var(--period);}
+  .mode-banner.dot{background:var(--rubric);}
+  .mode-banner .exit{
+    margin-left:auto; background:rgba(255,255,255,0.18); border:none; color:#fff;
+    border-radius:3px; padding:2px 8px; cursor:pointer; font-family:'Inter',sans-serif; font-size:11px;
+  }
+  .mode-banner .exit:hover{background:rgba(255,255,255,0.3);}
   .autosave-indicator{
     font-family:'IBM Plex Mono',monospace;
     font-size:10px;color:var(--ink-faint);
@@ -578,6 +616,17 @@
   </header>
 
   <div class="toolbar">
+    <div class="toolmode-group">
+      <button class="tbtn toolmode-btn pen" id="toolPenBtn" onclick="togglePenToolbar()" title="Pen — freehand sketch mode (P)">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+        Pen
+      </button>
+      <button class="tbtn toolmode-btn dot" id="toolDotBtn" onclick="toggleDotToolbar()" title="Dot — click to place points (D)">
+        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg></span>
+        Dot
+      </button>
+    </div>
+    <div class="tsep"></div>
     <button class="tbtn icon-only" onclick="newProject()" title="New project">✚</button>
     <div class="tsep"></div>
     <button class="tbtn icon-only" id="undoBtn" onclick="undo()" title="Undo (Ctrl Z)">↶</button>
@@ -627,6 +676,10 @@
     </div>
 
     <div class="panel panel-canvas">
+      <div class="mode-banner hidden" id="modeBanner">
+        <span id="modeBannerText"></span>
+        <button class="exit" id="modeBannerExit">Esc to exit</button>
+      </div>
       <div class="canvas-toolbar">
         <label><input type="checkbox" id="gridToggle" checked onchange="toggleGrid()"> Ruled guide</label>
         <label style="margin-left:8px;"><input type="checkbox" id="snapGridToggle" checked> Snap Grid (10px)</label>
@@ -723,9 +776,14 @@ let selectedId = null;
 let uid = 1;
 let canvasW = 280, canvasH = 160;
 let dragState = null;
+let lastClickInfo = null; // {id, role, time} — used to detect double-clicks manually (see onStageMouseDown)
 let canvasDragState = null;
 let addPointMode = false;
 let addPointLayerId = null;
+let penSketchMode = false;
+let penSketchLayerId = null;
+let penDrawing = false;
+let penRawPoints = [];
 
 // Clipboard storage for parameters
 let parameterClipboard = null;
@@ -789,6 +847,28 @@ function toLocal(px,py,ox,oy,rotDeg){
     lx: dx*Math.cos(rad) - dy*Math.sin(rad),
     ly: dx*Math.sin(rad) + dy*Math.cos(rad)
   };
+}
+
+function fromLocal(lx,ly,ox,oy,rotDeg){
+  const rad = rotDeg*Math.PI/180;
+  return {
+    x: ox + lx*Math.cos(rad) - ly*Math.sin(rad),
+    y: oy + lx*Math.sin(rad) + ly*Math.cos(rad)
+  };
+}
+
+// While editing a custom line's own anchor points, also let them snap to each other (in
+// world space) — most useful for pulling an end point back onto the start point to close
+// a shape precisely, which plain grid/element snapping can't do.
+function snapToOwnPoints(layer, worldX, worldY, excludeIdx){
+  const tol = 10;
+  const pts = layer.params.points || [];
+  for(let i=0; i<pts.length; i++){
+    if(i === excludeIdx) continue;
+    const w = fromLocal(pts[i].x, pts[i].y, layer.params.x, layer.params.y, layer.params.rotation);
+    if(Math.hypot(worldX - w.x, worldY - w.y) < tol) return w;
+  }
+  return null;
 }
 
 function svgPointFromClient(clientX, clientY){
@@ -913,10 +993,10 @@ function schemaFor(layer){
   if(layer.type==='custom'){
     const t = layer.params.lineType;
     const fields = [
-      {key:'lineType', label:'Line style', type:'select', options:['straight','wavy','zigzag','chirp','arc','dampedWave'], group:'shape'},
+      {key:'lineType', label:'Line style', type:'select', options:['straight','smooth','wavy','zigzag','chirp','arc','dampedWave'], group:'shape'},
       {key:'closed', label:'Close shape', type:'checkbox', group:'shape'}
     ];
-    if(t!=='straight' && t!=='dampedWave'){
+    if(t!=='straight' && t!=='dampedWave' && t!=='smooth'){
       fields.push({key:'amplitude', label:'Amplitude', type:'range', min:0, max:100, step:1, group:'shape'});
     }
     if(t==='wavy'||t==='zigzag'||t==='chirp'){
@@ -937,10 +1017,12 @@ function schemaFor(layer){
       fields.push({key:'startDirection', label:'First swing', type:'select', options:['up','down'], group:'shape'});
       fields.push({key:'reverseProgression', label:'Reverse (swap wide/narrow ends)', type:'checkbox', group:'shape'});
     }
-    fields.push({key:'thickness', label:'Stroke width', type:'range', min:0, max:60, step:0.1, group:'stroke'});
+    fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:60, step:0.1, group:'stroke'});
     fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted'], group:'stroke'});
     fields.push({key:'cap', label:'Line cap', type:'select', options:['butt','round','square'], group:'stroke'});
-    fields.push({key:'fixedStroke', label:'Fixed stroke', type:'checkbox', group:'stroke'});
+    if(!layer.params.closed){
+      fields.push({key:'fixedStroke', label:'Fixed stroke', type:'checkbox', group:'stroke'});
+    }
     fields.push({key:'color', label:'Ink colour', type:'color', group:'stroke'});
     if(!layer.params.closed){
       fields.push({key:'arrowType', label:'Arrowhead', type:'select', options:['none','triangle','flat','hollow','stroke'], group:'arrow'});
@@ -1270,22 +1352,28 @@ function waveSegmentPoints(p0, p1, lineParams){
 function customElement(p){
   const pts = p.points||[];
   if(pts.length<2) return '';
-  const segCount = pts.length-1 + (p.closed && pts.length>2 ? 1 : 0);
-  let allPts = [];
-  for(let i=0; i<segCount; i++){
-    const a = pts[i % pts.length];
-    const b = pts[(i+1) % pts.length];
-    let segPts = waveSegmentPoints(a, b, p);
-    if(i>0) segPts = segPts.slice(1);
-    allPts = allPts.concat(segPts);
-  }
-  let d;
-  if(p.lineType==='straight' || p.lineType==='zigzag' || p.lineType==='dampedWave'){
-    d = 'M ' + allPts.map(pt=>`${pt.x.toFixed(2)},${pt.y.toFixed(2)}`).join(' L ');
-  } else {
+  let allPts, d;
+  if(p.lineType==='smooth'){
+    allPts = (p.closed && pts.length>2) ? pts.concat([pts[0]]) : pts.slice();
     d = catmullRomPath(allPts);
+    if(p.closed) d += ' Z';
+  } else {
+    const segCount = pts.length-1 + (p.closed && pts.length>2 ? 1 : 0);
+    allPts = [];
+    for(let i=0; i<segCount; i++){
+      const a = pts[i % pts.length];
+      const b = pts[(i+1) % pts.length];
+      let segPts = waveSegmentPoints(a, b, p);
+      if(i>0) segPts = segPts.slice(1);
+      allPts = allPts.concat(segPts);
+    }
+    if(p.lineType==='straight' || p.lineType==='zigzag' || p.lineType==='dampedWave'){
+      d = 'M ' + allPts.map(pt=>`${pt.x.toFixed(2)},${pt.y.toFixed(2)}`).join(' L ');
+    } else {
+      d = catmullRomPath(allPts);
+    }
+    if(p.closed) d += ' Z';
   }
-  if(p.closed) d += ' Z';
   const dash = dashArrayFor(p.dash, p.thickness);
   const vecEffect = p.fixedStroke ? ' vector-effect="non-scaling-stroke"' : '';
   let out = `<path d="${d}" fill="none" stroke="${p.color}" stroke-width="${p.thickness}" stroke-linecap="${p.cap}" stroke-linejoin="round"${dash!=='none' ? ` stroke-dasharray="${dash}"`:''}${vecEffect}/>`;
@@ -1349,6 +1437,9 @@ function rotatedWorldBBox(localMinX, localMinY, localMaxX, localMaxY, ox, oy, ro
 function customLocalPoints(p){
   const pts = p.points || [];
   if(pts.length < 2) return pts.slice();
+  if(p.lineType==='smooth'){
+    return (p.closed && pts.length>2) ? pts.concat([pts[0]]) : pts.slice();
+  }
   const segCount = pts.length - 1 + (p.closed && pts.length > 2 ? 1 : 0);
   let allPts = [];
   for(let i=0; i<segCount; i++){
@@ -1523,7 +1614,7 @@ function selectionOverlaySvg(layer){
       const minY = Math.min(...ys), maxY = Math.max(...ys);
       outline = `<rect class="sel-outline" x="${minX-4}" y="${minY-4}" width="${maxX-minX+8}" height="${maxY-minY+8}"/>`;
     }
-    handles += pts.map((pt,i)=>handleRect(layer.id, 'point:'+i, pt.x-5, pt.y-5, 'pt')).join('');
+    handles += pts.map((pt,i)=>handleRect(layer.id, 'point:'+i, pt.x-5, pt.y-5, 'pt', pts.length>2 ? 'Drag to move — double-click to delete' : 'Drag to move')).join('');
   }
   return `<g class="selection-overlay" transform="translate(${p.x},${p.y}) rotate(${p.rotation})">${outline}${handles}</g>`;
 }
@@ -1853,13 +1944,18 @@ function buildParamPanel(){
 
   let customControls = '';
   if(layer.type==='custom'){
-    const active = addPointMode && addPointLayerId===layer.id;
-    const cid = `addpt_${layer.id}`;
+    const sketchActive = penSketchMode && penSketchLayerId===layer.id;
+    const dotActive = addPointMode && addPointLayerId===layer.id;
+    const sketchHint = sketchActive
+      ? `<div class="pen-hint">Draw on the canvas — release to turn your sketch into a smooth line.</div>`
+      : '';
+    const dotHint = dotActive
+      ? `<div class="pen-hint">Click the canvas to add a point.</div>`
+      : '';
     customControls = `
-      <div class="field checkbox">
-        <input type="checkbox" id="${cid}" ${active?'checked':''} onchange="toggleAddPoint('${layer.id}', this.checked)">
-        <label for="${cid}" style="margin:0; font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink-soft);">Click canvas to add dots${active?' (active)':''}</label>
-      </div>
+      ${sketchHint}
+      ${dotHint}
+      <div class="pen-hint" style="margin-bottom:10px;">Use the Pen / Dot buttons in the toolbar to draw or place points on this layer. Double-click the line to insert a dot, or double-click a dot to remove it.</div>
       <div style="display:flex; gap:8px; margin-bottom:14px;">
         <button class="btn secondary" style="flex:1;" onclick="undoLastPoint('${layer.id}')">Undo last dot</button>
         <button class="btn secondary" style="flex:1;" onclick="clearPoints('${layer.id}')">Clear dots</button>
@@ -1882,13 +1978,72 @@ function buildParamPanel(){
   body.innerHTML = note + waveReadout + clipboardHtml + customControls + renderSchemaFields(schemaFor(layer), layer);
 }
 
+function ensureCustomLayerForToolMode(){
+  // Prefer the currently selected custom layer, otherwise the most recent
+  // custom layer, otherwise create a fresh one — mirrors MuseScore dropping
+  // you straight into note input without making you pick a staff first.
+  let layer = layers.find(l=>l.id===selectedId && l.type==='custom');
+  if(!layer) layer = [...layers].reverse().find(l=>l.type==='custom');
+  if(!layer){
+    addLayer('custom');
+    layer = layers[layers.length-1];
+  } else {
+    selectedId = layer.id;
+  }
+  return layer;
+}
+function togglePenToolbar(){
+  if(penSketchMode){ toggleSketchMode(penSketchLayerId, false); return; }
+  const layer = ensureCustomLayerForToolMode();
+  toggleSketchMode(layer.id, true);
+}
+function toggleDotToolbar(){
+  if(addPointMode){ toggleAddPoint(addPointLayerId, false); return; }
+  const layer = ensureCustomLayerForToolMode();
+  toggleAddPoint(layer.id, true);
+}
+function updateToolModeButtons(){
+  const penBtn = document.getElementById('toolPenBtn');
+  const dotBtn = document.getElementById('toolDotBtn');
+  if(penBtn) penBtn.classList.toggle('active', !!penSketchMode);
+  if(dotBtn) dotBtn.classList.toggle('active', !!addPointMode);
+
+  const banner = document.getElementById('modeBanner');
+  const bannerText = document.getElementById('modeBannerText');
+  if(!banner || !bannerText) return;
+  if(penSketchMode){
+    banner.className = 'mode-banner pen';
+    bannerText.textContent = '✏️ Pen mode — draw on the canvas, release to smooth it into a line';
+  } else if(addPointMode){
+    banner.className = 'mode-banner dot';
+    bannerText.textContent = '⏺ Dot mode — click the canvas to place points';
+  } else {
+    banner.className = 'mode-banner hidden';
+  }
+}
+document.addEventListener('DOMContentLoaded', function(){
+  const exitBtn = document.getElementById('modeBannerExit');
+  if(exitBtn) exitBtn.addEventListener('click', function(){
+    if(penSketchMode) toggleSketchMode(penSketchLayerId, false);
+    else if(addPointMode) toggleAddPoint(addPointLayerId, false);
+  });
+});
 function toggleAddPoint(id, checked){
   addPointMode = checked;
   addPointLayerId = checked ? id : null;
   selectedId = id;
+  if(checked && penSketchMode) toggleSketchMode(penSketchLayerId, false);
   const stage = document.getElementById('stage');
   if (checked) stage.classList.add('adding-points');
   else stage.classList.remove('adding-points');
+  renderAll();
+}
+function toggleSketchMode(id, checked){
+  penSketchMode = checked;
+  penSketchLayerId = checked ? id : null;
+  selectedId = id;
+  if(checked && addPointMode) toggleAddPoint(addPointLayerId, false); // the two drawing modes shouldn't overlap
+  document.getElementById('stage').classList.toggle('pen-mode', checked);
   renderAll();
 }
 function undoLastPoint(id){
@@ -1914,12 +2069,15 @@ function updateParam(id, key, value, numeric, liveOnly){
   layer.params[key] = numeric ? parseFloat(value) : value;
   const hasArrow = layer.params.arrowType && layer.params.arrowType !== 'none';
   if(key === 'closed' && layer.type === 'custom'){
+    // Auto-pick a sensible stroke for the new state, but only when the current thickness is
+    // still sitting at the OTHER state's default — if the person already dialed in their own
+    // value, leave it alone instead of silently overwriting their edit.
     if(layer.params.closed){
       layer.params.fixedStroke = true;
-      layer.params.thickness = 11;
+      if(prevThickness === 2) layer.params.thickness = 11;
     } else {
       layer.params.fixedStroke = false;
-      layer.params.thickness = 2;
+      if(prevThickness === 11) layer.params.thickness = 2;
     }
   }
   if(key === 'thickness' && hasArrow){
@@ -2028,6 +2186,7 @@ function renderAll(){
   renderStage();
   document.getElementById('svgOut').value = fullSvgSource();
   updateHistoryButtons();
+  updateToolModeButtons();
   scheduleAutosave();
 }
 
@@ -2052,14 +2211,115 @@ function downloadSvg(){
   a.download = 'aleatoric-element.svg'; a.click();
 }
 
+/* ============================= PEN TOOL — SKETCH CLEANUP ============================= */
+// A hand-drawn stroke arrives as hundreds of noisy, jittery mouse points. To turn it into
+// something that looks like a deliberate vector line we: (1) lightly smooth away jitter with
+// a moving average, (2) run Ramer–Douglas–Peucker to collapse it down to a small set of
+// meaningful anchor points, and (3) check whether the user was clearly trying to draw a
+// closed shape (start and end points land near each other) and snap it closed if so.
+
+function penMovingAverage(points, windowSize){
+  if(points.length < 3 || windowSize < 2) return points.slice();
+  const half = Math.floor(windowSize/2);
+  const out = [];
+  for(let i=0; i<points.length; i++){
+    let sx=0, sy=0, n=0;
+    for(let j=Math.max(0,i-half); j<=Math.min(points.length-1,i+half); j++){
+      sx += points[j].x; sy += points[j].y; n++;
+    }
+    out.push({x: sx/n, y: sy/n});
+  }
+  // Keep the true start/end anchors crisp rather than averaged-in toward the interior.
+  out[0] = {x:points[0].x, y:points[0].y};
+  out[out.length-1] = {x:points[points.length-1].x, y:points[points.length-1].y};
+  return out;
+}
+
+function perpendicularDistance(pt, lineStart, lineEnd){
+  const dx = lineEnd.x - lineStart.x, dy = lineEnd.y - lineStart.y;
+  const lenSq = dx*dx + dy*dy;
+  if(lenSq < 1e-9) return Math.hypot(pt.x-lineStart.x, pt.y-lineStart.y);
+  const t = ((pt.x-lineStart.x)*dx + (pt.y-lineStart.y)*dy) / lenSq;
+  const projX = lineStart.x + clamp(t,0,1)*dx;
+  const projY = lineStart.y + clamp(t,0,1)*dy;
+  return Math.hypot(pt.x-projX, pt.y-projY);
+}
+
+function rdpSimplify(points, epsilon){
+  if(points.length < 3) return points.slice();
+  let maxDist = 0, idx = 0;
+  for(let i=1; i<points.length-1; i++){
+    const d = perpendicularDistance(points[i], points[0], points[points.length-1]);
+    if(d > maxDist){ maxDist = d; idx = i; }
+  }
+  if(maxDist > epsilon){
+    const left = rdpSimplify(points.slice(0, idx+1), epsilon);
+    const right = rdpSimplify(points.slice(idx), epsilon);
+    return left.slice(0,-1).concat(right);
+  }
+  return [points[0], points[points.length-1]];
+}
+
+// Cleans a raw freehand stroke (world-space points) into a small set of anchor points ready
+// to become a 'smooth' custom layer. Returns {points, closed}.
+function cleanupSketchStroke(rawPoints){
+  // Drop near-duplicate points from slow mouse movement / stray clicks.
+  let pts = [rawPoints[0]];
+  for(let i=1; i<rawPoints.length; i++){
+    const prev = pts[pts.length-1];
+    if(Math.hypot(rawPoints[i].x-prev.x, rawPoints[i].y-prev.y) > 1.2) pts.push(rawPoints[i]);
+  }
+  if(pts.length < 2) pts = rawPoints.slice();
+
+  // Was the user clearly closing a shape? Compare the gap between start/end to the overall
+  // size of the sketch so the threshold scales with how big/small the drawing is.
+  const xs = pts.map(p=>p.x), ys = pts.map(p=>p.y);
+  const span = Math.max(Math.max(...xs)-Math.min(...xs), Math.max(...ys)-Math.min(...ys), 1);
+  const startEndGap = Math.hypot(pts[0].x-pts[pts.length-1].x, pts[0].y-pts[pts.length-1].y);
+  const closed = pts.length > 8 && startEndGap < Math.max(18, span*0.08);
+  if(closed) pts[pts.length-1] = {x:pts[0].x, y:pts[0].y};
+
+  // Smooth jitter, then simplify. Epsilon scales with sketch size so a tiny doodle and a
+  // large sweeping stroke both end up with a sensible, editable number of anchor points.
+  const smoothed = penMovingAverage(pts, 5);
+  const epsilon = clamp(span * 0.01, 1, 6);
+  let simplified = rdpSimplify(smoothed, epsilon);
+
+  // Very safe upper bound so the result stays comfortably editable by hand afterwards.
+  if(simplified.length > 40){
+    simplified = rdpSimplify(smoothed, epsilon*2.2);
+  }
+  return {points: simplified, closed};
+}
+
 /* ============================= INTERACTION DRAG ENGINE ============================= */
 function onStageMouseDown(e){
+  if(penSketchMode && penSketchLayerId){
+    penDrawing = true;
+    penRawPoints = [svgPointFromClient(e.clientX, e.clientY)];
+    const stage = document.getElementById('stage');
+    const preview = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+    preview.setAttribute('id','penLivePreview');
+    preview.setAttribute('fill','none');
+    preview.setAttribute('stroke','var(--rubric)');
+    preview.setAttribute('stroke-width','2');
+    preview.setAttribute('stroke-linecap','round');
+    preview.setAttribute('stroke-linejoin','round');
+    preview.setAttribute('stroke-dasharray','4,3');
+    preview.setAttribute('opacity','0.85');
+    preview.setAttribute('pointer-events','none');
+    stage.appendChild(preview);
+    e.preventDefault();
+    return;
+  }
+
   if(addPointMode && addPointLayerId){
     const layer = layers.find(l=>l.id===addPointLayerId);
     if(layer && layer.type==='custom'){
       pushHistory();
       const pt = svgPointFromClient(e.clientX, e.clientY);
-      const local = toLocal(pt.x, pt.y, layer.params.x, layer.params.y, layer.params.rotation);
+      const snapped = snapToOwnPoints(layer, pt.x, pt.y, -1) || getSnapCoordinates(pt.x, pt.y, layer.id);
+      const local = toLocal(snapped.x, snapped.y, layer.params.x, layer.params.y, layer.params.rotation);
       let nx = local.lx;
       let ny = local.ly;
       if(e.ctrlKey && layer.params.points.length > 0){
@@ -2077,6 +2337,26 @@ function onStageMouseDown(e){
   
   const id = hitEl.getAttribute('data-id');
   const role = hitEl.getAttribute('data-role') || 'move';
+
+  // Manual double-click detection. We can't rely on the browser's native 'dblclick'
+  // event here: onDocMouseUp re-renders the stage (replacing the DOM) on every plain
+  // click, which detaches the original mousedown target before the browser gets a
+  // chance to synthesize and dispatch 'click'/'dblclick' — so those events never
+  // reach a delegated listener. Mousedown, by contrast, always re-hit-tests the live
+  // DOM, so we track timing here instead.
+  const now = Date.now();
+  const isDoubleClick = !!(lastClickInfo && lastClickInfo.id===id && lastClickInfo.role===role && (now - lastClickInfo.time) < 400);
+  lastClickInfo = isDoubleClick ? null : { id, role, time: now };
+  if(isDoubleClick){
+    const dblLayer = layers.find(l=>l.id===id);
+    if(dblLayer){
+      selectedId = id;
+      performPointDoubleClickAction(dblLayer, role, e);
+      renderAll();
+    }
+    return;
+  }
+
   if(id !== selectedId){ selectedId = id; renderAll(); }
   
   if(role==='wave-amp-track' || role==='wave-period-track'){
@@ -2102,6 +2382,17 @@ function onStageMouseDown(e){
 }
 
 function onDocMouseMove(e){
+  if(penDrawing){
+    const pt = svgPointFromClient(e.clientX, e.clientY);
+    const last = penRawPoints[penRawPoints.length-1];
+    if(!last || Math.hypot(pt.x-last.x, pt.y-last.y) > 0.75){
+      penRawPoints.push(pt);
+      const preview = document.getElementById('penLivePreview');
+      if(preview) preview.setAttribute('points', penRawPoints.map(p=>`${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' '));
+    }
+    return;
+  }
+
   // Handle Global Canvas Framing Resize Engine
   if (canvasDragState) {
     const dx = (e.clientX - canvasDragState.startX) / canvasDragState.zoom;
@@ -2174,8 +2465,9 @@ function onDocMouseMove(e){
       p.height = clamp(local.ly, 10, 2000);
     }
   } else if(dragState.role.startsWith('point:')){
-    const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
     const idx = dragState.pointIdx;
+    const snapped = snapToOwnPoints(layer, pt.x, pt.y, idx) || getSnapCoordinates(pt.x, pt.y, layer.id);
+    const local = toLocal(snapped.x, snapped.y, p.x, p.y, p.rotation);
     let nx = local.lx;
     let ny = local.ly;
     if(e.ctrlKey && idx > 0) {
@@ -2189,8 +2481,50 @@ function onDocMouseMove(e){
 }
 
 function onDocMouseUp(){ 
+  if(penDrawing){
+    penDrawing = false;
+    const preview = document.getElementById('penLivePreview');
+    if(preview) preview.remove();
+    finalizePenStroke();
+    return;
+  }
   if(canvasDragState){ canvasDragState = null; renderAll(); finalizeHistory(); }
   if(dragState){ dragState = null; renderAll(); finalizeHistory(); } 
+}
+
+function finalizePenStroke(){
+  const raw = penRawPoints;
+  penRawPoints = [];
+  const layer = layers.find(l=>l.id===penSketchLayerId);
+  if(raw.length < 2 || !layer) return; // a stray click, not a stroke — ignore it
+  const {points, closed} = cleanupSketchStroke(raw);
+  if(points.length < 2) return;
+
+  pushHistory();
+  // The layer's own x/y origin becomes the sketch's own top-left-ish anchor point, so the
+  // stored points sit in local space exactly like manually-placed custom points do.
+  const originX = points[0].x, originY = points[0].y;
+  const localPoints = points.map(pt => ({x: pt.x - originX, y: pt.y - originY}));
+  const wasFresh = !layer.params.points || layer.params.points.length === 0;
+
+  layer.params.x = originX;
+  layer.params.y = originY;
+  layer.params.points = localPoints;
+  layer.params.closed = closed;
+  layer.params.lineType = 'smooth';
+  if(wasFresh){
+    // Only hand out sensible starting defaults for a brand-new shape — if the person is
+    // re-sketching over an existing one, keep whatever stroke settings they'd already dialed in.
+    layer.params.thickness = closed ? 11 : 2;
+    layer.params.fixedStroke = closed;
+  }
+
+  selectedId = layer.id;
+  penSketchMode = false;
+  penSketchLayerId = null;
+  document.getElementById('stage').classList.remove('pen-mode');
+  showToast(`Sketch simplified to ${points.length} point${points.length===1?'':'s'}${closed?' (closed)':''}`);
+  renderAll();
 }
 
 // Bind Canvas Frame Resize Handle
@@ -2209,22 +2543,53 @@ document.getElementById('canvasResizeHandle').addEventListener('mousedown', func
 });
 
 document.getElementById('stage').addEventListener('mousedown', onStageMouseDown);
-document.getElementById('stage').addEventListener('dblclick', onStageDblClick);
 document.addEventListener('mousemove', onDocMouseMove);
 document.addEventListener('mouseup', onDocMouseUp);
 
-function onStageDblClick(e){
-  const hitEl = e.target.closest && e.target.closest('[data-id]');
-  if(!hitEl) return;
-  const id = hitEl.getAttribute('data-id');
-  const role = hitEl.getAttribute('data-role') || '';
-  const layer = layers.find(l=>l.id===id); if(!layer) return;
+function performPointDoubleClickAction(layer, role, e){
   const p = layer.params;
+
+  if(role.startsWith('point:') && layer.type==='custom'){
+    const idx = parseInt(role.split(':')[1]);
+    if(p.points.length <= 2){ e.preventDefault(); return; } // always keep at least 2 anchors
+    pushHistory();
+    p.points.splice(idx, 1);
+    renderAll();
+    finalizeHistory();
+    e.preventDefault();
+    return;
+  }
+
+  if(role==='move' && layer.type==='custom' && p.points && p.points.length >= 2){
+    const pt = svgPointFromClient(e.clientX, e.clientY);
+    const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
+    const pts = p.points;
+    const segCount = pts.length - 1 + (p.closed && pts.length > 2 ? 1 : 0);
+    let bestDist = Infinity, bestIdx = -1;
+    for(let i=0; i<segCount; i++){
+      const a = pts[i % pts.length], b = pts[(i+1) % pts.length];
+      const d = perpendicularDistance({x:local.lx, y:local.ly}, a, b);
+      if(d < bestDist){ bestDist = d; bestIdx = i; }
+    }
+    // Only insert if the double-click actually landed near the line — otherwise this would
+    // fire on every double-click anywhere inside the shape's bounding box.
+    const tolerance = Math.max(20, (p.thickness || 2) * 4);
+    if(bestIdx >= 0 && bestDist <= tolerance){
+      pushHistory();
+      const snapWorld = snapToOwnPoints(layer, pt.x, pt.y, -1);
+      const finalLocal = snapWorld ? toLocal(snapWorld.x, snapWorld.y, p.x, p.y, p.rotation) : local;
+      pts.splice(bestIdx + 1, 0, {x: finalLocal.lx, y: finalLocal.ly});
+      renderAll();
+      finalizeHistory();
+    }
+    e.preventDefault();
+    return;
+  }
 
   if(role.startsWith('wave-amp-pt:') || role.startsWith('wave-period-pt:')){
     const idx = parseInt(role.split(':')[1]);
     const which = role.startsWith('wave-amp-pt:') ? 'amp' : 'period';
-    removeWavePoint(id, which, idx);
+    removeWavePoint(layer.id, which, idx);
     e.preventDefault();
     return;
   }
@@ -2378,6 +2743,7 @@ document.addEventListener('click', function(e){
 });
 
 const SHORTCUTS = [
+  ['Pen tool (freehand sketch)', 'P'], ['Dot tool (place points)', 'D'],
   ['Undo', 'Ctrl Z'], ['Redo', 'Ctrl Y / Ctrl Shift Z'],
   ['Copy element', 'Ctrl C'], ['Cut element', 'Ctrl X'], ['Paste element', 'Ctrl V'],
   ['Duplicate element', 'Ctrl D'], ['Delete element', 'Delete / Backspace'],
@@ -2539,6 +2905,7 @@ document.addEventListener('keydown', function(e){
     const anyModalOpen = ['shortcutsModal','saveModal','loadModal'].some(id=>!document.getElementById(id).classList.contains('hidden'));
     if(anyModalOpen){ closeAllModals(); e.preventDefault(); return; }
     if(addPointMode){ toggleAddPoint(addPointLayerId, false); e.preventDefault(); return; }
+    if(penSketchMode){ toggleSketchMode(penSketchLayerId, false); e.preventDefault(); return; }
     if(selectedId){ selectedId = null; renderAll(); e.preventDefault(); }
     return;
   }
@@ -2557,6 +2924,9 @@ document.addEventListener('keydown', function(e){
   if(mod && (e.key==='d' || e.key==='D')){ if(selectedId){ duplicateLayer(selectedId, {stopPropagation(){}}); e.preventDefault(); } return; }
   if(mod && (e.key==='s' || e.key==='S')){ openSaveModal(); e.preventDefault(); return; }
   if(mod && (e.key==='o' || e.key==='O')){ openLoadModal(); e.preventDefault(); return; }
+
+  if(!mod && (e.key==='p' || e.key==='P')){ togglePenToolbar(); e.preventDefault(); return; }
+  if(!mod && (e.key==='d' || e.key==='D')){ toggleDotToolbar(); e.preventDefault(); return; }
 
   if((e.key === 'Backspace' || e.key === 'Delete')){
     if(selectedId) { deleteLayer(selectedId); e.preventDefault(); }
