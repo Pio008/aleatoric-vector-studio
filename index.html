@@ -772,7 +772,7 @@ const DEFAULTS = {
     lineType:'straight', amplitude:12, cycles:2, phase:0, decay:0, chirpRate:-1, damping:0.6,
     ampPoints:[{u:0,amp:24},{u:1,amp:1}], periodPoints:[{u:0,period:20},{u:1,period:60}], tailLength:10,
     startDirection:'up', reverseProgression:false, waveform:'sine',
-    thickness:1.8, dash:'solid', cap:'round', color:'#000000', fixedStroke:true,
+    thickness:2, dash:'solid', cap:'round', color:'#000000', fixedStroke:false,
     arrowType:'none', arrowPlacement:'end', arrowSize:14, arrowBarbAngle:24
   }
 };
@@ -892,7 +892,7 @@ function schemaFor(layer){
       {key:'height', label:'Height', type:'range', min:10, max:Math.max(canvasH,300), step:1, group:'shape'},
       {key:'cornerRadius', label:'Corner radius', type:'range', min:0, max:40, step:1, group:'shape'},
       {key:'thickness', label:'Border thickness', type:'range', min:0.5, max:60, step:0.1, group:'stroke'},
-      {key:'fixedStroke', label:'Fixed stroke', type:'checkbox', group:'stroke'},
+      {key:'fixedStroke', label:'Fixed stroke (let resize the box in MS4 without stretching the border)', type:'checkbox', group:'stroke'},
       {key:'color', label:'Ink colour', type:'color', group:'stroke'},
       ...common
     ];
@@ -937,12 +937,10 @@ function schemaFor(layer){
       fields.push({key:'startDirection', label:'First swing', type:'select', options:['up','down'], group:'shape'});
       fields.push({key:'reverseProgression', label:'Reverse (swap wide/narrow ends)', type:'checkbox', group:'shape'});
     }
-    fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:60, step:0.1, group:'stroke'});
+    fields.push({key:'thickness', label:'Stroke width', type:'range', min:0, max:60, step:0.1, group:'stroke'});
     fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted'], group:'stroke'});
     fields.push({key:'cap', label:'Line cap', type:'select', options:['butt','round','square'], group:'stroke'});
-    if(!layer.params.closed){
-      fields.push({key:'fixedStroke', label:'Fixed stroke', type:'checkbox', group:'stroke'});
-    }
+    fields.push({key:'fixedStroke', label:'Fixed stroke', type:'checkbox', group:'stroke'});
     fields.push({key:'color', label:'Ink colour', type:'color', group:'stroke'});
     if(!layer.params.closed){
       fields.push({key:'arrowType', label:'Arrowhead', type:'select', options:['none','triangle','flat','hollow','stroke'], group:'arrow'});
@@ -1915,8 +1913,14 @@ function updateParam(id, key, value, numeric, liveOnly){
   const prevThickness = layer.params.thickness;
   layer.params[key] = numeric ? parseFloat(value) : value;
   const hasArrow = layer.params.arrowType && layer.params.arrowType !== 'none';
-  if(key === 'closed' && layer.params.closed){
-    layer.params.fixedStroke = true;
+  if(key === 'closed' && layer.type === 'custom'){
+    if(layer.params.closed){
+      layer.params.fixedStroke = true;
+      layer.params.thickness = 11;
+    } else {
+      layer.params.fixedStroke = false;
+      layer.params.thickness = 2;
+    }
   }
   if(key === 'thickness' && hasArrow){
     // Keep the arrowhead's stroke matched to the new thickness, and scale its size
