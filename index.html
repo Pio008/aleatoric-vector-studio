@@ -8,97 +8,165 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper:#F3EEE2;
-    --paper-deep:#EAE3D2;
-    --ruled:#DDD3B8;
-    --panel:#FBF9F3;
-    --ink:#211D18;
-    --ink-soft:#6B6255;
-    --ink-faint:#948A78;
-    --rubric:#9C3D2E;
-    --rubric-soft:#C97361;
-    --border:#D8CFB8;
-    --good:#4B6350;
-    --period:#3D6B8A;
-    --tail:#8A6D2E;
+    /* dark application chrome — matched to MuseScore's own Dark theme + Red accent */
+    --paper:#2A2A2A;
+    --paper-deep:#1E1E1E;
+    --panel:#323232;
+    --ruled:#3D3D3D;
+    --ink:#EBEBEB;
+    --ink-soft:#AFAFAF;
+    --ink-faint:#8A8A8A;
+    --border:#474747;
+
+    /* the physical page — plain white manuscript paper, as in MuseScore's own score view */
+    --page:#FFFFFF;
+    --page-line:#E2E2E2;
+
+    /* accent — MuseScore's "Red" accent colour */
+    --rubric:#D6373A;
+    --rubric-soft:#EA6B67;
+    --good:#4B8F5B;
+    --good-bright:#7FCE93;
+    --period:#3E7FB8;
+    --tail:#B4862E;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;}
+  html,body{margin:0;padding:0;color-scheme:dark;height:100%;overflow:hidden;}
+  ::-webkit-scrollbar{width:12px;height:12px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--paper-deep); border:3px solid var(--panel); border-radius:20px;}
+  ::-webkit-scrollbar-thumb:hover{background:var(--border);}
+  *{scrollbar-color:var(--paper-deep) transparent; scrollbar-width:thin;}
   body{
     background:var(--paper);
     color:var(--ink);
     font-family:'Inter',sans-serif;
     -webkit-font-smoothing:antialiased;
+    display:flex;
+    flex-direction:column;
+    height:100vh;
   }
   .app{
-    max-width:1400px;
-    margin:0 auto;
-    padding:28px 24px 60px;
+    padding:16px 20px;
+    flex:1 1 auto;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
   }
   header{
+    flex:none;
     display:flex;
-    align-items:baseline;
+    align-items:center;
     justify-content:space-between;
     flex-wrap:wrap;
     gap:8px;
+    background:var(--panel);
     border-bottom:1px solid var(--border);
-    padding-bottom:16px;
-    margin-bottom:22px;
+    padding:9px 18px;
   }
   h1{
     font-family:'Fraunces',serif;
     font-weight:600;
-    font-size:28px;
+    font-size:17px;
     letter-spacing:-0.01em;
     margin:0;
+    color:var(--ink);
   }
   h1 em{
     font-style:italic;
-    color:var(--rubric);
+    color:var(--rubric-soft);
     font-weight:500;
   }
   .subtitle{
-    font-size:13px;
-    color:var(--ink-soft);
+    font-size:11px;
+    color:var(--ink-faint);
     font-family:'IBM Plex Mono',monospace;
-    letter-spacing:0.01em;
+    letter-spacing:0.03em;
+    text-transform:uppercase;
   }
+  /* App-shell layout: the whole workspace fills the viewport below the header/toolbar
+     and never scrolls as a page. Each column is a fixed-height flex column that scrolls
+     internally if its own content is taller than the space available — so the canvas
+     and, crucially, the Parameters panel are always fully on-screen and reachable
+     without ever having to scroll the page to find them. */
   .layout{
-    display:grid;
-    grid-template-columns:230px 1fr 300px;
-    grid-template-areas:
-      "elements canvas export"
-      "params params params";
+    display:flex;
     gap:18px;
-    align-items:start;
+    flex:1 1 auto;
+    min-height:0;
   }
-  .panel-elements{grid-area:elements;}
-  .panel-canvas{grid-area:canvas; min-width:0;}
-  .panel-export{grid-area:export;}
-  .panel-params{grid-area:params;}
+  .col-left{
+    flex:0 0 230px;
+    width:230px;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+    min-height:0;
+    overflow-y:auto;
+  }
+  .col-left .panel{flex:none;}
+  .panel-canvas{
+    flex:1 1 auto;
+    min-width:0;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+  }
+  /* Parameters docks alongside the canvas, MuseScore-Properties-style: a fixed-width
+     column that always spans the full available height, with its own internal scroll,
+     so it never depends on page length or canvas/zoom height and never needs a
+     page-scroll to reach. */
+  .panel-params{
+    flex:0 0 320px;
+    width:320px;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+  }
+  .panel-params .panel-body{
+    overflow-y:auto;
+    flex:1 1 auto;
+    min-height:0;
+  }
   @media (max-width:1080px){
+    html,body{height:auto;overflow:auto;}
+    body{display:block;}
+    .app{display:block;padding-bottom:48px;}
     .layout{
-      grid-template-columns:1fr;
-      grid-template-areas:
-        "elements"
-        "canvas"
-        "export"
-        "params";
+      display:block;
+    }
+    .col-left{
+      display:block;
+      width:auto;
+      overflow:visible;
+    }
+    .col-left .panel{margin-bottom:18px;}
+    .panel-canvas, .panel-params{
+      display:block;
+      width:auto;
+      margin-bottom:18px;
+    }
+    .panel-params .panel-body{
+      overflow-y:visible;
     }
   }
   .panel{
     background:var(--panel);
     border:1px solid var(--border);
-    border-radius:3px;
+    border-radius:5px;
+    overflow:hidden;
   }
   .panel-head{
     font-family:'IBM Plex Mono',monospace;
     font-size:11px;
     text-transform:uppercase;
-    letter-spacing:0.08em;
+    letter-spacing:0.09em;
+    font-weight:500;
     color:var(--ink-soft);
-    padding:12px 14px;
+    padding:11px 14px 11px 12px;
     border-bottom:1px solid var(--border);
+    border-left:3px solid var(--rubric);
+    background:var(--paper);
   }
   .panel-body{padding:12px 14px;}
 
@@ -118,11 +186,11 @@
     text-align:left;
     transition:border-color .15s ease, background .15s ease;
   }
-  .add-btn:hover{border-color:var(--rubric-soft); background:#fff;}
-  .add-btn.active{border-color:var(--rubric); background:#fff; box-shadow:inset 0 0 0 1px var(--rubric);}
+  .add-btn:hover{border-color:var(--rubric-soft); background:var(--paper-deep);}
+  .add-btn.active{border-color:var(--rubric); background:var(--paper-deep); box-shadow:inset 0 0 0 1px var(--rubric);}
   .add-btn.active svg{stroke:var(--rubric);}
   svg#stage.pen-mode{cursor:crosshair;}
-  .pen-hint{font-size:10px; color:var(--rubric); background:#fff; border:1px solid var(--rubric-soft); border-radius:3px; padding:3px 6px; margin:-6px 0 10px; line-height:1.3;}
+  .pen-hint{font-size:10px; color:var(--rubric-soft); background:var(--paper-deep); border:1px solid var(--rubric-soft); border-radius:3px; padding:3px 6px; margin:-6px 0 10px; line-height:1.3;}
   .pen-hint.hidden{display:none;}
   .add-btn .icon{
     width:16px;height:16px;flex:none;
@@ -143,7 +211,8 @@
   .layer-row:hover{background:var(--paper-deep);}
   .layer-row.selected{
     border-color:var(--rubric-soft);
-    background:#fff;
+    background:var(--paper-deep);
+    box-shadow:inset 0 0 0 1px var(--rubric-soft);
   }
   .layer-row .name{flex:1; overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .layer-row .tag{
@@ -156,13 +225,15 @@
     border-radius:2px;
   }
   .layer-row button{
+    display:flex;align-items:center;justify-content:center;
     background:none;border:none;cursor:pointer;
     color:var(--ink-faint);
-    font-size:13px;
     line-height:1;
-    padding:2px 4px;
+    padding:3px;
+    border-radius:3px;
   }
-  .layer-row button:hover{color:var(--rubric);}
+  .layer-row button svg{width:13px;height:13px;flex:none;display:block;}
+  .layer-row button:hover{color:var(--rubric-soft); background:var(--paper);}
   .empty-note{
     font-size:12px;color:var(--ink-faint);
     font-style:italic;
@@ -171,14 +242,46 @@
 
   /* ---- canvas area ---- */
   .canvas-toolbar{
-    display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-    padding:10px 14px;
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    padding:9px 16px;
     border-bottom:1px solid var(--border);
     font-size:12px;
     color:var(--ink-soft);
   }
-  .canvas-toolbar label{display:flex;align-items:center;gap:4px;}
-  .canvas-toolbar input[type=number]{width:56px;}
+  .canvas-toolbar label{display:flex;align-items:center;gap:5px;}
+  .canvas-toolbar label:has(input[type=checkbox]){
+    padding:5px 11px 5px 9px;
+    border:1px solid var(--border);
+    border-radius:20px;
+    background:var(--paper);
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease, color .15s ease;
+  }
+  .canvas-toolbar label:has(input[type=checkbox]:hover){border-color:var(--rubric-soft);}
+  .canvas-toolbar label:has(input[type=checkbox]:checked){
+    border-color:var(--rubric-soft);
+    background:var(--paper-deep);
+    color:var(--ink);
+  }
+  .canvas-toolbar label:has(input[type=checkbox]) svg{width:13px;height:13px;flex:none;stroke:var(--ink-faint);}
+  .canvas-toolbar label:has(input[type=checkbox]:checked) svg{stroke:var(--rubric-soft);}
+  .canvas-toolbar input[type=checkbox]{accent-color:var(--rubric); margin:0;}
+  .canvas-toolbar label:has(input[type=number]){
+    padding:5px 9px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:5px;
+  }
+  .canvas-toolbar input[type=number]{
+    width:52px;
+    background:var(--paper-deep);
+    color:var(--ink);
+    border:1px solid var(--border);
+    border-radius:3px;
+    padding:3px 5px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+  }
   .canvas-toolbar .hint{
     font-family:'IBM Plex Mono',monospace;
     font-size:10.5px;
@@ -186,21 +289,31 @@
   }
   .canvas-wrap{
     padding:34px;
-    text-align:center;
+    display:flex;
     overflow:auto;
-    max-height:550px;
+    flex:1 1 auto;
+    min-height:420px;
     background:
       repeating-linear-gradient(0deg, transparent, transparent 23px, var(--ruled) 23px, var(--ruled) 24px);
     background-size:100% 24px;
   }
   .canvas-wrap.no-grid{background:none;}
+  /* Reserves the actual on-screen footprint of the zoomed page, so the fixed-size
+     canvas-wrap above scrolls/pans to it instead of growing itself. */
+  .canvas-scale-wrap{
+    display:inline-block;
+    vertical-align:top;
+    flex:none;
+    margin:auto;
+  }
   .canvas-frame{
     position:relative;
     display:inline-block;
     text-align:left;
-    background:var(--paper);
-    box-shadow:0 1px 3px rgba(33,29,24,0.15), 0 0 0 1px var(--border);
+    background:var(--page);
+    box-shadow:0 4px 18px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,0,0,0.3);
     border-radius:2px;
+    transform-origin:top left;
   }
   svg#stage{display:block;}
   svg#stage.adding-points{cursor:crosshair;}
@@ -251,8 +364,8 @@
     color:var(--ink-soft);
     transition:background .15s ease, color .15s ease;
   }
-  .param-tab:hover{color:var(--ink); background:rgba(255,255,255,0.55);}
-  .param-tab.active{color:var(--rubric); background:#fff; box-shadow:0 1px 2px rgba(33,29,24,0.14);}
+  .param-tab:hover{color:var(--ink); background:rgba(255,255,255,0.06);}
+  .param-tab.active{color:var(--rubric-soft); background:var(--paper-deep); box-shadow:0 1px 2px rgba(0,0,0,0.3);}
   .param-tab-panel{display:none;}
   .param-tab-panel.active{
     display:grid;
@@ -289,7 +402,7 @@
     padding:2px 5px !important;
     border:1px solid var(--border);
     border-radius:2px;
-    background:#fff;
+    background:var(--paper-deep);
     font-family:'IBM Plex Mono',monospace;
     font-size:11px;
     color:var(--ink);
@@ -305,13 +418,13 @@
     padding:6px 8px;
     border:1px solid var(--border);
     border-radius:3px;
-    background:#fff;
+    background:var(--paper-deep);
     font-family:'Inter',sans-serif;
     font-size:12.5px;
     color:var(--ink);
   }
   .field input[type=color]{
-    width:100%;height:30px;border:1px solid var(--border);border-radius:3px;background:#fff;padding:2px;
+    width:100%;height:30px;border:1px solid var(--border);border-radius:3px;background:var(--paper-deep);padding:2px;
   }
   .field.checkbox{display:flex;align-items:center;gap:8px;}
   .field.checkbox label{margin:0;}
@@ -325,7 +438,7 @@
     font-family:'Inter',sans-serif; font-size:11.5px; border:1px solid var(--border); background:var(--panel);
     color:var(--ink); border-radius:3px; padding:3px 8px; cursor:pointer;
   }
-  .env-add-btn:hover{border-color:var(--rubric-soft); color:var(--rubric);}
+  .env-add-btn:hover{border-color:var(--rubric-soft); color:var(--rubric-soft);}
   .env-pt-row{display:flex; align-items:center; gap:8px; margin-bottom:6px;}
   .env-pt-idx{
     width:18px; height:18px; line-height:18px; text-align:center; border-radius:50%;
@@ -335,10 +448,12 @@
   .env-pt-field input{width:100%; min-width:0; padding:3px 5px; font-size:12px; border:1px solid var(--border); border-radius:3px; background:var(--panel); color:var(--ink);}
   .env-pt-field input:disabled{opacity:0.4;}
   .env-pt-del{
+    display:flex;align-items:center;justify-content:center;
     flex-shrink:0; width:20px; height:20px; border:1px solid var(--border); background:var(--panel);
-    color:var(--ink-soft); border-radius:3px; cursor:pointer; font-size:11px; line-height:1;
+    color:var(--ink-soft); border-radius:3px; cursor:pointer; line-height:1;
   }
-  .env-pt-del:hover:not(:disabled){border-color:var(--rubric-soft); color:var(--rubric);}
+  .env-pt-del svg{width:11px;height:11px;}
+  .env-pt-del:hover:not(:disabled){border-color:var(--rubric-soft); color:var(--rubric-soft);}
   .env-pt-del:disabled{opacity:0.25; cursor:not-allowed;}
   .divider{
     border:none;border-top:1px solid var(--border);
@@ -362,26 +477,28 @@
   /* ---- export ---- */
   .export-btns{display:flex;gap:8px;margin-bottom:10px;}
   .btn{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;
     flex:1;
     background:var(--ink);
     color:var(--paper);
     border:none;
-    border-radius:3px;
+    border-radius:4px;
     padding:9px 10px;
     font-family:'Inter',sans-serif;
     font-size:12.5px;
     font-weight:600;
     letter-spacing:0.01em;
     cursor:pointer;
-    transition:background .15s ease;
+    transition:background .15s ease, color .15s ease;
   }
-  .btn:hover{background:var(--rubric);}
+  .btn svg{width:14px;height:14px;flex:none;}
+  .btn:hover{background:var(--rubric); color:var(--ink);}
   .btn.secondary{
-    background:var(--paper);
+    background:var(--paper-deep);
     color:var(--ink);
     border:1px solid var(--border);
   }
-  .btn.secondary:hover{background:var(--paper-deep); color:var(--ink);}
+  .btn.secondary:hover{background:var(--border); color:var(--ink);}
   textarea#svgOut{
     width:100%;
     height:130px;
@@ -398,24 +515,23 @@
   .copy-flash{
     font-family:'IBM Plex Mono',monospace;
     font-size:11px;
-    color:var(--good);
+    color:var(--good-bright);
     height:14px;
     margin-top:4px;
   }
 
   /* ---- toolbar ---- */
   .toolbar{
-    display:flex;align-items:center;gap:2px;
-    padding:6px 8px;
-    margin-bottom:20px;
+    flex:none;
+    display:flex;align-items:center;gap:2px;flex-wrap:wrap;
+    padding:7px 16px;
     background:var(--panel);
-    border:1px solid var(--border);
-    border-radius:5px;
+    border-bottom:1px solid var(--border);
   }
-  .tsep{width:1px;align-self:stretch;margin:4px 5px;background:var(--border);}
+  .tsep{width:1px;align-self:stretch;margin:5px 6px;background:var(--border);}
   .tbtn{
     display:flex;align-items:center;gap:6px;
-    background:none;border:none;border-radius:3px;
+    background:none;border:none;border-radius:4px;
     padding:6px 9px;
     font-family:'Inter',sans-serif;
     font-size:12px;font-weight:500;
@@ -423,9 +539,9 @@
     cursor:pointer;
     white-space:nowrap;
   }
+  .tbtn svg{width:16px;height:16px;stroke:currentColor;flex:none;display:block;}
   .tbtn.icon-only{
-    font-size:14px;
-    padding:6px 8px;
+    padding:6px;
     line-height:1;
   }
   .tbtn:hover:not(:disabled){background:var(--paper-deep);}
@@ -479,7 +595,7 @@
     background:var(--panel);
     border:1px solid var(--border);
     border-radius:5px;
-    box-shadow:0 6px 18px rgba(33,29,24,0.15);
+    box-shadow:0 8px 24px rgba(0,0,0,0.5);
     display:flex; flex-direction:column;
     min-width:210px;
     z-index:50;
@@ -487,11 +603,14 @@
   }
   .tmenu.hidden{display:none;}
   .tmenu button{
+    display:flex; align-items:center; gap:9px;
     text-align:left; background:none; border:none; cursor:pointer;
     padding:8px 10px; border-radius:3px;
     font-family:'Inter',sans-serif; font-size:12.5px; color:var(--ink);
   }
+  .tmenu button svg{width:15px;height:15px;flex:none;stroke:var(--ink-soft);}
   .tmenu button:hover{background:var(--paper-deep);}
+  .tmenu button:hover svg{stroke:var(--rubric-soft);}
 
   /* ---- toast ---- */
   .toast-wrap{
@@ -515,7 +634,7 @@
 
   /* ---- modal ---- */
   .modal-overlay{
-    position:fixed; inset:0; background:rgba(33,29,24,0.45);
+    position:fixed; inset:0; background:rgba(0,0,0,0.65);
     display:flex; align-items:center; justify-content:center;
     z-index:150; padding:20px;
   }
@@ -527,7 +646,7 @@
     width:100%; max-width:480px;
     max-height:80vh;
     display:flex; flex-direction:column;
-    box-shadow:0 12px 30px rgba(0,0,0,0.25);
+    box-shadow:0 16px 40px rgba(0,0,0,0.5);
   }
   .modal-head{
     display:flex; align-items:center; justify-content:space-between;
@@ -536,10 +655,12 @@
     font-family:'Fraunces',serif; font-size:17px; font-weight:600;
   }
   .modal-head button{
-    background:none;border:none;font-size:18px;cursor:pointer;color:var(--ink-soft);
-    line-height:1; padding:2px 6px;
+    display:flex;align-items:center;justify-content:center;
+    background:none;border:none;cursor:pointer;color:var(--ink-soft);
+    line-height:1; padding:5px; border-radius:4px;
   }
-  .modal-head button:hover{color:var(--rubric);}
+  .modal-head button svg{width:16px;height:16px;}
+  .modal-head button:hover{color:var(--rubric-soft); background:var(--paper-deep);}
   .modal-body{padding:16px 18px; overflow-y:auto;}
   .modal-foot{padding:12px 18px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end;}
 
@@ -578,11 +699,12 @@
     cursor:pointer; font-size:11px; padding:4px 8px; color:var(--ink-soft);
     font-family:'Inter',sans-serif;
   }
-  .project-row button:hover{border-color:var(--rubric-soft); color:var(--rubric);}
+  .project-row button:hover{border-color:var(--rubric-soft); color:var(--rubric-soft);}
   .save-name-row{display:flex; gap:8px; margin-bottom:14px;}
   .save-name-row input{
     flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:3px;
     font-family:'Inter',sans-serif; font-size:13px;
+    background:var(--paper-deep); color:var(--ink);
   }
 
   .wave-readout{
@@ -602,13 +724,12 @@
     letter-spacing:0.06em; color:var(--ink-faint);
   }
   .wave-readout .v{
-    font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--rubric); margin-top:1px;
+    font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--rubric-soft); margin-top:1px;
   }
 </style>
 </head>
 <body>
-<div class="app">
-  <header>
+<header>
     <div>
       <h1>Aleatoric Vector <em>Studio</em></h1>
     </div>
@@ -627,20 +748,32 @@
       </button>
     </div>
     <div class="tsep"></div>
-    <button class="tbtn icon-only" onclick="newProject()" title="New project">✚</button>
+    <button class="tbtn icon-only" onclick="newProject()" title="New project">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5L13.5 3Z"/><path d="M13 3v5a1 1 0 0 0 1 1h5"/><path d="M12 12v6M9 15h6"/></svg>
+    </button>
     <div class="tsep"></div>
-    <button class="tbtn icon-only" id="undoBtn" onclick="undo()" title="Undo (Ctrl Z)">↶</button>
-    <button class="tbtn icon-only" id="redoBtn" onclick="redo()" title="Redo (Ctrl Y)">↷</button>
+    <button class="tbtn icon-only" id="undoBtn" onclick="undo()" title="Undo (Ctrl Z)">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3.5 15.5A8.5 8.5 0 1 0 6 8l-3 1"/></svg>
+    </button>
+    <button class="tbtn icon-only" id="redoBtn" onclick="redo()" title="Redo (Ctrl Y)">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M20.5 15.5A8.5 8.5 0 1 1 18 8l3 1"/></svg>
+    </button>
     <div class="tsep"></div>
-    <button class="tbtn icon-only" onclick="openSaveModal()" title="Save project (Ctrl S)">💾</button>
-    <button class="tbtn icon-only" onclick="openLoadModal()" title="Open project (Ctrl O)">📂</button>
+    <button class="tbtn icon-only" onclick="openSaveModal()" title="Save project (Ctrl S)">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l3 3v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 19V4.5A1.5 1.5 0 0 1 5 3Z"/><path d="M7.5 3v5h7V3"/><path d="M7 21v-7h10v7"/></svg>
+    </button>
+    <button class="tbtn icon-only" onclick="openLoadModal()" title="Open project (Ctrl O)">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a1.5 1.5 0 0 1 1.5-1.5h4.4a1.5 1.5 0 0 1 1.2.6l1 1.4a1.5 1.5 0 0 0 1.2.6H19a1.5 1.5 0 0 1 1.5 1.5v8.3A1.7 1.7 0 0 1 18.8 20H5.2A1.7 1.7 0 0 1 3.5 18.3V7Z"/></svg>
+    </button>
     <div class="tsep"></div>
     <div class="tmenu-wrap">
-      <button class="tbtn icon-only" onclick="toggleMoreMenu(event)" title="More">⋯</button>
+      <button class="tbtn icon-only" onclick="toggleMoreMenu(event)" title="More">
+        <svg viewBox="0 0 24 24" stroke="none"><circle cx="5" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="19" cy="12" r="1.7" fill="currentColor"/></svg>
+      </button>
       <div class="tmenu hidden" id="moreMenu">
-        <button onclick="exportProjectFile(); closeMoreMenu();">⇩ Export project (.json)</button>
-        <button onclick="document.getElementById('importFile').click(); closeMoreMenu();">⇧ Import project (.json)</button>
-        <button onclick="openShortcutsModal(); closeMoreMenu();">⌨ Keyboard shortcuts</button>
+        <button onclick="exportProjectFile(); closeMoreMenu();"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4.5 19h15"/></svg>Export project (.json)</button>
+        <button onclick="document.getElementById('importFile').click(); closeMoreMenu();"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M4.5 19h15"/></svg>Import project (.json)</button>
+        <button onclick="openShortcutsModal(); closeMoreMenu();"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="1.8"/><path d="M6.7 10.2h.01M10 10.2h.01M13.3 10.2h.01M16.6 10.2h.01M8 13.6h8"/></svg>Keyboard shortcuts</button>
       </div>
     </div>
     <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importProjectFile(this.files[0])">
@@ -648,8 +781,9 @@
     <div class="autosave-indicator" id="autosaveIndicator" title="Autosaves to this browser as you work"><span class="autosave-dot" id="autosaveDot"></span>Autosaved</div>
   </div>
 
-
+<div class="app">
   <div class="layout">
+    <div class="col-left">
     <div class="panel panel-elements">
       <div class="panel-head">Elements</div>
       <div class="panel-body">
@@ -675,36 +809,6 @@
       </div>
     </div>
 
-    <div class="panel panel-canvas">
-      <div class="mode-banner hidden" id="modeBanner">
-        <span id="modeBannerText"></span>
-        <button class="exit" id="modeBannerExit">Esc to exit</button>
-      </div>
-      <div class="canvas-toolbar">
-        <label><input type="checkbox" id="gridToggle" checked onchange="toggleGrid()"> Ruled guide</label>
-        <label style="margin-left:8px;"><input type="checkbox" id="snapGridToggle" checked> Snap Grid (10px)</label>
-        <label><input type="checkbox" id="snapElementToggle" checked> Snap Ends</label>
-        <label style="margin-left:8px;">Canvas W <input type="number" id="canvasW" value="1000" min="40" max="2000" onchange="resizeCanvasFromInputs()"></label>
-        <label>Canvas H <input type="number" id="canvasH" value="160" min="40" max="2000" onchange="resizeCanvasFromInputs()"></label>
-        <label>Zoom <input type="range" id="zoom" min="0.5" max="4" step="0.1" value="1.0" oninput="applyZoom()"></label>
-      </div>
-      <div class="canvas-toolbar" id="museGridToolbar">
-        <label><input type="checkbox" id="staffGridToggle" onchange="renderStage()"> MuseScore grid</label>
-        <label style="margin-left:8px;">sp (px) <input type="number" id="spSize" value="20" min="2" max="200" step="0.5" oninput="renderStage()"></label>
-        <label>Staff lines <input type="number" id="staffLineCount" value="5" min="1" max="12" step="1" oninput="renderStage()"></label>
-        <label>Staves <input type="number" id="staffCount" value="1" min="1" max="8" step="1" oninput="renderStage()"></label>
-        <label>Staff distance (sp) <input type="number" id="staffDistanceSp" value="7" min="1" max="40" step="0.5" oninput="renderStage()"></label>
-        <label>Bar guide (sp) <input type="number" id="barWidthSp" value="9.41" min="0.5" max="200" step="0.5" oninput="renderStage()"></label>
-        <span class="hint" id="gridMmHint"></span>
-      </div>
-      <div class="canvas-wrap" id="canvasWrap">
-        <div class="canvas-frame">
-          <svg id="stage" xmlns="http://www.w3.org/2000/svg"></svg>
-          <div class="canvas-resize-handle" id="canvasResizeHandle" title="Drag to resize canvas"></div>
-        </div>
-      </div>
-    </div>
-
     <div class="panel panel-export">
       <div class="panel-head">Export</div>
       <div class="panel-body">
@@ -722,6 +826,39 @@
         <textarea id="svgOut" readonly></textarea>
       </div>
     </div>
+    </div>
+
+    <div class="panel panel-canvas">
+      <div class="mode-banner hidden" id="modeBanner">
+        <span id="modeBannerText"></span>
+        <button class="exit" id="modeBannerExit">Esc to exit</button>
+      </div>
+      <div class="canvas-toolbar">
+        <label><input type="checkbox" id="gridToggle" checked onchange="toggleGrid()"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> Ruled guide</label>
+        <label><input type="checkbox" id="snapGridToggle" checked><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14V9a6 6 0 0 1 12 0v5"/><path d="M6 14a3 3 0 0 0 6 0M12 14a3 3 0 0 0 6 0"/><path d="M6 9H2.5M21.5 9H18"/></svg> Snap Grid (10px)</label>
+        <label><input type="checkbox" id="snapElementToggle" checked><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14V9a6 6 0 0 1 12 0v5"/><path d="M6 14a3 3 0 0 0 6 0M12 14a3 3 0 0 0 6 0"/><path d="M6 9H2.5M21.5 9H18"/></svg> Snap Ends</label>
+        <label>Canvas W <input type="number" id="canvasW" value="300" min="40" max="2000" onchange="resizeCanvasFromInputs()"></label>
+        <label>Canvas H <input type="number" id="canvasH" value="250" min="40" max="2000" onchange="resizeCanvasFromInputs()"></label>
+        <label>Zoom <input type="range" id="zoom" min="0.5" max="4" step="0.1" value="2.25" oninput="onZoomSliderInput(this)"></label>
+      </div>
+      <div class="canvas-toolbar" id="museGridToolbar">
+        <label><input type="checkbox" id="staffGridToggle" onchange="renderStage()"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> MuseScore grid</label>
+        <label>sp (px) <input type="number" id="spSize" value="20" min="2" max="200" step="0.5" oninput="renderStage()"></label>
+        <label>Staff lines <input type="number" id="staffLineCount" value="5" min="1" max="12" step="1" oninput="renderStage()"></label>
+        <label>Staves <input type="number" id="staffCount" value="1" min="1" max="8" step="1" oninput="renderStage()"></label>
+        <label>Staff distance (sp) <input type="number" id="staffDistanceSp" value="7" min="1" max="40" step="0.5" oninput="renderStage()"></label>
+        <label>Bar guide (sp) <input type="number" id="barWidthSp" value="9.41" min="0.5" max="200" step="0.5" oninput="renderStage()"></label>
+        <span class="hint" id="gridMmHint"></span>
+      </div>
+      <div class="canvas-wrap" id="canvasWrap">
+        <div class="canvas-scale-wrap" id="canvasScaleWrap">
+          <div class="canvas-frame">
+            <svg id="stage" xmlns="http://www.w3.org/2000/svg"></svg>
+            <div class="canvas-resize-handle" id="canvasResizeHandle" title="Drag to resize canvas"></div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="panel panel-params">
       <div class="panel-head" id="paramTitle">Parameters</div>
@@ -735,7 +872,7 @@
 <!-- Shortcuts modal -->
 <div class="modal-overlay hidden" id="shortcutsModal" onclick="if(event.target===this) closeModal('shortcutsModal')">
   <div class="modal">
-    <div class="modal-head">Keyboard shortcuts<button onclick="closeModal('shortcutsModal')">✕</button></div>
+    <div class="modal-head">Keyboard shortcuts<button onclick="closeModal('shortcutsModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg></button></div>
     <div class="modal-body">
       <div class="shortcut-list" id="shortcutList"></div>
     </div>
@@ -745,7 +882,7 @@
 <!-- Save As modal -->
 <div class="modal-overlay hidden" id="saveModal" onclick="if(event.target===this) closeModal('saveModal')">
   <div class="modal">
-    <div class="modal-head">Save project<button onclick="closeModal('saveModal')">✕</button></div>
+    <div class="modal-head">Save project<button onclick="closeModal('saveModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg></button></div>
     <div class="modal-body">
       <div class="save-name-row">
         <input type="text" id="saveNameInput" placeholder="Project name" onkeydown="if(event.key==='Enter') doSaveProject()">
@@ -759,7 +896,7 @@
 <!-- Open/Load modal -->
 <div class="modal-overlay hidden" id="loadModal" onclick="if(event.target===this) closeModal('loadModal')">
   <div class="modal">
-    <div class="modal-head">Open saved project<button onclick="closeModal('loadModal')">✕</button></div>
+    <div class="modal-head">Open saved project<button onclick="closeModal('loadModal')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg></button></div>
     <div class="modal-body">
       <div id="loadModalList"></div>
     </div>
@@ -774,7 +911,7 @@
 let layers = [];
 let selectedId = null;
 let uid = 1;
-let canvasW = 280, canvasH = 160;
+let canvasW = 300, canvasH = 250;
 let dragState = null;
 let lastClickInfo = null; // {id, role, time} — used to detect double-clicks manually (see onStageMouseDown)
 let canvasDragState = null;
@@ -804,6 +941,18 @@ const PROJECTS_KEY = 'aleatoricStudio.projects';
 let autosaveTimer = null;
 let autosaveArmed = false;
 
+// Small line-icon library for JS-generated UI (layer rows, clipboard actions) —
+// kept in one place so every icon shares the same stroke weight as the toolbar.
+const ICONS = {
+  up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15 12 9 6 15"/></svg>',
+  down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+  duplicate: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="8.5" y="8.5" width="12" height="12" rx="2"/><path d="M4.5 15.5v-10a2 2 0 0 1 2-2h10"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.5h17"/><path d="M8.5 6.5V4.8a1.8 1.8 0 0 1 1.8-1.8h3.4a1.8 1.8 0 0 1 1.8 1.8v1.7"/><path d="M18 6.5 17.1 19a2 2 0 0 1-2 1.9H8.9a2 2 0 0 1-2-1.9L6 6.5"/><path d="M10.2 11v6M13.8 11v6"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18"/><path d="M6 6l12 12"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="8.5" y="8.5" width="12" height="12" rx="2"/><path d="M4.5 15.5v-10a2 2 0 0 1 2-2h10"/></svg>',
+  pasteInto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="3.2" width="10" height="4" rx="1"/><path d="M8 5.2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-12a2 2 0 0 0-2-2h-2"/><path d="M9 13.5l2.3 2.3L15.5 11"/></svg>'
+};
+
 const DEFAULTS = {
   line: {
     lineType:'straight', x:40, y:80, rotation:0,
@@ -812,7 +961,7 @@ const DEFAULTS = {
     ampPoints:[{u:0,amp:40},{u:1,amp:1}], periodPoints:[{u:0,period:28},{u:1,period:100}], tailLength:20,
     startDirection:'up', reverseProgression:false, waveform:'sine',
     thickness:4.2, dash:'solid', cap:'round', color:'#000000',
-    fixedStroke:false, arrowType:'stroke', arrowPlacement:'end', arrowSize:14, arrowBarbAngle:24, arrowStrokeWidth:4.2, arrowStrokeColor:'#000000', arrowFillColor:'#000000'
+    fixedStroke:false, arrowType:'stroke', arrowPlacement:'end', arrowSize:14, arrowBarbAngle:24, arrowFillColor:'#000000'
   },
   box: {
     x:40, y:30, rotation:0,
@@ -914,8 +1063,8 @@ function getSnapCoordinates(targetX, targetY, skipId) {
 }
 
 /* ============================= SCHEMAS ============================= */
-const GROUP_LABELS = { shape:'Shape', stroke:'Stroke', arrow:'Arrowhead', position:'Position & rotation' };
-const SUBHEADS = { waveform:'Direction', arrowPlacement:'Placement', arrowStrokeWidth:'Arrow style' };
+const GROUP_LABELS = { shape:'Shape', wave:'Wave', stroke:'Stroke', arrow:'Arrowhead', position:'Position & rotation' };
+const SUBHEADS = { waveform:'Direction', arrowPlacement:'Placement', arrowFillColor:'Arrow style' };
 function schemaFor(layer){
   const common = [
     {key:'x', label:'X', type:'range', min:0, max:canvasW, step:1, group:'position'},
@@ -929,25 +1078,25 @@ function schemaFor(layer){
       {key:'length', label:'Length', type:'range', min:10, max:Math.max(canvasW,1200), step:1, group:'shape'}
     ];
     if(t!=='straight' && t!=='dampedWave'){
-      fields.push({key:'amplitude', label:'Amplitude', type:'range', min:0, max:100, step:1, group:'shape'});
+      fields.push({key:'amplitude', label:'Amplitude', type:'range', min:0, max:100, step:1, group:'wave'});
     }
     if(t==='wavy'||t==='zigzag'||t==='chirp'){
-      fields.push({key:'cycles', label:'Cycles', type:'range', min:0.5, max:60, step:0.5, group:'shape'});
-      fields.push({key:'phase', label:'Phase°', type:'range', min:0, max:360, step:5, group:'shape'});
+      fields.push({key:'cycles', label:'Cycles', type:'range', min:0.5, max:60, step:0.5, group:'wave'});
+      fields.push({key:'phase', label:'Phase°', type:'range', min:0, max:360, step:5, group:'wave'});
     }
     if(t==='wavy'||t==='zigzag'){
-      fields.push({key:'decay', label:'Dissipation (1 = flat end)', type:'range', min:0, max:1, step:0.01, group:'shape'});
+      fields.push({key:'decay', label:'Dissipation (1 = flat end)', type:'range', min:0, max:1, step:0.01, group:'wave'});
     }
     if(t==='chirp'){
-      fields.push({key:'chirpRate', label:'Chirp rate', type:'range', min:-3, max:3, step:0.1, group:'shape'});
-      fields.push({key:'damping', label:'Damping', type:'range', min:-2, max:2, step:0.1, group:'shape'});
+      fields.push({key:'chirpRate', label:'Chirp rate', type:'range', min:-3, max:3, step:0.1, group:'wave'});
+      fields.push({key:'damping', label:'Damping', type:'range', min:-2, max:2, step:0.1, group:'wave'});
     }
     if(t==='dampedWave'){
-      fields.push({key:'ampPoints', label:'Amplitude & wavelength envelope', type:'envelopeEditor', group:'shape'});
-      fields.push({key:'tailLength', label:'Straight tail', type:'range', min:0, max:200, step:1, group:'shape'});
-      fields.push({key:'waveform', label:'Wave shape', type:'select', options:['sine','zigzag'], group:'shape'});
-      fields.push({key:'startDirection', label:'First swing', type:'select', options:['up','down'], group:'shape'});
-      fields.push({key:'reverseProgression', label:'Reverse (swap wide/narrow ends)', type:'checkbox', group:'shape'});
+      fields.push({key:'ampPoints', label:'Amplitude & wavelength envelope', type:'envelopeEditor', group:'wave'});
+      fields.push({key:'tailLength', label:'Straight tail', type:'range', min:0, max:200, step:1, group:'wave'});
+      fields.push({key:'waveform', label:'Wave shape', type:'select', options:['sine','zigzag'], group:'wave'});
+      fields.push({key:'startDirection', label:'First swing', type:'select', options:['up','down'], group:'wave'});
+      fields.push({key:'reverseProgression', label:'Reverse (swap wide/narrow ends)', type:'checkbox', group:'wave'});
     }
     fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:60, step:0.1, group:'stroke'});
     fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted'], group:'stroke'});
@@ -960,8 +1109,6 @@ function schemaFor(layer){
       if(layer.params.arrowType==='stroke' || layer.params.arrowType==='hollow'){
         fields.push({key:'arrowBarbAngle', label:'Barb angle°', type:'range', min:4, max:70, step:1, group:'arrow'});
       }
-      fields.push({key:'arrowStrokeWidth', label:'Stroke width', type:'range', min:0.2, max:60, step:0.1, group:'arrow'});
-      fields.push({key:'arrowStrokeColor', label:'Stroke colour', type:'color', group:'arrow'});
       fields.push({key:'arrowFillColor', label:'Fill colour', type:'color', group:'arrow'});
     }
     return [...fields, ...common];
@@ -997,25 +1144,25 @@ function schemaFor(layer){
       {key:'closed', label:'Close shape', type:'checkbox', group:'shape'}
     ];
     if(t!=='straight' && t!=='dampedWave' && t!=='smooth'){
-      fields.push({key:'amplitude', label:'Amplitude', type:'range', min:0, max:100, step:1, group:'shape'});
+      fields.push({key:'amplitude', label:'Amplitude', type:'range', min:0, max:100, step:1, group:'wave'});
     }
     if(t==='wavy'||t==='zigzag'||t==='chirp'){
-      fields.push({key:'cycles', label:'Cycles per segment', type:'range', min:0.5, max:12, step:0.5, group:'shape'});
-      fields.push({key:'phase', label:'Phase°', type:'range', min:0, max:360, step:5, group:'shape'});
+      fields.push({key:'cycles', label:'Cycles per segment', type:'range', min:0.5, max:12, step:0.5, group:'wave'});
+      fields.push({key:'phase', label:'Phase°', type:'range', min:0, max:360, step:5, group:'wave'});
     }
     if(t==='wavy'||t==='zigzag'){
-      fields.push({key:'decay', label:'Dissipation (1 = flat end)', type:'range', min:0, max:1, step:0.01, group:'shape'});
+      fields.push({key:'decay', label:'Dissipation (1 = flat end)', type:'range', min:0, max:1, step:0.01, group:'wave'});
     }
     if(t==='chirp'){
-      fields.push({key:'chirpRate', label:'Chirp rate', type:'range', min:-3, max:3, step:0.1, group:'shape'});
-      fields.push({key:'damping', label:'Damping', type:'range', min:-2, max:2, step:0.1, group:'shape'});
+      fields.push({key:'chirpRate', label:'Chirp rate', type:'range', min:-3, max:3, step:0.1, group:'wave'});
+      fields.push({key:'damping', label:'Damping', type:'range', min:-2, max:2, step:0.1, group:'wave'});
     }
     if(t==='dampedWave'){
-      fields.push({key:'ampPoints', label:'Amplitude & wavelength envelope', type:'envelopeEditor', group:'shape'});
-      fields.push({key:'tailLength', label:'Straight tail (per segment)', type:'range', min:0, max:200, step:1, group:'shape'});
-      fields.push({key:'waveform', label:'Wave shape', type:'select', options:['sine','zigzag'], group:'shape'});
-      fields.push({key:'startDirection', label:'First swing', type:'select', options:['up','down'], group:'shape'});
-      fields.push({key:'reverseProgression', label:'Reverse (swap wide/narrow ends)', type:'checkbox', group:'shape'});
+      fields.push({key:'ampPoints', label:'Amplitude & wavelength envelope', type:'envelopeEditor', group:'wave'});
+      fields.push({key:'tailLength', label:'Straight tail (per segment)', type:'range', min:0, max:200, step:1, group:'wave'});
+      fields.push({key:'waveform', label:'Wave shape', type:'select', options:['sine','zigzag'], group:'wave'});
+      fields.push({key:'startDirection', label:'First swing', type:'select', options:['up','down'], group:'wave'});
+      fields.push({key:'reverseProgression', label:'Reverse (swap wide/narrow ends)', type:'checkbox', group:'wave'});
     }
     fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:60, step:0.1, group:'stroke'});
     fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted'], group:'stroke'});
@@ -1032,8 +1179,6 @@ function schemaFor(layer){
         if(layer.params.arrowType==='stroke' || layer.params.arrowType==='hollow'){
           fields.push({key:'arrowBarbAngle', label:'Barb angle°', type:'range', min:4, max:70, step:1, group:'arrow'});
         }
-        fields.push({key:'arrowStrokeWidth', label:'Stroke width', type:'range', min:0.2, max:60, step:0.1, group:'arrow'});
-        fields.push({key:'arrowStrokeColor', label:'Stroke colour', type:'color', group:'arrow'});
         fields.push({key:'arrowFillColor', label:'Fill colour', type:'color', group:'arrow'});
       }
     }
@@ -1249,8 +1394,8 @@ function renderArrowheads(pts, p, angleStart, angleEnd) {
   let out = '';
   const placement = p.arrowPlacement || 'end';
   const size = p.arrowSize || 14;
-  const strokeW = p.arrowStrokeWidth || p.thickness;
-  const colors = { stroke: p.arrowStrokeColor || p.color, fill: p.arrowFillColor || p.color };
+  const strokeW = p.thickness;
+  const colors = { stroke: p.color, fill: p.arrowFillColor || p.color };
   const barbAngle = p.arrowBarbAngle;
   const fixedStroke = p.fixedStroke;
 
@@ -1712,10 +1857,10 @@ function buildLayerList(){
     <div class="layer-row ${l.id===selectedId?'selected':''}" onclick="selectLayer('${l.id}')">
       <span class="tag">${l.type}</span>
       <span class="name">${l.name}</span>
-      <button onclick="moveLayer('${l.id}',1,event)">↑</button>
-      <button onclick="moveLayer('${l.id}',-1,event)">↓</button>
-      <button onclick="duplicateLayer('${l.id}',event)">⧉</button>
-      <button onclick="deleteLayer('${l.id}',event)">✕</button>
+      <button onclick="moveLayer('${l.id}',1,event)" title="Move up">${ICONS.up}</button>
+      <button onclick="moveLayer('${l.id}',-1,event)" title="Move down">${ICONS.down}</button>
+      <button onclick="duplicateLayer('${l.id}',event)" title="Duplicate">${ICONS.duplicate}</button>
+      <button onclick="deleteLayer('${l.id}',event)" title="Delete">${ICONS.trash}</button>
     </div>
   `).join('');
 }
@@ -1781,7 +1926,7 @@ function envelopePointRowHtml(layer, which, idx, pts){
         <input type="number" min="0" max="${valMax}" step="0.5" value="${pt[valKey]}"
           onchange="updateWavePoint('${layer.id}','${which}',${idx},'${valKey}', this.value)">
       </label>
-      <button type="button" class="env-pt-del" ${isEndpoint?'disabled title="Endpoints cannot be removed"':`onclick="removeWavePoint('${layer.id}','${which}',${idx})" title="Remove point"`}>✕</button>
+      <button type="button" class="env-pt-del" ${isEndpoint?'disabled title="Endpoints cannot be removed"':`onclick="removeWavePoint('${layer.id}','${which}',${idx})" title="Remove point"`}>${ICONS.x}</button>
     </div>`;
 }
 
@@ -1933,11 +2078,11 @@ function buildParamPanel(){
   // Clipboard Operations Bar
   const isClipboardEmpty = parameterClipboard === null;
   const pasteLabel = (!isClipboardEmpty && parameterClipboard.sourceType !== layer.type)
-    ? `📥 Paste style (from ${parameterClipboard.sourceType})`
-    : '📥 Paste style';
+    ? `${ICONS.pasteInto} Paste style (from ${parameterClipboard.sourceType})`
+    : `${ICONS.pasteInto} Paste style`;
   const clipboardHtml = `
     <div style="display:flex; gap:8px; margin-bottom:14px; background:var(--paper-deep); padding:8px; border-radius:3px; border:1px solid var(--border);">
-      <button class="btn secondary" style="font-size:12px; padding:6px 10px; flex:1;" onclick="copyElementParams('${layer.id}')" title="Copies this element's stroke &amp; shape settings — not its position">📋 Copy style</button>
+      <button class="btn secondary" style="font-size:12px; padding:6px 10px; flex:1;" onclick="copyElementParams('${layer.id}')" title="Copies this element's stroke &amp; shape settings — not its position">${ICONS.copy} Copy style</button>
       <button class="btn" style="font-size:12px; padding:6px 10px; flex:1;" ${isClipboardEmpty ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} onclick="pasteElementParams('${layer.id}')" title="Applies the copied style to this element">${pasteLabel}</button>
     </div>
   `;
@@ -2013,10 +2158,10 @@ function updateToolModeButtons(){
   if(!banner || !bannerText) return;
   if(penSketchMode){
     banner.className = 'mode-banner pen';
-    bannerText.textContent = '✏️ Pen mode — draw on the canvas, release to smooth it into a line';
+    bannerText.textContent = 'Pen mode — draw on the canvas, release to smooth it into a line';
   } else if(addPointMode){
     banner.className = 'mode-banner dot';
-    bannerText.textContent = '⏺ Dot mode — click the canvas to place points';
+    bannerText.textContent = 'Dot mode — click the canvas to place points';
   } else {
     banner.className = 'mode-banner hidden';
   }
@@ -2085,10 +2230,7 @@ function updateParam(id, key, value, numeric, liveOnly){
     // by the same ratio so it stays visually proportionate — not too big or too small
     // relative to the line — regardless of what thickness the line is set to.
     const ratio = prevThickness ? (layer.params.arrowSize || 14) / prevThickness : 3.3;
-    layer.params.arrowStrokeWidth = layer.params.thickness;
     layer.params.arrowSize = +(layer.params.thickness * ratio).toFixed(1);
-  } else if(key === 'arrowType' && hasArrow){
-    layer.params.arrowStrokeWidth = layer.params.thickness;
   }
   if(liveOnly){
     renderStage();
@@ -2173,9 +2315,18 @@ function staffGridSvg(){
 function renderStage(){
   const stage = document.getElementById('stage');
   stage.setAttribute('viewBox', `0 0 ${canvasW} ${canvasH}`);
+  // The stage's true size always matches the canvas dimensions — zoom never touches this,
+  // so the underlying design/export size is completely unaffected by the view scale.
+  stage.setAttribute('width', canvasW);
+  stage.setAttribute('height', canvasH);
   const zoom = parseFloat(document.getElementById('zoom').value || 1.0);
-  stage.setAttribute('width', canvasW * zoom);
-  stage.setAttribute('height', canvasH * zoom);
+  const scaleWrap = document.getElementById('canvasScaleWrap');
+  if(scaleWrap){
+    scaleWrap.style.width = (canvasW * zoom) + 'px';
+    scaleWrap.style.height = (canvasH * zoom) + 'px';
+  }
+  const frame = document.querySelector('.canvas-frame');
+  if(frame) frame.style.transform = `scale(${zoom})`;
   const selLayer = layers.find(l=>l.id===selectedId);
   stage.innerHTML = staffGridSvg() + layers.map(l=>renderLayerSvg(l, true)).join('\n') + (selLayer ? selectionOverlaySvg(selLayer) : '');
 }
@@ -2192,11 +2343,64 @@ function renderAll(){
 
 function resizeCanvasFromInputs(){
   pushHistory();
-  canvasW = parseInt(document.getElementById('canvasW').value) || 1000;
-  canvasH = parseInt(document.getElementById('canvasH').value) || 160;
+  canvasW = parseInt(document.getElementById('canvasW').value) || 300;
+  canvasH = parseInt(document.getElementById('canvasH').value) || 250;
   renderAll();
 }
 function applyZoom(){ renderStage(); }
+
+/* Anchored zoom: keeps whatever content point is under (clientX, clientY) — or the
+   centre of the canvas, if no point is given — visually still under that same point
+   after the zoom changes, instead of zooming from a corner and drifting the page away
+   from view. Used by both the zoom slider and Ctrl/Cmd + mouse-wheel zoom.
+
+   canvas-wrap centres its content with flexbox (align-items/justify-content + margin:auto
+   on the child), which — unlike text-align:center — keeps scrollLeft/scrollTop behaving
+   predictably even while the canvas is being centred or is larger than the viewport. */
+let currentZoom = 2.25;
+function zoomAtPoint(newZoom, clientX, clientY){
+  const wrap = document.getElementById('canvasWrap');
+  const scaleWrap = document.getElementById('canvasScaleWrap');
+  const zoomInput = document.getElementById('zoom');
+  // NOTE: oldZoom must come from our own tracked state, not from zoomInput.value —
+  // native range inputs update their .value to the new position before the 'input'
+  // event fires, so re-reading zoomInput.value here would always equal newZoom and
+  // this function would silently no-op on every slider drag.
+  const oldZoom = currentZoom;
+  newZoom = Math.round(Math.min(4, Math.max(0.5, newZoom)) * 1000) / 1000;
+  if(Math.abs(newZoom - oldZoom) < 0.001) return;
+
+  const scaleRect = scaleWrap.getBoundingClientRect();
+
+  // Default anchor: centre of the canvas as currently visible on screen.
+  if(clientX == null) clientX = scaleRect.left + scaleRect.width / 2;
+  if(clientY == null) clientY = scaleRect.top + scaleRect.height / 2;
+
+  // Where that screen point falls within the (unscaled) canvas content, in content px,
+  // measured from the canvas's own on-screen top-left corner.
+  const contentX = (clientX - scaleRect.left) / oldZoom;
+  const contentY = (clientY - scaleRect.top) / oldZoom;
+
+  currentZoom = newZoom;
+  zoomInput.value = newZoom;
+  renderStage();
+
+  // After re-rendering, the canvas has a new size and its on-screen top-left corner has
+  // likely moved (resize + flex re-centring). Read that fresh, then adjust scroll by
+  // exactly the amount needed to put the same content point back under (clientX, clientY).
+  const newScaleRect = scaleWrap.getBoundingClientRect();
+  wrap.scrollLeft += (newScaleRect.left + contentX * newZoom) - clientX;
+  wrap.scrollTop += (newScaleRect.top + contentY * newZoom) - clientY;
+}
+function onZoomSliderInput(el){
+  zoomAtPoint(parseFloat(el.value) || 1, null, null);
+}
+function onCanvasWheelZoom(e){
+  if(!(e.ctrlKey || e.metaKey)) return; // let normal scrolling/pinch happen otherwise
+  e.preventDefault();
+  const factor = Math.exp(-e.deltaY * 0.0015);
+  zoomAtPoint(currentZoom * factor, e.clientX, e.clientY);
+}
 function toggleGrid(){ document.getElementById('canvasWrap').classList.toggle('no-grid', !document.getElementById('gridToggle').checked); }
 
 function copySvg(){
@@ -2953,6 +3157,8 @@ document.addEventListener('keyup', function(e){
   addLayer('line');
   undoStack = []; redoStack = []; updateHistoryButtons();
   renderAll();
+  const canvasWrapEl = document.getElementById('canvasWrap');
+  if(canvasWrapEl) canvasWrapEl.addEventListener('wheel', onCanvasWheelZoom, {passive:false});
 })();
 </script>
 </body>
