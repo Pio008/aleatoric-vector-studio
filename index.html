@@ -338,6 +338,10 @@
   .handle.amp-mid:hover{opacity:0.9;}
   .handle.period{fill:var(--period);}
   .handle.tail{fill:var(--tail);}
+  .handle.phase{fill:var(--rubric-soft);}
+  .handle.cycles{fill:var(--period);}
+  .handle.decay{fill:var(--tail);}
+  .handle.chirprate{fill:var(--rubric);}
   .handle.pt{cursor:move;}
   .handle[data-role="resize-e"], .handle[data-role="line-end"]{cursor:ew-resize;}
   .handle[data-role="resize-s"], .handle[data-role="line-amp"]{cursor:ns-resize;}
@@ -345,6 +349,10 @@
   .handle[data-role^="wave-amp-pt"]{cursor:move;}
   .handle[data-role^="wave-period-pt"]{cursor:move;}
   .handle[data-role="wave-tail"]{cursor:ew-resize;}
+  .handle[data-role="line-phase"]{cursor:ns-resize;}
+  .handle[data-role="line-cycles"]{cursor:ew-resize;}
+  .handle[data-role="line-decay"]{cursor:ns-resize;}
+  .handle[data-role="line-chirprate"]{cursor:ew-resize;}
 
   /* ---- param controls ---- */
   .param-tabs{
@@ -1333,18 +1341,48 @@ function computeDampedWaveStats(p){
 }
 
 function zigzagPoints(p){
-  const segments = Math.max(2, Math.round(p.cycles*2));
-  const pts = [{x:0,y:0}];
+  // Sampled the same way "wavy" is (an angle that advances with t, plus a phase offset
+  // added straight into that angle), so the "Phase°" slider actually rotates the zigzag
+  // the way it already does for the sine-based wave types. Corners are placed at the
+  // triangle wave's true peaks/troughs (u = n+0.25 / n+0.75 in cycles) rather than at
+  // fixed evenly-spaced indices, so a non-zero phase correctly shifts where those
+  // corners land — including moving the start/end points off the baseline, exactly like
+  // a phase-shifted sine does.
   const decayFactor = p.decay !== undefined ? p.decay : 0;
-  for(let i=1; i<segments; i++){
-    const t = i/segments;
-    const x = t*p.length;
-    const amplitudeEnvelope = p.amplitude * (1 - t * decayFactor);
-    const y = (i%2===1) ? amplitudeEnvelope : -amplitudeEnvelope;
-    pts.push({x,y});
+  const cycles = Math.max(0.0001, p.cycles || 0);
+  const phaseFrac = (p.phase || 0) / 360;
+  const length = p.length;
+
+  const uStart = phaseFrac;
+  const uEnd = cycles + phaseFrac;
+  const nLow = Math.floor(uStart) - 1;
+  const nHigh = Math.ceil(uEnd) + 1;
+
+  const vertexUs = [];
+  for(let n = nLow; n <= nHigh; n++){
+    for(const f of [0.25, 0.75]){
+      const u = n + f;
+      if(u > uStart + 1e-9 && u < uEnd - 1e-9) vertexUs.push(u);
+    }
   }
-  pts.push({x:p.length,y:0});
-  return pts;
+  vertexUs.sort((a,b)=>a-b);
+
+  const us = [uStart, ...vertexUs, uEnd];
+  return us.map(u=>{
+    const t = (u - uStart) / cycles;
+    const x = t * length;
+    const amplitudeEnvelope = p.amplitude * (1 - t * decayFactor);
+    const y = amplitudeEnvelope * triangleWave(2*Math.PI*u);
+    return {x, y};
+  });
+}
+
+// Height of the amplitude envelope at the tail end (t=1) — independent of the
+// oscillation itself. Drives the decay/damping handle's position and drag math.
+function waveEnvelopeEnd(p){
+  if(p.lineType==='chirp') return p.amplitude * Math.exp(-(p.damping||0));
+  const decayFactor = p.decay !== undefined ? p.decay : 0;
+  return p.amplitude * (1 - decayFactor);
 }
 
 function dashArrayFor(style, thickness){
@@ -1750,6 +1788,38 @@ function selectionOverlaySvg(layer){
       handles += handleRect(layer.id,'wave-tail', waveLength-5, PERIOD_LANE_TOP+PERIOD_LANE_H+15, 'tail', 'Straight tail length — double-click the wave/lane above to add points');
     } else if(p.lineType!=='straight'){
       handles += handleRect(layer.id,'line-amp', p.length/2-5, -amp-5, 'amp', 'Amplitude');
+      if(p.lineType==='wavy' || p.lineType==='zigzag' || p.lineType==='chirp'){
+        // Phase — fixed just off the start of the line, at the exact point where
+        // the curve itself begins: amplitude*sin/triangleWave(phase), the same
+        // un-negated formula the wave is sampled with (see samplePoints/zigzagPoints).
+        // That means the anchor always sits right on the line — when the phase
+        // shift lifts the start of the wave down or up, the anchor moves down or
+        // up right along with it, never the mirror-opposite side.
+        const phaseRad = (p.phase||0) * Math.PI/180;
+        const y0 = p.lineType==='zigzag' ? p.amplitude*triangleWave(phaseRad) : p.amplitude*Math.sin(phaseRad);
+        handles += handleRect(layer.id,'line-phase', -5, y0-5, 'phase', `Phase ${(p.phase||0).toFixed(0)}° — drag up/down`);
+
+        // Cycles — fixed at a set proportion along the baseline (not on the curve
+        // itself), so it stays put regardless of amplitude/phase/decay — same idea as
+        // the length/angle handle always sitting at a fixed spot. Drag left/right to
+        // add or remove cycles, like stretching/compressing the wave.
+        handles += handleRect(layer.id,'line-cycles', p.length*0.62-5, -5, 'cycles', `Cycles ${(p.cycles||0).toFixed(1)} — drag left/right`);
+
+        // Decay / damping — a small fader just past the end of the line, tracking the
+        // height of the amplitude envelope at the tail. Drag up/down to change how much
+        // the wave fades (or, for negative chirp damping, grows) toward the end.
+        const envEnd = waveEnvelopeEnd(p);
+        const fx = p.length + 14;
+        handles += `<line x1="${fx}" y1="0" x2="${fx}" y2="${(-envEnd).toFixed(2)}" stroke="var(--tail)" stroke-width="1" stroke-dasharray="2,3" opacity="0.5" pointer-events="none"/>`;
+        const decayLabel = p.lineType==='chirp' ? `Damping ${(p.damping||0).toFixed(1)} — drag up/down` : `Dissipation ${(p.decay||0).toFixed(2)} — drag up/down`;
+        handles += handleRect(layer.id,'line-decay', fx-5, -envEnd-5, 'decay', decayLabel);
+
+        // Chirp rate — fixed further along the same baseline; drag left/right to
+        // spread out or compress the oscillations toward the end.
+        if(p.lineType==='chirp'){
+          handles += handleRect(layer.id,'line-chirprate', p.length*0.85-5, -5, 'chirprate', `Chirp rate ${(p.chirpRate||0).toFixed(1)} — drag left/right`);
+        }
+      }
     }
   } else if(layer.type==='custom'){
     const pts = p.points||[];
@@ -2573,7 +2643,8 @@ function onStageMouseDown(e){
   
   ensureHistorySnapshot();
   dragState = { id, role, startPt: pt, startX: layer.params.x, startY: layer.params.y, startLength: layer.params.length, startRotation: layer.params.rotation, startW: layer.params.width, startH: layer.params.height,
-    startTailLength: layer.params.tailLength };
+    startTailLength: layer.params.tailLength, startPhase: layer.params.phase,
+    startCycles: layer.params.cycles, startDecay: layer.params.decay, startDamping: layer.params.damping, startChirpRate: layer.params.chirpRate };
   
   if(role.startsWith('point:')){
     const idx = parseInt(role.split(':')[1]);
@@ -2627,6 +2698,63 @@ function onDocMouseMove(e){
   } else if(dragState.role==='line-amp'){
     const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
     p.amplitude = clamp(Math.abs(local.ly), 0, 300);
+  } else if(dragState.role==='line-phase'){
+    // The anchor sits exactly on the curve's start point — amplitude*sin/
+    // triangleWave(phase), un-negated, same as its render position above — so
+    // dragging down should move it down and dragging up should move it up,
+    // matching the curve instead of mirroring it. Scaled by the wave's own
+    // amplitude, so dragging the full amplitude sweeps a half-cycle (-90°..90°)
+    // of phase, the same range the anchor can actually travel through.
+    // No snapping mid-drag — that's what made it feel clunky/gritty; we only round
+    // to the slider's 5° step once the drag ends (see onDocMouseUp).
+    const ampPx = Math.max(4, p.amplitude || 10);
+    const dx = pt.x - dragState.startPt.x;
+    const dy = pt.y - dragState.startPt.y;
+    const rad = -p.rotation * Math.PI/180;
+    const localDy = dx*Math.sin(rad) + dy*Math.cos(rad);
+    let newPhase = (dragState.startPhase||0) + (localDy/ampPx)*90;
+    newPhase = ((newPhase % 360) + 360) % 360;
+    p.phase = newPhase;
+  } else if(dragState.role==='line-cycles'){
+    // Drag distance along the shape's own x-axis, measured in periods (using the
+    // cycle count at drag-start as the reference), converts straight into added or
+    // removed cycles — one full period of horizontal drag equals +/-1 cycle. Kept
+    // as a smooth float while dragging; rounded to the slider's 0.5 step on release.
+    const startCycles = Math.max(0.05, dragState.startCycles || 1);
+    const periodPx = Math.max(4, p.length / startCycles);
+    const dx = pt.x - dragState.startPt.x;
+    const dy = pt.y - dragState.startPt.y;
+    const rad = -p.rotation * Math.PI/180;
+    const localDx = dx*Math.cos(rad) - dy*Math.sin(rad);
+    let newCycles = startCycles + (localDx/periodPx);
+    p.cycles = clamp(newCycles, 0.5, 60);
+  } else if(dragState.role==='line-decay'){
+    // Vertical drag of the tail-end envelope fader. For wavy/zigzag this sets
+    // dissipation directly; for chirp (which has no decay field) it solves damping
+    // from the exponential envelope amp*exp(-damping) instead. Left unrounded while
+    // dragging; rounded to the slider's step on release.
+    const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
+    const amp = Math.max(0.0001, p.amplitude);
+    if(p.lineType==='chirp'){
+      const envEnd = Math.max(0.001, -local.ly);
+      let newDamping = -Math.log(envEnd/amp);
+      p.damping = clamp(newDamping, -2, 2);
+    } else {
+      const envEnd = clamp(-local.ly, 0, amp);
+      let newDecay = 1 - envEnd/amp;
+      p.decay = clamp(newDecay, 0, 1);
+    }
+  } else if(dragState.role==='line-chirprate'){
+    // Horizontal drag scaled against the line's own length — dragging across the
+    // full length sweeps chirp rate across its whole range. Left unrounded while
+    // dragging; rounded to the slider's 0.1 step on release.
+    const dx = pt.x - dragState.startPt.x;
+    const dy = pt.y - dragState.startPt.y;
+    const rad = -p.rotation * Math.PI/180;
+    const localDx = dx*Math.cos(rad) - dy*Math.sin(rad);
+    const startRate = dragState.startChirpRate || 0;
+    let newRate = startRate + (localDx / Math.max(1,p.length)) * 6;
+    p.chirpRate = clamp(newRate, -3, 3);
   } else if(dragState.role.startsWith('wave-amp-pt:') || dragState.role.startsWith('wave-period-pt:')){
     const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
     const totalLen = Math.max(1, p.length);
@@ -2693,7 +2821,22 @@ function onDocMouseUp(){
     return;
   }
   if(canvasDragState){ canvasDragState = null; renderAll(); finalizeHistory(); }
-  if(dragState){ dragState = null; renderAll(); finalizeHistory(); } 
+  if(dragState){
+    const layer = layers.find(l=>l.id===dragState.id);
+    if(layer){
+      const p = layer.params;
+      if(dragState.role==='line-phase') p.phase = (Math.round((p.phase||0)/5)*5) % 360;
+      else if(dragState.role==='line-cycles') p.cycles = Math.round(p.cycles*2)/2;
+      else if(dragState.role==='line-decay'){
+        if(layer.type==='line' || layer.type==='custom'){
+          if(p.lineType==='chirp') p.damping = Math.round(p.damping*10)/10;
+          else p.decay = Math.round(p.decay*100)/100;
+        }
+      }
+      else if(dragState.role==='line-chirprate') p.chirpRate = Math.round(p.chirpRate*10)/10;
+    }
+    dragState = null; renderAll(); finalizeHistory();
+  } 
 }
 
 function finalizePenStroke(){
