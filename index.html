@@ -850,7 +850,7 @@
       <div class="panel-head">Export</div>
       <div class="panel-body">
         <div class="field" style="margin-bottom:10px;">
-          <label class="field-label" style="display:block;margin-bottom:4px;">MuseScore import fix (\u00d7)
+          <label class="field-label" style="display:block;margin-bottom:4px;">MuseScore import fix (&times;)
             <input type="number" id="museCompFactor" value="13.6" min="1" max="50" step="0.05" oninput="renderAll()" style="width:70px;">
           </label>
           <span class="hint">Compensates for MuseScore's SVG import undersizing. Exported mm are pre-multiplied so the image lands at the intended size without retyping.</span>
@@ -1136,6 +1136,7 @@ function schemaFor(layer){
     }
     if(t==='dampedWave'){
       fields.push({key:'ampPoints', label:'Amplitude & wavelength envelope', type:'envelopeEditor', group:'wave'});
+      fields.push({key:'phase', label:'Phase°', type:'range', min:0, max:360, step:5, group:'wave'});
       fields.push({key:'tailLength', label:'Straight tail', type:'range', min:0, max:200, step:1, group:'wave'});
       fields.push({key:'waveform', label:'Wave shape', type:'select', options:['sine','zigzag'], group:'wave'});
       fields.push({key:'startDirection', label:'First swing', type:'select', options:['up','down'], group:'wave'});
@@ -1202,6 +1203,7 @@ function schemaFor(layer){
     }
     if(t==='dampedWave'){
       fields.push({key:'ampPoints', label:'Amplitude & wavelength envelope', type:'envelopeEditor', group:'wave'});
+      fields.push({key:'phase', label:'Phase°', type:'range', min:0, max:360, step:5, group:'wave'});
       fields.push({key:'tailLength', label:'Straight tail (per segment)', type:'range', min:0, max:200, step:1, group:'wave'});
       fields.push({key:'waveform', label:'Wave shape', type:'select', options:['sine','zigzag'], group:'wave'});
       fields.push({key:'startDirection', label:'First swing', type:'select', options:['up','down'], group:'wave'});
@@ -1334,7 +1336,7 @@ function dampedWavePoints(p){
   const dirMul = (p.startDirection === 'down') ? -1 : 1;
   const isZigzag = p.waveform === 'zigzag';
   const dx = waveLength / N;
-  let phase = 0;
+  let phase = (p.phase || 0) * Math.PI / 180;
   const pts = [{x:0, y:0}];
   for(let i=1; i<=N; i++){
     const xMid = (i - 0.5) * dx;
@@ -1842,6 +1844,14 @@ function selectionOverlaySvg(layer){
       });
       handles += handleRect(layer.id,'wave-tail', waveLength-5, PERIOD_LANE_TOP+PERIOD_LANE_H+15, 'tail', 'Straight tail length — double-click the wave/lane above to add points');
       handles += handleTag(waveLength-5, PERIOD_LANE_TOP+PERIOD_LANE_H+15, 'TAIL', 8, 3);
+
+      // Phase — shifts where in its cycle the wave starts, without changing the
+      // envelope. Placed just before the wave begins; drag up/down like the
+      // wavy/zigzag/chirp phase handle.
+      const dampedPhaseRad = (p.phase||0) * Math.PI/180;
+      const startAmp = interpPoints(p.ampPoints, 'amp', 0);
+      const dpY = -(startAmp * (p.waveform==='zigzag' ? triangleWave(dampedPhaseRad) : Math.sin(dampedPhaseRad)) * dirMul);
+      handles += handleRect(layer.id,'dampedwave-phase', -18, dpY-5, 'phase', `Phase ${(p.phase||0).toFixed(0)}° — drag up/down`);
     } else if(p.lineType!=='straight'){
       handles += handleRect(layer.id,'line-amp', p.length/2-5, -amp-5, 'amp', 'Amplitude');
       handles += handleTag(p.length/2-5, -amp-5, 'AMP', 8, 3);
@@ -2779,6 +2789,19 @@ function onDocMouseMove(e){
     let newPhase = (dragState.startPhase||0) + (localDy/ampPx)*90;
     newPhase = ((newPhase % 360) + 360) % 360;
     p.phase = newPhase;
+  } else if(dragState.role==='dampedwave-phase'){
+    // Same idea as line-phase, but scaled against the envelope's starting amplitude
+    // (ampPoints[0]) rather than a flat p.amplitude, since dampedWave's amplitude
+    // varies along the line rather than being a single constant.
+    ensureWavePoints(p);
+    const startAmp = Math.max(4, interpPoints(p.ampPoints, 'amp', 0));
+    const dx = pt.x - dragState.startPt.x;
+    const dy = pt.y - dragState.startPt.y;
+    const rad = -p.rotation * Math.PI/180;
+    const localDy = dx*Math.sin(rad) + dy*Math.cos(rad);
+    let newDampedPhase = (dragState.startPhase||0) + (localDy/startAmp)*90;
+    newDampedPhase = ((newDampedPhase % 360) + 360) % 360;
+    p.phase = newDampedPhase;
   } else if(dragState.role==='line-cycles'){
     // Drag distance along the shape's own x-axis, measured in periods (using the
     // cycle count at drag-start as the reference), converts straight into added or
@@ -2890,6 +2913,7 @@ function onDocMouseUp(){
     if(layer){
       const p = layer.params;
       if(dragState.role==='line-phase') p.phase = (Math.round((p.phase||0)/5)*5) % 360;
+      else if(dragState.role==='dampedwave-phase') p.phase = (Math.round((p.phase||0)/5)*5) % 360;
       else if(dragState.role==='line-cycles') p.cycles = Math.round(p.cycles*2)/2;
       else if(dragState.role==='line-decay'){
         if(layer.type==='line' || layer.type==='custom'){
