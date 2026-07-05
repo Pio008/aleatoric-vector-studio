@@ -29,6 +29,8 @@
     --good-bright:#7FCE93;
     --period:#3E7FB8;
     --tail:#B4862E;
+    --chirp:#8B5FBF;
+    --phase:#3FA7A0;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;color-scheme:dark;height:100%;overflow:hidden;}
@@ -338,11 +340,21 @@
   .handle.amp-mid:hover{opacity:0.9;}
   .handle.period{fill:var(--period);}
   .handle.tail{fill:var(--tail);}
-  .handle.phase{fill:var(--rubric-soft);}
+  .handle.phase{fill:var(--phase);}
   .handle.cycles{fill:var(--period);}
   .handle.decay{fill:var(--tail);}
-  .handle.chirprate{fill:var(--rubric);}
+  .handle.chirprate{fill:var(--chirp);}
   .handle.pt{cursor:move;}
+  .handle-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:9px;
+    font-weight:600;
+    fill:var(--ink);
+    paint-order:stroke;
+    stroke:var(--page);
+    stroke-width:2.5px;
+    stroke-linejoin:round;
+  }
   .handle[data-role="resize-e"], .handle[data-role="line-end"]{cursor:ew-resize;}
   .handle[data-role="resize-s"], .handle[data-role="line-amp"]{cursor:ns-resize;}
   .handle[data-role="resize-se"]{cursor:nwse-resize;}
@@ -421,6 +433,23 @@
     width:100%;
     accent-color:var(--rubric);
   }
+  .field input[type=range].accent-amp{accent-color:var(--good);}
+  .field input[type=range].accent-period{accent-color:var(--period);}
+  .field input[type=range].accent-tail{accent-color:var(--tail);}
+  .field input[type=range].accent-phase{accent-color:var(--phase);}
+  .field input[type=range].accent-chirp{accent-color:var(--chirp);}
+  .field label .swatch{
+    display:inline-block;
+    width:8px;height:8px;
+    border-radius:2px;
+    flex:none;
+    margin-right:6px;
+  }
+  .field label .swatch.amp{background:var(--good);}
+  .field label .swatch.period{background:var(--period);}
+  .field label .swatch.tail{background:var(--tail);}
+  .field label .swatch.phase{background:var(--phase);}
+  .field label .swatch.chirp{background:var(--chirp);}
   .field select, .field input[type=number], .field input[type=text]{
     width:100%;
     padding:6px 8px;
@@ -1073,6 +1102,12 @@ function getSnapCoordinates(targetX, targetY, skipId) {
 /* ============================= SCHEMAS ============================= */
 const GROUP_LABELS = { shape:'Shape', wave:'Wave', stroke:'Stroke', arrow:'Arrowhead', position:'Position & rotation' };
 const SUBHEADS = { waveform:'Direction', arrowPlacement:'Placement', arrowFillColor:'Arrow style' };
+// Maps a schema field's key to the same colour used by its on-canvas drag handle, so a
+// person can visually connect "this slider" to "that square on the shape" at a glance
+// instead of having to guess which of several same-colour controls does what.
+const HANDLE_COLOR = {
+  amplitude:'amp', cycles:'period', phase:'phase', decay:'tail', damping:'tail', chirpRate:'chirp', tailLength:'tail'
+};
 function schemaFor(layer){
   const common = [
     {key:'x', label:'X', type:'range', min:0, max:canvasW, step:1, group:'position'},
@@ -1744,19 +1779,35 @@ function handleRect(id, role, x, y, extraClass, title){
   return `<rect class="handle ${extraClass||''}" data-id="${id}" data-role="${role}" x="${x}" y="${y}" width="10" height="10">${t}</rect>`;
 }
 
+// Short on-canvas text tag next to a handle, so its identity doesn't rely on color at
+// all (colorblind-safe) and doesn't cost separate panel space. `dx`/`dy` push the tag
+// clear of the 10x10 handle square in whichever direction has room; `anchor` lets a
+// caller flip text-anchor when the tag would otherwise run off toward one side.
+function handleTag(x, y, text, dx, dy, anchor){
+  // Text labels over handles were removed — they cluttered the canvas and overlapped
+  // shapes like arrowheads. The hover tooltips (via <title> in handleRect) still explain
+  // what each handle does; this now renders nothing but is kept so call sites don't need
+  // to change one-by-one.
+  return '';
+}
+
 function selectionOverlaySvg(layer){
   const p = layer.params;
   let outline = '', handles = '';
   if(layer.type==='box' || layer.type==='shape'){
     outline = `<rect class="sel-outline" x="0" y="0" width="${p.width}" height="${p.height}"/>`;
-    handles += handleRect(layer.id,'resize-e', p.width-5, p.height/2-5);
-    handles += handleRect(layer.id,'resize-s', p.width/2-5, p.height-5);
-    handles += handleRect(layer.id,'resize-se', p.width-5, p.height-5);
+    handles += handleRect(layer.id,'resize-e', p.width-5, p.height/2-5, '', 'Width — drag left/right');
+    handles += handleTag(p.width-5, p.height/2-5, 'W', 8, 3);
+    handles += handleRect(layer.id,'resize-s', p.width/2-5, p.height-5, '', 'Height — drag up/down');
+    handles += handleTag(p.width/2-5, p.height-5, 'H', 8, 3);
+    handles += handleRect(layer.id,'resize-se', p.width-5, p.height-5, '', 'Width & height — drag (hold Ctrl to keep square)');
+    handles += handleTag(p.width-5, p.height-5, 'W+H', 8, 12);
   } else if(layer.type==='line'){
     if(p.lineType==='dampedWave') ensureWavePoints(p);
     const amp = (p.lineType==='straight') ? 0 : (p.lineType==='dampedWave' ? Math.max(...p.ampPoints.map(a=>a.amp)) : p.amplitude);
     outline = `<rect class="sel-outline" x="0" y="${-amp-4}" width="${p.length}" height="${amp*2+8}"/>`;
     handles += handleRect(layer.id,'line-end', p.length-5, -5, '', 'Length & angle');
+    handles += handleTag(p.length-5, -5, 'LEN', 8, 3);
     if(p.lineType==='dampedWave'){
       ensureWavePoints(p);
       const totalLen = Math.max(1, p.length);
@@ -1779,15 +1830,21 @@ function selectionOverlaySvg(layer){
 
       p.ampPoints.forEach((pt,i)=>{
         const isEnd = i===0 || i===p.ampPoints.length-1;
-        handles += handleRect(layer.id, `wave-amp-pt:${i}`, pt.u*waveLength-5, -(pt.amp*dirMul)-5, isEnd?'amp':'amp-mid', `Amplitude ${pt.amp.toFixed(0)} @ ${(pt.u*100).toFixed(0)}% — drag${isEnd?'':' (dbl-click to delete)'}`);
+        const hx = pt.u*waveLength-5, hy = -(pt.amp*dirMul)-5;
+        handles += handleRect(layer.id, `wave-amp-pt:${i}`, hx, hy, isEnd?'amp':'amp-mid', `Amplitude ${pt.amp.toFixed(0)} @ ${(pt.u*100).toFixed(0)}% — drag${isEnd?'':' (dbl-click to delete)'}`);
+        handles += handleTag(hx, hy, 'A', 8, 3);
       });
       p.periodPoints.forEach((pt,i)=>{
         const isEnd = i===0 || i===p.periodPoints.length-1;
-        handles += handleRect(layer.id, `wave-period-pt:${i}`, pt.u*waveLength-5, periodToY(pt.period)-5, 'period', `Wavelength ${pt.period.toFixed(0)}px @ ${(pt.u*100).toFixed(0)}% — drag${isEnd?'':' (dbl-click to delete)'}`);
+        const hx = pt.u*waveLength-5, hy = periodToY(pt.period)-5;
+        handles += handleRect(layer.id, `wave-period-pt:${i}`, hx, hy, 'period', `Wavelength ${pt.period.toFixed(0)}px @ ${(pt.u*100).toFixed(0)}% — drag${isEnd?'':' (dbl-click to delete)'}`);
+        handles += handleTag(hx, hy, '\u03bb', 8, 3);
       });
       handles += handleRect(layer.id,'wave-tail', waveLength-5, PERIOD_LANE_TOP+PERIOD_LANE_H+15, 'tail', 'Straight tail length — double-click the wave/lane above to add points');
+      handles += handleTag(waveLength-5, PERIOD_LANE_TOP+PERIOD_LANE_H+15, 'TAIL', 8, 3);
     } else if(p.lineType!=='straight'){
       handles += handleRect(layer.id,'line-amp', p.length/2-5, -amp-5, 'amp', 'Amplitude');
+      handles += handleTag(p.length/2-5, -amp-5, 'AMP', 8, 3);
       if(p.lineType==='wavy' || p.lineType==='zigzag' || p.lineType==='chirp'){
         // Phase — fixed just off the start of the line, at the exact point where
         // the curve itself begins: amplitude*sin/triangleWave(phase), the same
@@ -1798,12 +1855,14 @@ function selectionOverlaySvg(layer){
         const phaseRad = (p.phase||0) * Math.PI/180;
         const y0 = p.lineType==='zigzag' ? p.amplitude*triangleWave(phaseRad) : p.amplitude*Math.sin(phaseRad);
         handles += handleRect(layer.id,'line-phase', -5, y0-5, 'phase', `Phase ${(p.phase||0).toFixed(0)}° — drag up/down`);
+        handles += handleTag(-5, y0-5, 'PH', -3, 3, 'end');
 
         // Cycles — fixed at a set proportion along the baseline (not on the curve
         // itself), so it stays put regardless of amplitude/phase/decay — same idea as
         // the length/angle handle always sitting at a fixed spot. Drag left/right to
         // add or remove cycles, like stretching/compressing the wave.
         handles += handleRect(layer.id,'line-cycles', p.length*0.62-5, -5, 'cycles', `Cycles ${(p.cycles||0).toFixed(1)} — drag left/right`);
+        handles += handleTag(p.length*0.62-5, -5, 'CYC', 8, 3);
 
         // Decay / damping — a small fader just past the end of the line, tracking the
         // height of the amplitude envelope at the tail. Drag up/down to change how much
@@ -1813,11 +1872,13 @@ function selectionOverlaySvg(layer){
         handles += `<line x1="${fx}" y1="0" x2="${fx}" y2="${(-envEnd).toFixed(2)}" stroke="var(--tail)" stroke-width="1" stroke-dasharray="2,3" opacity="0.5" pointer-events="none"/>`;
         const decayLabel = p.lineType==='chirp' ? `Damping ${(p.damping||0).toFixed(1)} — drag up/down` : `Dissipation ${(p.decay||0).toFixed(2)} — drag up/down`;
         handles += handleRect(layer.id,'line-decay', fx-5, -envEnd-5, 'decay', decayLabel);
+        handles += handleTag(fx-5, -envEnd-5, p.lineType==='chirp' ? 'DAMP' : 'DISS', 8, 3);
 
         // Chirp rate — fixed further along the same baseline; drag left/right to
         // spread out or compress the oscillations toward the end.
         if(p.lineType==='chirp'){
           handles += handleRect(layer.id,'line-chirprate', p.length*0.85-5, -5, 'chirprate', `Chirp rate ${(p.chirpRate||0).toFixed(1)} — drag left/right`);
+          handles += handleTag(p.length*0.85-5, -5, 'RATE', 8, 3);
         }
       }
     }
@@ -1829,7 +1890,7 @@ function selectionOverlaySvg(layer){
       const minY = Math.min(...ys), maxY = Math.max(...ys);
       outline = `<rect class="sel-outline" x="${minX-4}" y="${minY-4}" width="${maxX-minX+8}" height="${maxY-minY+8}"/>`;
     }
-    handles += pts.map((pt,i)=>handleRect(layer.id, 'point:'+i, pt.x-5, pt.y-5, 'pt', pts.length>2 ? 'Drag to move — double-click to delete' : 'Drag to move')).join('');
+    handles += pts.map((pt,i)=>handleRect(layer.id, 'point:'+i, pt.x-5, pt.y-5, 'pt', pts.length>2 ? 'Drag to move — double-click to delete' : 'Drag to move') + handleTag(pt.x-5, pt.y-5, String(i+1), 8, 3)).join('');
   }
   return `<g class="selection-overlay" transform="translate(${p.x},${p.y}) rotate(${p.rotation})">${outline}${handles}</g>`;
 }
@@ -1937,14 +1998,17 @@ function buildLayerList(){
 
 function renderField(f, layer){
   const val = layer.params[f.key];
+  const handleColor = HANDLE_COLOR[f.key];
+  const swatch = handleColor ? `<span class="swatch ${handleColor}"></span>` : '';
+  const accentClass = handleColor ? ` accent-${handleColor}` : '';
   if(f.type==='range'){
     return `
       <div class="field">
-        <label>${f.label}
+        <label>${swatch}${f.label}
           <input type="number" class="val-input" min="${f.min}" max="${f.max}" step="${f.step}" value="${val}"
             onchange="onFieldNumberChange(this,'${layer.id}','${f.key}')">
         </label>
-        <input type="range" min="${f.min}" max="${f.max}" step="${f.step}" value="${val}"
+        <input type="range" class="${accentClass.trim()}" min="${f.min}" max="${f.max}" step="${f.step}" value="${val}"
           onmousedown="ensureHistorySnapshot()" ontouchstart="ensureHistorySnapshot()"
           oninput="onFieldRangeInput(this,'${layer.id}','${f.key}')"
           onchange="finalizeHistory()">
@@ -2137,13 +2201,9 @@ function buildParamPanel(){
     return;
   }
   title.textContent = layer.name + ' — parameters';
-  
-  let note = '<div class="mouse-note">Drag the shape on canvas to move it. Drag the red squares to resize';
-  if(layer.type==='line' && layer.params.lineType==='dampedWave'){
-    note = '<div class="mouse-note">Handles are dimmed until you hover them. Drag the shape to move it, the red square to set length &amp; angle. Green squares are amplitude points on the wave itself; blue squares are wavelength points in the lane below it. Drag any point (except the two ends) sideways to move it along the wave, or up/down to change its value. Double-click empty space on the wave or lane to add a new point there; double-click a point to delete it. The amber square drags the straight tail in and out.</div>';
-  } else if(layer.type==='line') note += ' — the end square sets length &amp; angle, the green square sets amplitude.</div>';
-  else if(layer.type==='custom') note = '<div class="mouse-note">Hold Ctrl while dragging any handle (or while adding dots) to keep it on the same horizontal line.</div>';
-  else note += ' (hold Ctrl on the corner square to keep width &amp; height equal).</div>';
+  const hint = layer.type==='custom'
+    ? '<div class="mouse-note">Drag the shape to move it. Each handle is labeled on canvas — hover one for full detail. Hold Ctrl while dragging to keep it level.</div>'
+    : '<div class="mouse-note">Drag the shape to move it. Each handle is labeled on canvas — hover one for full detail.</div>';
   
   // Clipboard Operations Bar
   const isClipboardEmpty = parameterClipboard === null;
@@ -2190,7 +2250,7 @@ function buildParamPanel(){
     </div>`;
   }
   
-  body.innerHTML = note + waveReadout + clipboardHtml + customControls + renderSchemaFields(schemaFor(layer), layer);
+  body.innerHTML = hint + waveReadout + clipboardHtml + customControls + renderSchemaFields(schemaFor(layer), layer);
 }
 
 function ensureCustomLayerForToolMode(){
@@ -2696,8 +2756,12 @@ function onDocMouseMove(e){
     p.length = clamp(Math.hypot(dx, dy), 10, 2000);
     p.rotation = Math.atan2(dy, dx) * 180 / Math.PI;
   } else if(dragState.role==='line-amp'){
+    // The handle always renders above the baseline (y = -amplitude), so dragging is
+    // interpreted relative to that same side: -local.ly grows amplitude, and dragging
+    // past the baseline (positive local.ly) clamps to 0 instead of reflecting through
+    // it via Math.abs(), which used to make the handle "flip" and grow again below.
     const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
-    p.amplitude = clamp(Math.abs(local.ly), 0, 300);
+    p.amplitude = clamp(-local.ly, 0, 300);
   } else if(dragState.role==='line-phase'){
     // The anchor sits exactly on the curve's start point — amplitude*sin/
     // triangleWave(phase), un-negated, same as its render position above — so
