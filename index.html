@@ -1212,9 +1212,7 @@ function schemaFor(layer){
     fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:60, step:0.1, group:'stroke'});
     fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted'], group:'stroke'});
     fields.push({key:'cap', label:'Line cap', type:'select', options:['butt','round','square'], group:'stroke'});
-    if(!layer.params.closed){
-      fields.push({key:'fixedStroke', label:'Fixed stroke', type:'checkbox', group:'stroke'});
-    }
+    fields.push({key:'fixedStroke', label:'Fixed stroke', type:'checkbox', group:'stroke'});
     fields.push({key:'color', label:'Ink colour', type:'color', group:'stroke'});
     if(!layer.params.closed){
       fields.push({key:'arrowType', label:'Arrowhead', type:'select', options:['none','triangle','flat','hollow','stroke'], group:'arrow'});
@@ -2364,6 +2362,11 @@ function updateParam(id, key, value, numeric, liveOnly){
       layer.params.fixedStroke = false;
       if(prevThickness === 11) layer.params.thickness = 2;
     }
+  }
+  if(key === 'fixedStroke' && layer.params.fixedStroke){
+    // Jumping to the fixed-stroke default thickness makes the effect visible immediately
+    // instead of leaving the line at whatever thin value it was drawn with.
+    layer.params.thickness = 11;
   }
   if(key === 'thickness' && hasArrow){
     // Keep the arrowhead's stroke matched to the new thickness, and scale its size
