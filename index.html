@@ -333,6 +333,9 @@
   /* selection / handles inside svg */
   .layer-group, .layer-group *{cursor:move;}
   .sel-outline{fill:none; stroke:var(--rubric); stroke-width:1; stroke-dasharray:3,4; opacity:0.35; pointer-events:none; vector-effect:non-scaling-stroke;}
+  .sel-outline.multi{stroke-width:1.4; opacity:0.6;}
+  .rubber-band{fill:var(--rubric); fill-opacity:0.08; stroke:var(--rubric); stroke-width:1; stroke-dasharray:3,3; pointer-events:none; vector-effect:non-scaling-stroke;}
+  .mixed-badge{font-size:10px; text-transform:uppercase; letter-spacing:0.03em; color:var(--rubric); background:rgba(150,60,50,0.1); border-radius:3px; padding:1px 5px; margin-left:6px; vertical-align:middle;}
   .handle{fill:var(--rubric); stroke:#fff; stroke-width:1; cursor:grab; opacity:0.5; transition:opacity .12s ease;}
   .handle:hover{opacity:1;}
   .handle.amp{fill:var(--good);}
@@ -947,6 +950,8 @@
 /* ============================= STATE ============================= */
 let layers = [];
 let selectedId = null;
+let selectedIds = new Set(); // multi-selection; selectedId is the "primary" (last-clicked) member
+let rubberBandState = null; // drag-to-select box on empty canvas
 let uid = 1;
 let canvasW = 300, canvasH = 250;
 let dragState = null;
@@ -1911,12 +1916,14 @@ function addLayer(type){
   const count = layers.filter(l=>l.type===type).length + 1;
   layers.push({id, type, name:`${LABELS[type]} ${count}`, visible:true, params});
   selectedId = id;
+  selectedIds = new Set([id]);
   renderAll();
 }
 function deleteLayer(id, ev){
   if(ev) ev.stopPropagation();
   pushHistory();
   layers = layers.filter(l=>l.id!==id);
+  selectedIds.delete(id);
   if(selectedId===id) selectedId = layers.length ? layers[layers.length-1].id : null;
   renderAll();
 }
@@ -1932,9 +1939,24 @@ function duplicateLayer(id, ev){
   copy.params.y = Math.min(canvasH, src.params.y + 20);
   layers.push(copy);
   selectedId = copy.id;
+  selectedIds = new Set([copy.id]);
   renderAll();
 }
-function selectLayer(id){ selectedId = id; renderAll(); }
+function selectLayer(id, ev){
+  if(ev && ev.shiftKey){
+    if(selectedIds.has(id)){
+      selectedIds.delete(id);
+      if(selectedId===id) selectedId = selectedIds.size ? [...selectedIds][selectedIds.size-1] : null;
+    } else {
+      selectedIds.add(id);
+      selectedId = id;
+    }
+  } else {
+    selectedId = id;
+    selectedIds = new Set([id]);
+  }
+  renderAll();
+}
 function moveLayer(id, dir, ev){
   ev.stopPropagation();
   const i = layers.findIndex(l=>l.id===id);
@@ -1993,7 +2015,7 @@ function buildLayerList(){
     return;
   }
   el.innerHTML = layers.map((l)=>`
-    <div class="layer-row ${l.id===selectedId?'selected':''}" onclick="selectLayer('${l.id}')">
+    <div class="layer-row ${selectedIds.has(l.id)?'selected':''}" onclick="selectLayer('${l.id}', event)">
       <span class="tag">${l.type}</span>
       <span class="name">${l.name}</span>
       <button onclick="moveLayer('${l.id}',1,event)" title="Move up">${ICONS.up}</button>
@@ -2002,6 +2024,125 @@ function buildLayerList(){
       <button onclick="deleteLayer('${l.id}',event)" title="Delete">${ICONS.trash}</button>
     </div>
   `).join('');
+}
+
+/* ============================= MULTI-SELECTION SHARED FIELDS ============================= */
+// A field counts as "shared" only if every selected layer's own schema exposes that same
+// key with the same control type (and, for dropdowns, the exact same option list) — e.g.
+// 'thickness' shows for a line + a box, but 'arrowType' won't unless both are lines/customs
+// with an arrowhead. The point-by-point envelope editor is skipped: it doesn't make sense
+// applied identically across several independent shapes.
+function computeSharedFields(selLayers){
+  if(selLayers.length < 2) return [];
+  const schemas = selLayers.map(l=>schemaFor(l));
+  const shared = [];
+  schemas[0].forEach(f=>{
+    if(f.type==='envelopeEditor') return;
+    if(shared.some(s=>s.key===f.key)) return;
+    let min = f.min, max = f.max, step = f.step;
+    let ok = true;
+    for(let i=1;i<schemas.length;i++){
+      const match = schemas[i].find(g=>g.key===f.key && g.type===f.type);
+      if(!match){ ok = false; break; }
+      if(f.type==='select' && JSON.stringify(match.options) !== JSON.stringify(f.options)){ ok = false; break; }
+      if(f.type==='range'){ min = Math.max(min, match.min); max = Math.min(max, match.max); step = Math.min(step, match.step); }
+    }
+    if(!ok) return;
+    if(f.type==='range' && min > max) return;
+    shared.push({...f, min, max, step});
+  });
+  return shared;
+}
+
+function renderSharedField(f, selLayers){
+  const values = selLayers.map(l=>l.params[f.key]);
+  const allEqual = values.every(v=>JSON.stringify(v)===JSON.stringify(values[0]));
+  const val = values[0];
+  const handleColor = HANDLE_COLOR[f.key];
+  const swatch = handleColor ? `<span class="swatch ${handleColor}"></span>` : '';
+  const mixedNote = allEqual ? '' : '<span class="mixed-badge" title="These elements currently have different values for this property">mixed</span>';
+
+  if(f.type==='range'){
+    return `
+      <div class="field">
+        <label>${swatch}${f.label} ${mixedNote}
+          <input type="number" class="val-input" min="${f.min}" max="${f.max}" step="${f.step}" value="${allEqual ? val : ''}" placeholder="${allEqual ? '' : '—'}"
+            onchange="onSharedFieldNumberChange(this,'${f.key}')">
+        </label>
+        <input type="range" min="${f.min}" max="${f.max}" step="${f.step}" value="${allEqual ? val : f.min}"
+          onmousedown="ensureHistorySnapshot()" ontouchstart="ensureHistorySnapshot()"
+          oninput="onSharedFieldRangeInput(this,'${f.key}')"
+          onchange="finalizeHistory()">
+      </div>`;
+  }
+  if(f.type==='select'){
+    return `
+      <div class="field">
+        <label>${f.label} ${mixedNote}</label>
+        <select onchange="updateSharedParam('${f.key}', this.value, false, false)">
+          ${!allEqual ? '<option value="" selected disabled>— Mixed —</option>' : ''}
+          ${f.options.map(o=>`<option value="${o}" ${allEqual && o===val ? 'selected' : ''}>${o}</option>`).join('')}
+        </select>
+      </div>`;
+  }
+  if(f.type==='color'){
+    return `
+      <div class="field">
+        <label>${f.label} ${mixedNote}</label>
+        <input type="color" value="${allEqual ? val : '#888888'}" oninput="updateSharedParam('${f.key}', this.value, false, false)">
+      </div>`;
+  }
+  if(f.type==='checkbox'){
+    const domId = 'chk_multi_' + f.key;
+    return `
+      <div class="field checkbox">
+        <input type="checkbox" id="${domId}" ${allEqual && val ? 'checked' : ''} ${allEqual ? '' : 'data-indeterminate="true"'} onchange="updateSharedParam('${f.key}', this.checked, false, false)">
+        <label for="${domId}">${f.label} ${mixedNote}</label>
+      </div>`;
+  }
+  return '';
+}
+
+// Applies one field's new value to every selected layer as a single, grouped action —
+// updateParam is reused per-layer (for all its existing side effects, e.g. fixedStroke
+// snapping thickness) but forced into liveOnly mode so history/rendering only happen
+// once for the whole group here, not once per layer.
+function updateSharedParam(key, value, numeric, liveOnly){
+  if(selectedIds.size < 2) return;
+  if(!liveOnly && !historyPending) pushHistory();
+  if(key==='x' || key==='y'){
+    // X/Y are absolute positions, not a style — setting every layer to the exact same
+    // coordinate would stack them on top of each other. Instead, treat the edit as
+    // "move the reference shape to this value" and shift the rest of the group by the
+    // same delta, so the group keeps its relative layout and just slides as a block.
+    const numVal = numeric ? parseFloat(value) : value;
+    const refLayer = layers.find(l=>l.id===selectedId && selectedIds.has(l.id)) || [...selectedIds].map(id=>layers.find(l=>l.id===id)).find(Boolean);
+    const refCurrent = refLayer ? (refLayer.params[key] || 0) : 0;
+    const delta = numVal - refCurrent;
+    selectedIds.forEach(id=>{
+      const l = layers.find(x=>x.id===id);
+      if(!l) return;
+      updateParam(id, key, (l.params[key] || 0) + delta, true, true);
+    });
+  } else {
+    selectedIds.forEach(id=>{ updateParam(id, key, value, numeric, true); });
+  }
+  if(liveOnly){
+    renderStage();
+    document.getElementById('svgOut').value = fullSvgSource();
+  } else {
+    renderAll();
+  }
+}
+function onSharedFieldRangeInput(rangeEl, key){
+  const numEl = rangeEl.closest('.field').querySelector('.val-input');
+  if(numEl) numEl.value = rangeEl.value;
+  updateSharedParam(key, rangeEl.value, true, true);
+}
+function onSharedFieldNumberChange(numEl, key){
+  const v = parseFloat(numEl.value);
+  if(isNaN(v)) return;
+  updateSharedParam(key, v, true, false);
 }
 
 function renderField(f, layer){
@@ -2202,6 +2343,23 @@ function renderSchemaFields(schema, layer){
 function buildParamPanel(){
   const title = document.getElementById('paramTitle');
   const body = document.getElementById('paramBody');
+  if(selectedIds.size > 1){
+    const selLayers = [...selectedIds].map(id=>layers.find(l=>l.id===id)).filter(Boolean);
+    title.textContent = `${selLayers.length} elements selected`;
+    const shared = computeSharedFields(selLayers);
+    const groupOrder = ['shape','wave','stroke','arrow','position'];
+    const byGroup = {};
+    shared.forEach(f=>{ (byGroup[f.group] = byGroup[f.group] || []).push(f); });
+    const sections = groupOrder.filter(g=>byGroup[g]).map(g=>
+      `<div class="param-subhead">${GROUP_LABELS[g] || g}</div>${byGroup[g].map(f=>renderSharedField(f, selLayers)).join('')}`
+    ).join('');
+    const note = `<div class="mouse-note">Drag any of them on canvas to move the whole group together, or press Delete/⌘D to remove or duplicate the group. Click one element without Shift to edit all of its parameters individually.</div>`;
+    body.innerHTML = shared.length
+      ? note + `<div class="param-subhead">Shared properties (editing applies to all ${selLayers.length})</div>` + sections
+      : note + `<div class="no-selection">These elements have no editable properties in common.</div>`;
+    body.querySelectorAll('[data-indeterminate="true"]').forEach(el=>{ el.indeterminate = true; });
+    return;
+  }
   const layer = layers.find(l=>l.id===selectedId);
   if(!layer){
     title.textContent = 'Parameters';
@@ -2272,6 +2430,7 @@ function ensureCustomLayerForToolMode(){
     layer = layers[layers.length-1];
   } else {
     selectedId = layer.id;
+    selectedIds = new Set([layer.id]);
   }
   return layer;
 }
@@ -2315,6 +2474,7 @@ function toggleAddPoint(id, checked){
   addPointMode = checked;
   addPointLayerId = checked ? id : null;
   selectedId = id;
+  selectedIds = new Set([id]);
   if(checked && penSketchMode) toggleSketchMode(penSketchLayerId, false);
   const stage = document.getElementById('stage');
   if (checked) stage.classList.add('adding-points');
@@ -2325,6 +2485,7 @@ function toggleSketchMode(id, checked){
   penSketchMode = checked;
   penSketchLayerId = checked ? id : null;
   selectedId = id;
+  selectedIds = new Set([id]);
   if(checked && addPointMode) toggleAddPoint(addPointLayerId, false); // the two drawing modes shouldn't overlap
   document.getElementById('stage').classList.toggle('pen-mode', checked);
   renderAll();
@@ -2455,6 +2616,31 @@ function staffGridSvg(){
   return `<g class="muse-grid" pointer-events="none">${g}</g>`;
 }
 
+/* Approximate world-space bounding box for a layer — ignores rotation for simplicity,
+   which is a fine trade-off for rubber-band selection and the lightweight multi-select
+   outline (both just need "roughly where this shape sits", not a precise hull). */
+function getLayerBBox(layer){
+  const p = layer.params;
+  if(layer.type==='custom'){
+    const pts = p.points || [];
+    if(!pts.length) return {x1:p.x-20, y1:p.y-20, x2:p.x+20, y2:p.y+20};
+    const xs = pts.map(pt=>pt.x), ys = pts.map(pt=>pt.y);
+    return {x1:p.x+Math.min(...xs)-10, y1:p.y+Math.min(...ys)-10, x2:p.x+Math.max(...xs)+10, y2:p.y+Math.max(...ys)+10};
+  }
+  const w = p.length || p.width || 40;
+  const h = p.height || Math.max(20, (p.amplitude||0)*2 || 20);
+  const y0 = p.height ? p.y : p.y - h/2;
+  return {x1:p.x, y1:y0, x2:p.x+w, y2:y0+h};
+}
+function layerIntersectsBox(layer, x1, y1, x2, y2){
+  const b = getLayerBBox(layer);
+  return !(b.x2 < x1 || b.x1 > x2 || b.y2 < y1 || b.y1 > y2);
+}
+function multiSelectionOutlineSvg(layer){
+  const b = getLayerBBox(layer);
+  return `<rect class="sel-outline multi" x="${b.x1}" y="${b.y1}" width="${b.x2-b.x1}" height="${b.y2-b.y1}" pointer-events="none"/>`;
+}
+
 function renderStage(){
   const stage = document.getElementById('stage');
   stage.setAttribute('viewBox', `0 0 ${canvasW} ${canvasH}`);
@@ -2470,8 +2656,17 @@ function renderStage(){
   }
   const frame = document.querySelector('.canvas-frame');
   if(frame) frame.style.transform = `scale(${zoom})`;
-  const selLayer = layers.find(l=>l.id===selectedId);
-  stage.innerHTML = staffGridSvg() + layers.map(l=>renderLayerSvg(l, true)).join('\n') + (selLayer ? selectionOverlaySvg(selLayer) : '');
+  let overlaysSvg;
+  if(selectedIds.size > 1){
+    overlaysSvg = [...selectedIds].map(id=>{
+      const l = layers.find(x=>x.id===id);
+      return l ? multiSelectionOutlineSvg(l) : '';
+    }).join('');
+  } else {
+    const selLayer = layers.find(l=>l.id===selectedId);
+    overlaysSvg = selLayer ? selectionOverlaySvg(selLayer) : '';
+  }
+  stage.innerHTML = staffGridSvg() + layers.map(l=>renderLayerSvg(l, true)).join('\n') + overlaysSvg;
 }
 
 function renderAll(){
@@ -2680,10 +2875,33 @@ function onStageMouseDown(e){
   }
 
   const hitEl = e.target.closest && e.target.closest('[data-id]');
-  if(!hitEl){ selectedId = null; renderAll(); return; }
+  if(!hitEl){
+    // Empty-canvas click: shift+click-drag adds to the existing selection, a plain
+    // click-drag starts a fresh one. Either way we arm a rubber-band; if the mouse
+    // never actually moves, onDocMouseUp just treats it as a "deselect" click.
+    if(!e.shiftKey){ selectedId = null; selectedIds = new Set(); }
+    rubberBandState = { startPt: svgPointFromClient(e.clientX, e.clientY), currentPt: null, additive: e.shiftKey };
+    renderAll();
+    return;
+  }
   
   const id = hitEl.getAttribute('data-id');
   const role = hitEl.getAttribute('data-role') || 'move';
+
+  // Shift-clicking a shape's body toggles it in the multi-selection instead of
+  // starting a drag or the double-click logic below.
+  if(role==='move' && e.shiftKey){
+    if(selectedIds.has(id)){
+      selectedIds.delete(id);
+      if(selectedId===id) selectedId = selectedIds.size ? [...selectedIds][selectedIds.size-1] : null;
+    } else {
+      selectedIds.add(id);
+      selectedId = id;
+    }
+    renderAll();
+    e.preventDefault();
+    return;
+  }
 
   // Manual double-click detection. We can't rely on the browser's native 'dblclick'
   // event here: onDocMouseUp re-renders the stage (replacing the DOM) on every plain
@@ -2698,13 +2916,23 @@ function onStageMouseDown(e){
     const dblLayer = layers.find(l=>l.id===id);
     if(dblLayer){
       selectedId = id;
+      selectedIds = new Set([id]);
       performPointDoubleClickAction(dblLayer, role, e);
       renderAll();
     }
     return;
   }
 
-  if(id !== selectedId){ selectedId = id; renderAll(); }
+  // Clicking the body of a shape that's already part of a multi-selection keeps the
+  // whole group selected (so the drag below moves all of them together); clicking
+  // anything else — a different shape, or a handle, which only ever edits one object
+  // at a time — collapses back down to that single shape.
+  const isGroupDrag = role==='move' && selectedIds.size > 1 && selectedIds.has(id);
+  if(!isGroupDrag){
+    selectedId = id;
+    selectedIds = new Set([id]);
+  }
+  renderAll();
   
   if(role==='wave-amp-track' || role==='wave-period-track'){
     e.preventDefault();
@@ -2718,6 +2946,14 @@ function onStageMouseDown(e){
   dragState = { id, role, startPt: pt, startX: layer.params.x, startY: layer.params.y, startLength: layer.params.length, startRotation: layer.params.rotation, startW: layer.params.width, startH: layer.params.height,
     startTailLength: layer.params.tailLength, startPhase: layer.params.phase,
     startCycles: layer.params.cycles, startDecay: layer.params.decay, startDamping: layer.params.damping, startChirpRate: layer.params.chirpRate };
+  
+  if(isGroupDrag){
+    dragState.multiStarts = {};
+    selectedIds.forEach(sid=>{
+      const l = layers.find(x=>x.id===sid);
+      if(l) dragState.multiStarts[sid] = { x:l.params.x, y:l.params.y };
+    });
+  }
   
   if(role.startsWith('point:')){
     const idx = parseInt(role.split(':')[1]);
@@ -2753,15 +2989,51 @@ function onDocMouseMove(e){
     return;
   }
 
-  if(!dragState) return;
+  if(!dragState){
+    if(rubberBandState){
+      const pt = svgPointFromClient(e.clientX, e.clientY);
+      rubberBandState.currentPt = pt;
+      const x = Math.min(rubberBandState.startPt.x, pt.x);
+      const y = Math.min(rubberBandState.startPt.y, pt.y);
+      const w = Math.abs(pt.x - rubberBandState.startPt.x);
+      const h = Math.abs(pt.y - rubberBandState.startPt.y);
+      const stage = document.getElementById('stage');
+      let box = document.getElementById('rubberBandBox');
+      if(!box){
+        box = document.createElementNS('http://www.w3.org/2000/svg','rect');
+        box.setAttribute('id','rubberBandBox');
+        box.setAttribute('class','rubber-band');
+        stage.appendChild(box);
+      }
+      box.setAttribute('x', x); box.setAttribute('y', y);
+      box.setAttribute('width', w); box.setAttribute('height', h);
+    }
+    return;
+  }
   const layer = layers.find(l=>l.id===dragState.id); if(!layer) return;
   const pt = svgPointFromClient(e.clientX, e.clientY);
   const p = layer.params;
   
   if(dragState.role==='move'){
-    const snapped = getSnapCoordinates(dragState.startX + (pt.x - dragState.startPt.x), dragState.startY + (pt.y - dragState.startPt.y), layer.id);
-    p.x = snapped.x;
-    p.y = snapped.y;
+    if(dragState.multiStarts){
+      // Snap based on the shape actually under the cursor (the "lead" of the group),
+      // then apply that same snapped delta to everyone else — so the group snaps
+      // together as a block instead of ignoring the grid/guides entirely.
+      const snapped = getSnapCoordinates(dragState.startX + (pt.x - dragState.startPt.x), dragState.startY + (pt.y - dragState.startPt.y), layer.id);
+      const dx = snapped.x - dragState.startX;
+      const dy = snapped.y - dragState.startY;
+      Object.keys(dragState.multiStarts).forEach(sid=>{
+        const l = layers.find(x=>x.id===sid);
+        if(!l) return;
+        const start = dragState.multiStarts[sid];
+        l.params.x = start.x + dx;
+        l.params.y = start.y + dy;
+      });
+    } else {
+      const snapped = getSnapCoordinates(dragState.startX + (pt.x - dragState.startPt.x), dragState.startY + (pt.y - dragState.startPt.y), layer.id);
+      p.x = snapped.x;
+      p.y = snapped.y;
+    }
   } else if(dragState.role==='line-end'){
     const snapped = getSnapCoordinates(pt.x, pt.y, layer.id);
     const dx = snapped.x - p.x;
@@ -2910,6 +3182,26 @@ function onDocMouseUp(){
     finalizePenStroke();
     return;
   }
+  if(rubberBandState){
+    const box = document.getElementById('rubberBandBox');
+    if(box) box.remove();
+    const cur = rubberBandState.currentPt;
+    if(cur){
+      const x1 = Math.min(rubberBandState.startPt.x, cur.x), x2 = Math.max(rubberBandState.startPt.x, cur.x);
+      const y1 = Math.min(rubberBandState.startPt.y, cur.y), y2 = Math.max(rubberBandState.startPt.y, cur.y);
+      if(x2-x1 > 3 || y2-y1 > 3){ // a real drag, not just a stationary click
+        const hitIds = layers.filter(l=>layerIntersectsBox(l, x1, y1, x2, y2)).map(l=>l.id);
+        if(hitIds.length){
+          if(!rubberBandState.additive) selectedIds = new Set();
+          hitIds.forEach(id=>selectedIds.add(id));
+          selectedId = hitIds[hitIds.length-1];
+        }
+      }
+    }
+    rubberBandState = null;
+    renderAll();
+    return;
+  }
   if(canvasDragState){ canvasDragState = null; renderAll(); finalizeHistory(); }
   if(dragState){
     const layer = layers.find(l=>l.id===dragState.id);
@@ -2958,6 +3250,7 @@ function finalizePenStroke(){
   }
 
   selectedId = layer.id;
+  selectedIds = new Set([layer.id]);
   penSketchMode = false;
   penSketchLayerId = null;
   document.getElementById('stage').classList.remove('pen-mode');
@@ -3060,11 +3353,12 @@ function performPointDoubleClickAction(layer, role, e){
 
 /* ============================= HISTORY (UNDO / REDO) ============================= */
 function snapshotState(){
-  return JSON.stringify({ layers, canvasW, canvasH, selectedId, uid });
+  return JSON.stringify({ layers, canvasW, canvasH, selectedId, selectedIds: [...selectedIds], uid });
 }
 function applySnapshot(json){
   const s = JSON.parse(json);
   layers = s.layers; canvasW = s.canvasW; canvasH = s.canvasH; selectedId = s.selectedId; uid = s.uid;
+  selectedIds = new Set(s.selectedIds || (s.selectedId ? [s.selectedId] : []));
   document.getElementById('canvasW').value = canvasW;
   document.getElementById('canvasH').value = canvasH;
 }
@@ -3136,17 +3430,68 @@ function pasteLayerFromClipboard(){
   copy.params.y = Math.min(canvasH, (layerClipboard.params.y||0) + 20);
   layers.push(copy);
   selectedId = copy.id;
+  selectedIds = new Set([copy.id]);
   renderAll();
   showToast('Pasted ' + copy.name);
 }
 
 /* ============================= NUDGE ============================= */
 function nudgeSelected(dx, dy){
+  if(selectedIds.size > 1){
+    ensureHistorySnapshot();
+    selectedIds.forEach(id=>{
+      const l = layers.find(x=>x.id===id);
+      if(l){ l.params.x = (l.params.x||0) + dx; l.params.y = (l.params.y||0) + dy; }
+    });
+    renderAll();
+    return;
+  }
   const layer = layers.find(l=>l.id===selectedId);
   if(!layer) return;
   ensureHistorySnapshot();
   layer.params.x = (layer.params.x||0) + dx;
   layer.params.y = (layer.params.y||0) + dy;
+  renderAll();
+}
+
+/* ============================= MULTI-SELECTION ACTIONS ============================= */
+function deleteSelectedLayers(){
+  if(selectedIds.size > 1){
+    pushHistory();
+    const ids = new Set(selectedIds);
+    layers = layers.filter(l=>!ids.has(l.id));
+    selectedIds = new Set();
+    selectedId = layers.length ? layers[layers.length-1].id : null;
+    renderAll();
+  } else if(selectedId){
+    deleteLayer(selectedId);
+  }
+}
+function duplicateSelectedLayers(){
+  if(selectedIds.size > 1){
+    pushHistory();
+    const newIds = [];
+    selectedIds.forEach(id=>{
+      const src = layers.find(l=>l.id===id);
+      if(!src) return;
+      const copy = JSON.parse(JSON.stringify(src));
+      copy.id = 'el' + (uid++);
+      copy.name = src.name + ' copy';
+      copy.params.x = Math.min(canvasW, src.params.x + 20);
+      copy.params.y = Math.min(canvasH, src.params.y + 20);
+      layers.push(copy);
+      newIds.push(copy.id);
+    });
+    selectedIds = new Set(newIds);
+    selectedId = newIds[newIds.length-1] || null;
+    renderAll();
+  } else if(selectedId){
+    duplicateLayer(selectedId);
+  }
+}
+function selectAllLayers(){
+  selectedIds = new Set(layers.map(l=>l.id));
+  selectedId = layers.length ? layers[layers.length-1].id : null;
   renderAll();
 }
 
@@ -3264,6 +3609,7 @@ function doLoadProject(name){
   layers = JSON.parse(JSON.stringify(data.layers));
   canvasW = data.canvasW; canvasH = data.canvasH;
   selectedId = layers.length ? layers[0].id : null;
+  selectedIds = new Set(selectedId ? [selectedId] : []);
   document.getElementById('canvasW').value = canvasW;
   document.getElementById('canvasH').value = canvasH;
   renderAll();
@@ -3281,6 +3627,7 @@ function newProject(){
   pushHistory();
   layers = [];
   selectedId = null;
+  selectedIds = new Set();
   addLayer('line');
   showToast('New project started');
 }
@@ -3304,6 +3651,7 @@ function importProjectFile(file){
       canvasW = data.canvasW || canvasW;
       canvasH = data.canvasH || canvasH;
       selectedId = layers.length ? layers[0].id : null;
+      selectedIds = new Set(selectedId ? [selectedId] : []);
       document.getElementById('canvasW').value = canvasW;
       document.getElementById('canvasH').value = canvasH;
       renderAll();
@@ -3344,7 +3692,7 @@ document.addEventListener('keydown', function(e){
     if(anyModalOpen){ closeAllModals(); e.preventDefault(); return; }
     if(addPointMode){ toggleAddPoint(addPointLayerId, false); e.preventDefault(); return; }
     if(penSketchMode){ toggleSketchMode(penSketchLayerId, false); e.preventDefault(); return; }
-    if(selectedId){ selectedId = null; renderAll(); e.preventDefault(); }
+    if(selectedId || selectedIds.size){ selectedId = null; selectedIds = new Set(); renderAll(); e.preventDefault(); }
     return;
   }
   if(typing) return;
@@ -3356,10 +3704,11 @@ document.addEventListener('keydown', function(e){
     e.preventDefault(); return;
   }
   if(mod && (e.key==='y' || e.key==='Y')){ redo(); e.preventDefault(); return; }
+  if(mod && (e.key==='a' || e.key==='A')){ if(layers.length){ selectAllLayers(); e.preventDefault(); } return; }
   if(mod && (e.key==='c' || e.key==='C')){ if(selectedId){ copyLayerToClipboard(); e.preventDefault(); } return; }
   if(mod && (e.key==='x' || e.key==='X')){ if(selectedId){ cutLayerToClipboard(); e.preventDefault(); } return; }
   if(mod && (e.key==='v' || e.key==='V')){ if(layerClipboard){ pasteLayerFromClipboard(); e.preventDefault(); } return; }
-  if(mod && (e.key==='d' || e.key==='D')){ if(selectedId){ duplicateLayer(selectedId, {stopPropagation(){}}); e.preventDefault(); } return; }
+  if(mod && (e.key==='d' || e.key==='D')){ if(selectedId){ duplicateSelectedLayers(); e.preventDefault(); } return; }
   if(mod && (e.key==='s' || e.key==='S')){ openSaveModal(); e.preventDefault(); return; }
   if(mod && (e.key==='o' || e.key==='O')){ openLoadModal(); e.preventDefault(); return; }
 
@@ -3367,7 +3716,7 @@ document.addEventListener('keydown', function(e){
   if(!mod && (e.key==='d' || e.key==='D')){ toggleDotToolbar(); e.preventDefault(); return; }
 
   if((e.key === 'Backspace' || e.key === 'Delete')){
-    if(selectedId) { deleteLayer(selectedId); e.preventDefault(); }
+    if(selectedId || selectedIds.size) { deleteSelectedLayers(); e.preventDefault(); }
     return;
   }
 
