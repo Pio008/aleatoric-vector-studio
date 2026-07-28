@@ -793,17 +793,17 @@
     </button>
     <div class="tsep"></div>
     <button class="tbtn icon-only" id="undoBtn" onclick="undo()" title="Undo (Ctrl Z)">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3.5 15.5A8.5 8.5 0 1 0 6 8l-3 1"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
     </button>
     <button class="tbtn icon-only" id="redoBtn" onclick="redo()" title="Redo (Ctrl Y)">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M20.5 15.5A8.5 8.5 0 1 1 18 8l3 1"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
     </button>
     <div class="tsep"></div>
     <button class="tbtn icon-only" onclick="openSaveModal()" title="Save project (Ctrl S)">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l3 3v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 19V4.5A1.5 1.5 0 0 1 5 3Z"/><path d="M7.5 3v5h7V3"/><path d="M7 21v-7h10v7"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l3 3v13a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 3 19V4.5A1.5 1.5 0 0 1 5 3Z"/><path d="M7.5 3v5h7V3"/><path d="M6 20v-6h10v6"/></svg>
     </button>
     <button class="tbtn icon-only" onclick="openLoadModal()" title="Open project (Ctrl O)">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a1.5 1.5 0 0 1 1.5-1.5h4.4a1.5 1.5 0 0 1 1.2.6l1 1.4a1.5 1.5 0 0 0 1.2.6H19a1.5 1.5 0 0 1 1.5 1.5v8.3A1.7 1.7 0 0 1 18.8 20H5.2A1.7 1.7 0 0 1 3.5 18.3V7Z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4.5l1.7 2H19a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
     </button>
     <div class="tsep"></div>
     <div class="tmenu-wrap">
@@ -1012,7 +1012,8 @@ const DEFAULTS = {
   },
   shape: {
     x:60, y:60, rotation:0,
-    shapeType:'circle', width:22, height:22, thickness:2, fillMode:'filled', color:'#000000',
+    shapeType:'circle', sides:5, cornerRadius:0, apexOffset:50, pointRatio:38,
+    width:22, height:22, thickness:2, fillMode:'filled', color:'#000000',
     fixedStroke:true
   },
   custom: {
@@ -1174,12 +1175,26 @@ function schemaFor(layer){
     ];
   }
   if(layer.type==='shape'){
+    const st = layer.params.shapeType;
+    const roundable = !['circle','cross'].includes(st);
     const fields = [
-      {key:'shapeType', label:'Shape', type:'select', options:['circle','triangle','diamond','arrow','cross','star'], group:'shape'},
-      {key:'width', label:'Width', type:'range', min:5, max:400, step:1, group:'shape'},
-      {key:'height', label:'Height', type:'range', min:5, max:400, step:1, group:'shape'}
+      {key:'shapeType', label:'Shape', type:'select', options:['circle','polygon','diamond','star','arrow','cross'], group:'shape'}
     ];
-    if(layer.params.shapeType!=='cross'){
+    if(st==='polygon'){
+      fields.push({key:'sides', label:'Number of sides', type:'range', min:3, max:24, step:1, group:'shape'});
+    }
+    if(st==='polygon' && (layer.params.sides||5)===3){
+      fields.push({key:'apexOffset', label:'Apex position (right-angle \u2194 isoceles \u2194 right-angle)', type:'range', min:0, max:100, step:1, group:'shape'});
+    }
+    if(st==='star'){
+      fields.push({key:'pointRatio', label:'Point sharpness (spiky \u2194 near-polygon)', type:'range', min:5, max:95, step:1, group:'shape'});
+    }
+    fields.push({key:'width', label:'Width', type:'range', min:5, max:400, step:1, group:'shape'});
+    fields.push({key:'height', label:'Height', type:'range', min:5, max:400, step:1, group:'shape'});
+    if(roundable){
+      fields.push({key:'cornerRadius', label:'Corner smoothing (sharp \u2192 round)', type:'range', min:0, max:150, step:1, group:'shape'});
+    }
+    if(st!=='cross'){
       fields.push({key:'fillMode', label:'Fill mode', type:'select', options:['filled','outline'], group:'stroke'});
     }
     fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.5, max:60, step:0.1, group:'stroke'});
@@ -1313,6 +1328,19 @@ function ensureWavePoints(p){
   }
   p.ampPoints.sort((a,b)=>a.u-b.u);
   p.periodPoints.sort((a,b)=>a.u-b.u);
+}
+
+// How far a wave line actually swings above/below its baseline. For every lineType
+// except dampedWave this is just p.amplitude. dampedWave instead uses a separate
+// ampPoints envelope whose starting value is commonly larger than p.amplitude (a
+// leftover/unused field for this lineType) — using p.amplitude there under-measures
+// the real curve and makes click/rubber-band hit-testing miss the wave's peaks.
+function lineVerticalHalfExtent(p){
+  if(p.lineType==='dampedWave'){
+    ensureWavePoints(p);
+    return Math.max(10, ...p.ampPoints.map(a=>a.amp));
+  }
+  return Math.max(10, p.amplitude||0);
 }
 
 function interpPoints(points, key, u){
@@ -1518,16 +1546,91 @@ function boxElement(p){
   return `<path d="${roundedRectPath(0,0,p.width,p.height,p.cornerRadius)}" fill="none" stroke="${p.color}" stroke-width="${p.thickness}"${vecEffect}/>`;
 }
 
-function starPathD(w,h){
-  const cx=w/2, cy=h/2, outerRx=w/2, outerRy=h/2, innerRx=outerRx*0.382, innerRy=outerRy*0.382;
-  let d='';
-  for(let i=0;i<10;i++){
-    const rx = i%2===0 ? outerRx : innerRx;
-    const ry = i%2===0 ? outerRy : innerRy;
-    const angle = -Math.PI/2 + i*Math.PI/5;
-    const x = cx + rx*Math.cos(angle);
-    const y = cy + ry*Math.sin(angle);
-    d += (i===0?'M':'L') + x.toFixed(2) + ',' + y.toFixed(2) + ' ';
+// Vertex list (in local 0..w / 0..h space) for every "geometrical" shape type — the single
+// source of truth used both for plain sharp-cornered rendering and for the rounded variant
+// below. Two of these expose a continuous parameter so different "named" variants of the
+// same shape — and everything in between — are reachable with one slider instead of being
+// locked to a single fixed preset:
+//   - polygon at 3 sides (a triangle): apexOffset (0-100) slides the apex from the left
+//     edge (a right-angle triangle) through the centre (isoceles, or equilateral at the
+//     right width:height ratio) to the right edge (a mirrored right-angle triangle),
+//     passing through every scalene triangle along the way. The quick preset buttons jump
+//     straight to the five named triangle types; the slider (and width/height) let you
+//     settle anywhere between them. Polygons with 4+ sides ignore apexOffset and are drawn
+//     as regular N-gons.
+//   - star: pointRatio (5-95) is the inner/outer radius ratio, sweeping continuously from
+//     a very spiky star (low ratio) to almost a plain 10-gon (ratio near 100).
+// (Overall orientation/rotation is intentionally left to the layer's own Rotation control
+// in Position & rotation, rather than duplicated here.)
+function shapeVertices(shapeType, w, h, p){
+  const cx=w/2, cy=h/2;
+  // Backward compatibility: older saved projects may still have the standalone 'triangle'
+  // shape type from before it was folded into polygon (3 sides) — treat it the same way.
+  if(shapeType==='triangle'){
+    const apexU = (p.apexOffset===undefined ? 50 : p.apexOffset) / 100;
+    return [{x:w*apexU,y:0},{x:w,y:h},{x:0,y:h}];
+  }
+  if(shapeType==='diamond'){
+    return [{x:w/2,y:0},{x:w,y:h/2},{x:w/2,y:h},{x:0,y:h/2}];
+  }
+  if(shapeType==='arrow'){
+    return [
+      {x:0,y:h*0.4},{x:w*0.6,y:h*0.4},{x:w*0.6,y:h*0.2},{x:w,y:h*0.5},
+      {x:w*0.6,y:h*0.8},{x:w*0.6,y:h*0.6},{x:0,y:h*0.6}
+    ];
+  }
+  if(shapeType==='star'){
+    const outerRx=w/2, outerRy=h/2;
+    const ratio = (p.pointRatio===undefined ? 38 : p.pointRatio) / 100;
+    const innerRx=outerRx*ratio, innerRy=outerRy*ratio;
+    const pts=[];
+    for(let i=0;i<10;i++){
+      const rx = i%2===0 ? outerRx : innerRx, ry = i%2===0 ? outerRy : innerRy;
+      const angle = -Math.PI/2 + i*Math.PI/5;
+      pts.push({x:cx+rx*Math.cos(angle), y:cy+ry*Math.sin(angle)});
+    }
+    return pts;
+  }
+  if(shapeType==='polygon'){
+    const n = Math.max(3, Math.round(p.sides||5));
+    if(n===3){
+      const apexU = (p.apexOffset===undefined ? 50 : p.apexOffset) / 100;
+      return [{x:w*apexU,y:0},{x:w,y:h},{x:0,y:h}];
+    }
+    const rx=w/2, ry=h/2;
+    const pts=[];
+    for(let i=0;i<n;i++){
+      const angle = -Math.PI/2 + i*2*Math.PI/n;
+      pts.push({x:cx+rx*Math.cos(angle), y:cy+ry*Math.sin(angle)});
+    }
+    return pts;
+  }
+  return null;
+}
+
+// Builds an SVG path 'd' string from a closed vertex loop. radius===0 gives plain sharp
+// corners (straight lines to each vertex). radius>0 pulls back from each vertex along both
+// adjoining edges and joins the two inset points with a quadratic curve using the original
+// vertex as the control point — a smooth, symmetric rounding that scales continuously from
+// crisp geometric corners up to a fully rounded, "blob"-like outline. The radius is clamped
+// per-corner to half the shorter adjoining edge so tight/small shapes never self-intersect.
+function roundedPolygonPath(pts, radius){
+  const n = pts.length;
+  if(!radius || radius<=0){
+    return 'M' + pts.map(p=>`${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' L') + ' Z';
+  }
+  let d = '';
+  for(let i=0;i<n;i++){
+    const prev = pts[(i-1+n)%n], cur = pts[i], next = pts[(i+1)%n];
+    const toPrev = {x:prev.x-cur.x, y:prev.y-cur.y};
+    const toNext = {x:next.x-cur.x, y:next.y-cur.y};
+    const lenPrev = Math.hypot(toPrev.x,toPrev.y) || 1;
+    const lenNext = Math.hypot(toNext.x,toNext.y) || 1;
+    const r = Math.min(radius, lenPrev*0.5, lenNext*0.5);
+    const p1 = {x:cur.x+(toPrev.x/lenPrev)*r, y:cur.y+(toPrev.y/lenPrev)*r};
+    const p2 = {x:cur.x+(toNext.x/lenNext)*r, y:cur.y+(toNext.y/lenNext)*r};
+    d += (i===0 ? 'M' : 'L') + `${p1.x.toFixed(2)},${p1.y.toFixed(2)} `;
+    d += `Q${cur.x.toFixed(2)},${cur.y.toFixed(2)} ${p2.x.toFixed(2)},${p2.y.toFixed(2)} `;
   }
   return d + 'Z';
 }
@@ -1541,17 +1644,11 @@ function shapeElement(p){
   if(p.shapeType==='circle'){
     return `<ellipse cx="${w/2}" cy="${h/2}" rx="${Math.max(0.5, w/2)}" ry="${Math.max(0.5, h/2)}" fill="${fillAttr}" ${strokeAttr}/>`;
   }
-  if(p.shapeType==='triangle') return `<path d="M${w/2},0 L${w},${h} L0,${h} Z" fill="${fillAttr}" ${strokeAttr}/>`;
-  if(p.shapeType==='diamond') return `<path d="M${w/2},0 L${w},${h/2} L${w/2},${h} L0,${h/2} Z" fill="${fillAttr}" ${strokeAttr}/>`;
-  if(p.shapeType==='arrow'){
-    const d = `M0,${h*0.4} L${w*0.6},${h*0.4} L${w*0.6},${h*0.2} L${w},${h*0.5} L${w*0.6},${h*0.8} L${w*0.6},${h*0.6} L0,${h*0.6} Z`;
-    return `<path d="${d}" fill="${fillAttr}" ${strokeAttr}/>`;
-  }
   if(p.shapeType==='cross') return `<path d="M${w/2},0 L${w/2},${h} M0,${h/2} L${w},${h/2}" fill="none" stroke="${p.color}" stroke-width="${p.thickness}" stroke-linecap="round"${vecEffect}/>`;
-  if(p.shapeType==='star'){
-    return `<path d="${starPathD(w,h)}" fill="${fillAttr}" ${strokeAttr}/>`;
-  }
-  return '';
+  const verts = shapeVertices(p.shapeType, w, h, p);
+  if(!verts) return '';
+  const d = roundedPolygonPath(verts, p.cornerRadius||0);
+  return `<path d="${d}" fill="${fillAttr}" ${strokeAttr}/>`;
 }
 
 function waveSegmentPoints(p0, p1, lineParams){
@@ -1761,7 +1858,10 @@ function renderLayerSvg(layer, interactive){
   let hit = '';
   if(interactive){
     if(layer.type === 'custom') {
-      const pts = p.points || [];
+      // customLocalPoints expands wavy/zigzag/chirp/dampedWave segments into their
+      // actual drawn curve (not just the straight-line anchor points), so the hit
+      // rect covers where the curve really swings to, not just its control points.
+      const pts = customLocalPoints(p);
       if (pts.length) {
         const xs = pts.map(pt=>pt.x), ys = pts.map(pt=>pt.y);
         const minX = Math.min(...xs), maxX = Math.max(...xs);
@@ -1772,8 +1872,9 @@ function renderLayerSvg(layer, interactive){
       }
     } else {
       const w = p.length || p.width || 40;
-      const h = p.height || Math.max(20, p.amplitude * 2 || 20);
-      hit = `<rect data-id="${layer.id}" data-role="move" x="0" y="${p.height ? 0 : -h/2}" width="${w}" height="${h}" fill="transparent"/>`;
+      const halfAmp = lineVerticalHalfExtent(p);
+      const h = p.height || Math.max(20, halfAmp*2 + 16);
+      hit = `<rect data-id="${layer.id}" data-role="move" x="-8" y="${p.height ? 0 : -h/2}" width="${w+16}" height="${h}" fill="transparent"/>`;
     }
   }
   return `<g class="layer-group" data-id="${layer.id}" transform="translate(${p.x},${p.y}) rotate(${p.rotation})">${hit}${inner}</g>`;
@@ -2160,7 +2261,7 @@ function renderField(f, layer){
         <input type="range" class="${accentClass.trim()}" min="${f.min}" max="${f.max}" step="${f.step}" value="${val}"
           onmousedown="ensureHistorySnapshot()" ontouchstart="ensureHistorySnapshot()"
           oninput="onFieldRangeInput(this,'${layer.id}','${f.key}')"
-          onchange="finalizeHistory()">
+          onchange="onFieldRangeChangeEnd('${layer.id}','${f.key}')">
       </div>`;
   }
   if(f.type==='select'){
@@ -2289,6 +2390,18 @@ function onFieldRangeInput(rangeEl, id, key){
   updateParam(id, key, rangeEl.value, true, true);
 }
 
+// Sliders whose value changes which OTHER fields should be visible (e.g. a polygon's
+// "Number of sides" toggles the apex-offset slider and triangle preset buttons on/off at
+// exactly 3 sides). Live dragging only updates the canvas (onFieldRangeInput, for smooth
+// feedback without rebuilding the panel mid-drag); once the slider is released, this list
+// tells us to also rebuild the parameter panel so any newly-relevant fields appear right
+// away instead of waiting for an unrelated interaction to trigger the next full render.
+const SCHEMA_AFFECTING_KEYS = ['sides'];
+function onFieldRangeChangeEnd(id, key){
+  finalizeHistory();
+  if(SCHEMA_AFFECTING_KEYS.includes(key)) buildParamPanel();
+}
+
 function onFieldNumberChange(numEl, id, key){
   let v = parseFloat(numEl.value) || 0;
   updateParam(id, key, v, true, false);
@@ -2402,6 +2515,17 @@ function buildParamPanel(){
         <button class="btn secondary" style="flex:1;" onclick="clearPoints('${layer.id}')">Clear dots</button>
       </div>`;
   }
+  if(layer.type==='shape' && layer.params.shapeType==='polygon' && (layer.params.sides||5)===3){
+    const presets = [
+      ['equilateral','Equilateral'], ['isosceles','Isosceles'], ['scalene','Scalene'],
+      ['rightAngle','Right Angle'], ['rightAngleIsosceles','Right Angle Isosceles']
+    ];
+    customControls += `
+      <div class="pen-hint" style="margin-bottom:8px;">Jump straight to a named triangle type, then fine-tune with the sliders below to land anywhere between them.</div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;">
+        ${presets.map(([key,label])=>`<button class="btn secondary" style="flex:1 1 auto; font-size:11.5px; padding:6px 8px;" onclick="applyTrianglePreset('${layer.id}','${key}')">${label}</button>`).join('')}
+      </div>`;
+  }
 
   let waveReadout = '';
   if(layer.params.lineType==='dampedWave' && layer.type!=='custom'){
@@ -2502,6 +2626,41 @@ function clearPoints(id){
   if(!layer) return;
   pushHistory();
   layer.params.points = [];
+  renderAll();
+}
+
+// Jumps a triangle shape layer straight to one of the five named types from the reference
+// diagram, by setting its apex position and width/height ratio to the values that produce
+// that exact triangle. The apexOffset and width/height sliders remain fully live afterwards,
+// so the person can nudge away from the preset to anything in between two named types.
+function applyTrianglePreset(id, preset){
+  const layer = layers.find(l=>l.id===id);
+  if(!layer || layer.type!=='shape') return;
+  pushHistory();
+  const p = layer.params;
+  p.shapeType = 'polygon';
+  p.sides = 3;
+  const w = p.width || 100;
+  const equilH = w * (Math.sqrt(3)/2);
+  if(preset==='equilateral'){
+    p.apexOffset = 50;
+    p.height = +equilH.toFixed(1);
+  } else if(preset==='isosceles'){
+    p.apexOffset = 50;
+    // If height currently matches the equilateral ratio, nudge it taller so the shape
+    // reads as a distinct isosceles triangle rather than landing back on equilateral.
+    p.height = Math.abs((p.height||0) - equilH) < 1 ? +(w*1.35).toFixed(1) : (p.height || +(w*1.35).toFixed(1));
+  } else if(preset==='scalene'){
+    p.apexOffset = 28;
+  } else if(preset==='rightAngle'){
+    p.apexOffset = 0;
+    // Keep this visibly different from "Right Angle Isosceles" (which always sets
+    // height = width) — if the current height happens to equal width, nudge it away.
+    p.height = Math.abs((p.height||0) - w) < 1 ? +(w*1.4).toFixed(1) : (p.height || +(w*1.4).toFixed(1));
+  } else if(preset==='rightAngleIsosceles'){
+    p.apexOffset = 0;
+    p.height = w;
+  }
   renderAll();
 }
 
@@ -2622,15 +2781,16 @@ function staffGridSvg(){
 function getLayerBBox(layer){
   const p = layer.params;
   if(layer.type==='custom'){
-    const pts = p.points || [];
+    const pts = customLocalPoints(p);
     if(!pts.length) return {x1:p.x-20, y1:p.y-20, x2:p.x+20, y2:p.y+20};
     const xs = pts.map(pt=>pt.x), ys = pts.map(pt=>pt.y);
     return {x1:p.x+Math.min(...xs)-10, y1:p.y+Math.min(...ys)-10, x2:p.x+Math.max(...xs)+10, y2:p.y+Math.max(...ys)+10};
   }
   const w = p.length || p.width || 40;
-  const h = p.height || Math.max(20, (p.amplitude||0)*2 || 20);
+  const halfAmp = lineVerticalHalfExtent(p);
+  const h = p.height || Math.max(20, halfAmp*2 + 16);
   const y0 = p.height ? p.y : p.y - h/2;
-  return {x1:p.x, y1:y0, x2:p.x+w, y2:y0+h};
+  return {x1:p.x-8, y1:y0, x2:p.x+w+8, y2:y0+h};
 }
 function layerIntersectsBox(layer, x1, y1, x2, y2){
   const b = getLayerBBox(layer);
