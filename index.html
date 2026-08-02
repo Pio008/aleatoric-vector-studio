@@ -336,18 +336,27 @@
   .sel-outline.multi{stroke-width:1.4; opacity:0.6;}
   .rubber-band{fill:var(--rubric); fill-opacity:0.08; stroke:var(--rubric); stroke-width:1; stroke-dasharray:3,3; pointer-events:none; vector-effect:non-scaling-stroke;}
   .mixed-badge{font-size:10px; text-transform:uppercase; letter-spacing:0.03em; color:var(--rubric); background:rgba(150,60,50,0.1); border-radius:3px; padding:1px 5px; margin-left:6px; vertical-align:middle;}
-  .handle{fill:var(--rubric); stroke:#fff; stroke-width:1; cursor:grab; opacity:0.5; transition:opacity .12s ease;}
-  .handle:hover{opacity:1;}
-  .handle.amp{fill:var(--good);}
-  .handle.amp-mid{fill:var(--good); opacity:0.35;}
-  .handle.amp-mid:hover{opacity:0.9;}
-  .handle.period{fill:var(--period);}
-  .handle.tail{fill:var(--tail);}
-  .handle.phase{fill:var(--phase);}
-  .handle.cycles{fill:var(--period);}
-  .handle.decay{fill:var(--tail);}
-  .handle.chirprate{fill:var(--chirp);}
-  .handle.pt{cursor:move;}
+  /* A handle is a <g> pairing an invisible 10x10 hit area (.handle-hit — kept full-size
+     so grabbing one is exactly as forgiving as before) with a small solid dot (.handle-mark)
+     drawn at its centre. Splitting the click target from the visible mark like this means a
+     handle sitting right on top of fine detail — an arrowhead tip, a thin line — covers much
+     less of it, instead of blocking it under a solid 10x10 square. */
+  .handle-hit{fill:transparent; cursor:grab;}
+  .handle-mark{fill:var(--rubric); stroke:#fff; stroke-width:1; opacity:0.5; pointer-events:none; transition:opacity .12s ease;}
+  .handle:hover .handle-mark{opacity:1;}
+  /* While a handle is the one actively being dragged, hide its mark completely — even
+     though the mouse is necessarily "over" it at that moment (hover would otherwise say
+     opaque), being pressed takes priority so the view stays clear while dragging. */
+  .handle-mark--dragging{opacity:0 !important;}
+  .handle-mark.amp{fill:var(--good);}
+  .handle-mark.amp-mid{fill:var(--good); opacity:0.32;}
+  .handle:hover .handle-mark.amp-mid{opacity:0.9;}
+  .handle-mark.period{fill:var(--period);}
+  .handle-mark.tail{fill:var(--tail);}
+  .handle-mark.phase{fill:var(--phase);}
+  .handle-mark.cycles{fill:var(--period);}
+  .handle-mark.decay{fill:var(--tail);}
+  .handle-mark.chirprate{fill:var(--chirp);}
   .handle-tag{
     font-family:'IBM Plex Mono',monospace;
     font-size:9px;
@@ -358,16 +367,17 @@
     stroke-width:2.5px;
     stroke-linejoin:round;
   }
-  .handle[data-role="resize-e"], .handle[data-role="line-end"]{cursor:ew-resize;}
-  .handle[data-role="resize-s"], .handle[data-role="line-amp"]{cursor:ns-resize;}
-  .handle[data-role="resize-se"]{cursor:nwse-resize;}
-  .handle[data-role^="wave-amp-pt"]{cursor:move;}
-  .handle[data-role^="wave-period-pt"]{cursor:move;}
-  .handle[data-role="wave-tail"]{cursor:ew-resize;}
-  .handle[data-role="line-phase"]{cursor:ns-resize;}
-  .handle[data-role="line-cycles"]{cursor:ew-resize;}
-  .handle[data-role="line-decay"]{cursor:ns-resize;}
-  .handle[data-role="line-chirprate"]{cursor:ew-resize;}
+  .handle-hit[data-role="resize-e"], .handle-hit[data-role="line-end"]{cursor:ew-resize;}
+  .handle-hit[data-role="resize-s"], .handle-hit[data-role="line-amp"]{cursor:ns-resize;}
+  .handle-hit[data-role="resize-se"]{cursor:nwse-resize;}
+  .handle-hit[data-role^="wave-amp-pt"]{cursor:move;}
+  .handle-hit[data-role^="wave-period-pt"]{cursor:move;}
+  .handle-hit[data-role="wave-tail"]{cursor:ew-resize;}
+  .handle-hit[data-role="line-phase"]{cursor:ns-resize;}
+  .handle-hit[data-role="line-cycles"]{cursor:ew-resize;}
+  .handle-hit[data-role="line-decay"]{cursor:ns-resize;}
+  .handle-hit[data-role="line-chirprate"]{cursor:ew-resize;}
+  .handle-hit.pt{cursor:move;}
 
   /* ---- param controls ---- */
   .param-tabs{
@@ -877,8 +887,8 @@
         <label><input type="checkbox" id="gridToggle" checked onchange="toggleGrid()"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> Ruled guide</label>
         <label><input type="checkbox" id="snapGridToggle" checked><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14V9a6 6 0 0 1 12 0v5"/><path d="M6 14a3 3 0 0 0 6 0M12 14a3 3 0 0 0 6 0"/><path d="M6 9H2.5M21.5 9H18"/></svg> Snap Grid (10px)</label>
         <label><input type="checkbox" id="snapElementToggle" checked><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14V9a6 6 0 0 1 12 0v5"/><path d="M6 14a3 3 0 0 0 6 0M12 14a3 3 0 0 0 6 0"/><path d="M6 9H2.5M21.5 9H18"/></svg> Snap Ends</label>
-        <label>Canvas W <input type="number" id="canvasW" value="300" min="40" max="2000" onchange="resizeCanvasFromInputs()"></label>
-        <label>Canvas H <input type="number" id="canvasH" value="250" min="40" max="2000" onchange="resizeCanvasFromInputs()"></label>
+        <label>Canvas W <input type="number" id="canvasW" value="300" min="40" max="10000" onchange="resizeCanvasFromInputs()"></label>
+        <label>Canvas H <input type="number" id="canvasH" value="250" min="40" max="10000" onchange="resizeCanvasFromInputs()"></label>
         <label>Zoom <input type="range" id="zoom" min="0.5" max="4" step="0.1" value="2.25" oninput="onZoomSliderInput(this)"></label>
       </div>
       <div class="canvas-toolbar" id="museGridToolbar">
@@ -954,6 +964,13 @@ let selectedIds = new Set(); // multi-selection; selectedId is the "primary" (la
 let rubberBandState = null; // drag-to-select box on empty canvas
 let uid = 1;
 let canvasW = 300, canvasH = 250;
+// Generous ceiling for line/arrow length and box width/height. Both the on-canvas drag
+// handles and the Length/Width/Height sliders in the params panel are built from this same
+// constant so the two can never drift out of sync again — previously the drag handles were
+// hard-capped at a literal 2000 while the sliders followed a different, canvas-size-based
+// formula. That mismatch is what made dragging stop dead at 2000, and made typing a bigger
+// number into the field silently snap back down once the slider next re-synced with it.
+const MAX_SHAPE_EXTENT = 10000;
 let dragState = null;
 let lastClickInfo = null; // {id, role, time} — used to detect double-clicks manually (see onStageMouseDown)
 let canvasDragState = null;
@@ -1124,7 +1141,7 @@ function schemaFor(layer){
     const t = layer.params.lineType;
     const fields = [
       {key:'lineType', label:'Line type', type:'select', options:['straight','wavy','zigzag','chirp','arc','dampedWave'], group:'shape'},
-      {key:'length', label:'Length', type:'range', min:10, max:Math.max(canvasW,1200), step:1, group:'shape'}
+      {key:'length', label:'Length', type:'range', min:10, max:Math.max(canvasW, MAX_SHAPE_EXTENT), step:1, group:'shape'}
     ];
     if(t!=='straight' && t!=='dampedWave'){
       fields.push({key:'amplitude', label:'Amplitude', type:'range', min:0, max:100, step:1, group:'wave'});
@@ -1165,8 +1182,8 @@ function schemaFor(layer){
   }
   if(layer.type==='box'){
     return [
-      {key:'width', label:'Width', type:'range', min:10, max:Math.max(canvasW,300), step:1, group:'shape'},
-      {key:'height', label:'Height', type:'range', min:10, max:Math.max(canvasH,300), step:1, group:'shape'},
+      {key:'width', label:'Width', type:'range', min:10, max:Math.max(canvasW, MAX_SHAPE_EXTENT), step:1, group:'shape'},
+      {key:'height', label:'Height', type:'range', min:10, max:Math.max(canvasH, MAX_SHAPE_EXTENT), step:1, group:'shape'},
       {key:'cornerRadius', label:'Corner radius', type:'range', min:0, max:40, step:1, group:'shape'},
       {key:'thickness', label:'Border thickness', type:'range', min:0.5, max:60, step:0.1, group:'stroke'},
       {key:'fixedStroke', label:'Fixed stroke (let resize the box in MS4 without stretching the border)', type:'checkbox', group:'stroke'},
@@ -1882,7 +1899,22 @@ function renderLayerSvg(layer, interactive){
 
 function handleRect(id, role, x, y, extraClass, title){
   const t = title ? `<title>${title}</title>` : '';
-  return `<rect class="handle ${extraClass||''}" data-id="${id}" data-role="${role}" x="${x}" y="${y}" width="10" height="10">${t}</rect>`;
+  const cx = (x + 5).toFixed(2), cy = (y + 5).toFixed(2);
+  const cls = extraClass || '';
+  // The hit area stays a full 10x10 square (same as before) so grabbing a handle is just
+  // as forgiving as ever; the visible dot drawn on top of it is much smaller, so the mark
+  // itself covers far less of whatever sits underneath (see the .handle-hit/.handle-mark
+  // comment in the stylesheet above). While this exact handle is the one currently being
+  // dragged, the mark fades out completely (see .handle-mark--dragging) so nothing blocks
+  // the view while the shape underneath is actively changing; it reappears the moment the
+  // mouse button is released, since renderStage()/renderAll() re-run on every drag step
+  // and on mouseup, and dragState is re-checked fresh each time.
+  const isDragging = !!(dragState && dragState.id === id && dragState.role === role);
+  const markClass = `handle-mark ${cls}${isDragging ? ' handle-mark--dragging' : ''}`;
+  return `<g class="handle" data-id="${id}" data-role="${role}">` +
+    `<rect class="handle-hit ${cls}" data-id="${id}" data-role="${role}" x="${x}" y="${y}" width="10" height="10">${t}</rect>` +
+    `<circle class="${markClass}" cx="${cx}" cy="${cy}" r="3.3"/>` +
+    `</g>`;
 }
 
 // Short on-canvas text tag next to a handle, so its identity doesn't rely on color at
@@ -2241,8 +2273,10 @@ function onSharedFieldRangeInput(rangeEl, key){
   updateSharedParam(key, rangeEl.value, true, true);
 }
 function onSharedFieldNumberChange(numEl, key){
-  const v = parseFloat(numEl.value);
+  let v = parseFloat(numEl.value);
   if(isNaN(v)) return;
+  if(numEl.min !== '') v = Math.max(v, parseFloat(numEl.min));
+  if(numEl.max !== '') v = Math.min(v, parseFloat(numEl.max));
   updateSharedParam(key, v, true, false);
 }
 
@@ -2403,7 +2437,13 @@ function onFieldRangeChangeEnd(id, key){
 }
 
 function onFieldNumberChange(numEl, id, key){
-  let v = parseFloat(numEl.value) || 0;
+  let v = parseFloat(numEl.value);
+  if(isNaN(v)) return;
+  // A range input silently clamps its own value to its min/max, but a number input does
+  // not — so without this, typing something outside the slider's range would "stick" here
+  // but then snap back the next time the slider itself is touched and the two resync.
+  if(numEl.min !== '') v = Math.max(v, parseFloat(numEl.min));
+  if(numEl.max !== '') v = Math.min(v, parseFloat(numEl.max));
   updateParam(id, key, v, true, false);
 }
 
@@ -3198,7 +3238,7 @@ function onDocMouseMove(e){
     const snapped = getSnapCoordinates(pt.x, pt.y, layer.id);
     const dx = snapped.x - p.x;
     const dy = snapped.y - p.y;
-    p.length = clamp(Math.hypot(dx, dy), 10, 2000);
+    p.length = clamp(Math.hypot(dx, dy), 10, Math.max(canvasW, MAX_SHAPE_EXTENT));
     p.rotation = Math.atan2(dy, dx) * 180 / Math.PI;
   } else if(dragState.role==='line-amp'){
     // The handle always renders above the baseline (y = -amplitude), so dragging is
@@ -3304,19 +3344,19 @@ function onDocMouseMove(e){
     p.tailLength = clamp(Math.round(totalLen - local.lx), 0, Math.max(0, totalLen - 5));
   } else if(dragState.role==='resize-e'){
     const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
-    p.width = clamp(local.lx, 10, 2000);
+    p.width = clamp(local.lx, 10, Math.max(canvasW, MAX_SHAPE_EXTENT));
   } else if(dragState.role==='resize-s'){
     const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
-    p.height = clamp(local.ly, 10, 2000);
+    p.height = clamp(local.ly, 10, Math.max(canvasH, MAX_SHAPE_EXTENT));
   } else if(dragState.role==='resize-se'){
     const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
     if(e.ctrlKey) {
-      const sz = clamp(Math.max(local.lx, local.ly), 10, 2000);
+      const sz = clamp(Math.max(local.lx, local.ly), 10, Math.max(canvasW, canvasH, MAX_SHAPE_EXTENT));
       p.width = sz;
       p.height = sz;
     } else {
-      p.width = clamp(local.lx, 10, 2000);
-      p.height = clamp(local.ly, 10, 2000);
+      p.width = clamp(local.lx, 10, Math.max(canvasW, MAX_SHAPE_EXTENT));
+      p.height = clamp(local.ly, 10, Math.max(canvasH, MAX_SHAPE_EXTENT));
     }
   } else if(dragState.role.startsWith('point:')){
     const idx = dragState.pointIdx;
