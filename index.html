@@ -335,6 +335,7 @@
   .sel-outline{fill:none; stroke:var(--rubric); stroke-width:1; stroke-dasharray:3,4; opacity:0.35; pointer-events:none; vector-effect:non-scaling-stroke;}
   .sel-outline.multi{stroke-width:1.4; opacity:0.6;}
   .rubber-band{fill:var(--rubric); fill-opacity:0.08; stroke:var(--rubric); stroke-width:1; stroke-dasharray:3,3; pointer-events:none; vector-effect:non-scaling-stroke;}
+  .smart-guide{stroke:#ff3b8d; stroke-width:1; stroke-dasharray:4,3; pointer-events:none; vector-effect:non-scaling-stroke;}
   .mixed-badge{font-size:10px; text-transform:uppercase; letter-spacing:0.03em; color:var(--rubric); background:rgba(150,60,50,0.1); border-radius:3px; padding:1px 5px; margin-left:6px; vertical-align:middle;}
   /* A handle is a <g> pairing an invisible 10x10 hit area (.handle-hit — kept full-size
      so grabbing one is exactly as forgiving as before) with a small solid dot (.handle-mark)
@@ -1030,7 +1031,7 @@ const DEFAULTS = {
   shape: {
     x:60, y:60, rotation:0,
     shapeType:'circle', sides:5, cornerRadius:0, apexOffset:50, pointRatio:38,
-    width:22, height:22, thickness:2, fillMode:'filled', color:'#000000',
+    width:22, height:22, thickness:2, fillMode:'filled', accentSize:16, color:'#000000',
     fixedStroke:true
   },
   custom: {
@@ -1056,6 +1057,31 @@ function toLocal(px,py,ox,oy,rotDeg){
     lx: dx*Math.cos(rad) - dy*Math.sin(rad),
     ly: dx*Math.sin(rad) + dy*Math.cos(rad)
   };
+}
+
+// Boxes and shapes rotate around their own centre (width/2, height/2) rather than the
+// x,y anchor (which stays their top-left corner in unrotated local space) — lines and
+// custom paths keep rotating around their x,y anchor point as before, since that's the
+// natural pivot for something anchored at a start point. This is the single source of
+// truth for which pivot a layer rotates around; both rendering (renderLayerSvg /
+// selectionOverlaySvg, via the SVG rotate(deg,cx,cy) pivot) and the interactive resize
+// math (toLocalPivot below) must agree on it or dragging a rotated box's resize handles
+// would drift.
+function layerPivot(layer){
+  if(layer.type==='box' || layer.type==='shape'){
+    return { cx: (layer.params.width||0)/2, cy: (layer.params.height||0)/2 };
+  }
+  return { cx:0, cy:0 };
+}
+
+// Same as toLocal, but accounts for a layer's rotation pivot (see layerPivot) instead of
+// always assuming rotation happens around the x,y anchor. Use this instead of plain
+// toLocal for any interaction on a box/shape layer that must match what's on screen.
+function toLocalPivot(px,py,layer){
+  const piv = layerPivot(layer);
+  const p = layer.params;
+  const r = toLocal(px, py, p.x+piv.cx, p.y+piv.cy, p.rotation);
+  return { lx: r.lx+piv.cx, ly: r.ly+piv.cy };
 }
 
 function fromLocal(lx,ly,ox,oy,rotDeg){
@@ -1090,10 +1116,26 @@ function svgPointFromClient(clientX, clientY){
   return {x:p.x, y:p.y};
 }
 
+// World-space coordinates of the alignment guide(s) currently being shown while dragging a
+// layer, or null on each axis when nothing is aligned. Set as a side effect of
+// getSnapCoordinates (the only place that knows what just got snapped to what) and read by
+// renderStage() to draw the dashed guide lines; cleared on mouseup.
+let snapGuides = { v: null, h: null };
+
+// A layer's own bbox-centre sits at a fixed offset from its x,y anchor that doesn't change
+// as the layer moves (translation happens outside rotation) — only as it rotates or
+// resizes. So this can be computed once per drag from the layer's *current* position and
+// reused to convert between "anchor x,y" and "bbox centre" for any tentative move.
+function layerCenterOffset(layer){
+  const b = worldBBoxForLayer(layer);
+  return { x: (b.minX+b.maxX)/2 - layer.params.x, y: (b.minY+b.maxY)/2 - layer.params.y };
+}
+
 function getSnapCoordinates(targetX, targetY, skipId) {
   const snapEl = document.getElementById('snapElementToggle').checked;
   const snapGrid = document.getElementById('snapGridToggle').checked;
   const tolerance = 10;
+  snapGuides.v = null; snapGuides.h = null;
 
   if (snapEl) {
     for (let l of layers) {
@@ -1108,6 +1150,42 @@ function getSnapCoordinates(targetX, targetY, skipId) {
         if (Math.hypot(targetX - endX, targetY - endY) < tolerance) {
           return { x: endX, y: endY };
         }
+      }
+    }
+
+    // Figma-style smart guides: align this layer's own bbox centre or edges to another
+    // layer's bbox centre/edges, or to the canvas centre — snapping the position and
+    // lighting up a dashed guide line so it's visible, rather than needing a manual
+    // "centre" action. Only kicks in when the plain anchor-point snap above found nothing.
+    const mover = layers.find(l=>l.id===skipId);
+    if(mover){
+      const off = layerCenterOffset(mover);
+      const tentCx = targetX + off.x, tentCy = targetY + off.y;
+      const candX = [canvasW/2];
+      const candY = [canvasH/2];
+      layers.forEach(l=>{
+        if(l.id===skipId || !l.visible) return;
+        const b = worldBBoxForLayer(l);
+        candX.push((b.minX+b.maxX)/2, b.minX, b.maxX);
+        candY.push((b.minY+b.maxY)/2, b.minY, b.maxY);
+      });
+      let bestX = null, bestXDist = tolerance;
+      candX.forEach(cx=>{
+        const d = Math.abs(tentCx - cx);
+        if(d < bestXDist){ bestXDist = d; bestX = cx; }
+      });
+      let bestY = null, bestYDist = tolerance;
+      candY.forEach(cy=>{
+        const d = Math.abs(tentCy - cy);
+        if(d < bestYDist){ bestYDist = d; bestY = cy; }
+      });
+      if(bestX !== null || bestY !== null){
+        snapGuides.v = bestX !== null ? bestX : null;
+        snapGuides.h = bestY !== null ? bestY : null;
+        return {
+          x: bestX !== null ? bestX - off.x : targetX,
+          y: bestY !== null ? bestY - off.y : targetY
+        };
       }
     }
   }
@@ -1212,7 +1290,18 @@ function schemaFor(layer){
       fields.push({key:'cornerRadius', label:'Corner smoothing (sharp \u2192 round)', type:'range', min:0, max:150, step:1, group:'shape'});
     }
     if(st!=='cross'){
-      fields.push({key:'fillMode', label:'Fill mode', type:'select', options:['filled','outline'], group:'stroke'});
+      // A 4-sided polygon (square) gets two extra fill modes on top of the usual
+      // filled/outline, matching the notehead-style square glyphs: 'dot' draws a centred
+      // dot inside the outline (always dead-centre, since it's drawn in the same 0..w/0..h
+      // local space as the square itself), and 'diagonal' draws a single bottom-left-to-
+      // top-right stroke across it. Other shapes (circle, star, diamond, etc.) keep just
+      // the two plain options.
+      const isSquare = st==='polygon' && (layer.params.sides||5)===4;
+      const fillOptions = isSquare ? ['filled','outline','dot','diagonal'] : ['filled','outline'];
+      fields.push({key:'fillMode', label:'Fill mode', type:'select', options:fillOptions, group:'stroke'});
+      if(isSquare && layer.params.fillMode==='dot'){
+        fields.push({key:'accentSize', label:'Dot size %', type:'range', min:5, max:90, step:1, group:'shape'});
+      }
     }
     fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.5, max:60, step:0.1, group:'stroke'});
     fields.push({key:'color', label:'Ink colour', type:'color', group:'stroke'});
@@ -1614,6 +1703,13 @@ function shapeVertices(shapeType, w, h, p){
       const apexU = (p.apexOffset===undefined ? 50 : p.apexOffset) / 100;
       return [{x:w*apexU,y:0},{x:w,y:h},{x:0,y:h}];
     }
+    // A 4-sided polygon is special-cased to an axis-aligned square/rectangle (flat top,
+    // bottom, and sides) rather than the generic regular-N-gon construction below, which
+    // would otherwise put a vertex at the top and produce a diamond instead — not what
+    // "square" means for a notehead glyph.
+    if(n===4){
+      return [{x:0,y:0},{x:w,y:0},{x:w,y:h},{x:0,y:h}];
+    }
     const rx=w/2, ry=h/2;
     const pts=[];
     for(let i=0;i<n;i++){
@@ -1654,7 +1750,7 @@ function roundedPolygonPath(pts, radius){
 
 function shapeElement(p){
   const w = p.width, h = p.height;
-  const outline = p.fillMode==='outline';
+  const outline = p.fillMode==='outline' || p.fillMode==='dot' || p.fillMode==='diagonal';
   const fillAttr = outline ? 'none' : p.color;
   const vecEffect = p.fixedStroke ? ' vector-effect="non-scaling-stroke"' : '';
   const strokeAttr = outline ? `stroke="${p.color}" stroke-width="${p.thickness}"${vecEffect}` : '';
@@ -1665,7 +1761,22 @@ function shapeElement(p){
   const verts = shapeVertices(p.shapeType, w, h, p);
   if(!verts) return '';
   const d = roundedPolygonPath(verts, p.cornerRadius||0);
-  return `<path d="${d}" fill="${fillAttr}" ${strokeAttr}/>`;
+  const base = `<path d="${d}" fill="${fillAttr}" ${strokeAttr}/>`;
+  // 'dot' and 'diagonal' are only offered when this is a 4-sided polygon (square) — see
+  // the schema — so it's safe to lay the accent straight across the local 0..w/0..h box
+  // without re-checking shapeType/sides here.
+  if(p.fillMode==='dot'){
+    const pct = (p.accentSize===undefined ? 16 : p.accentSize) / 200;
+    const r = Math.max(0.5, Math.min(w, h) * pct);
+    return base + `<circle cx="${(w/2).toFixed(2)}" cy="${(h/2).toFixed(2)}" r="${r.toFixed(2)}" fill="${p.color}"/>`;
+  }
+  if(p.fillMode==='diagonal'){
+    // Splits the square along the bottom-left-to-top-right diagonal and fills the upper
+    // triangle (the one touching the full top edge) solid, leaving the lower-right
+    // triangle open — matches the reference glyph, rather than just drawing a bare line.
+    return base + `<path d="M0,0 L${w},0 L0,${h} Z" fill="${p.color}"/>`;
+  }
+  return base;
 }
 
 function waveSegmentPoints(p0, p1, lineParams){
@@ -1754,7 +1865,8 @@ function arrowExtentPoints(anchorX, anchorY, outwardAngle, p){
   ];
 }
 
-function rotatedWorldBBox(localMinX, localMinY, localMaxX, localMaxY, ox, oy, rotDeg, pad){
+function rotatedWorldBBox(localMinX, localMinY, localMaxX, localMaxY, ox, oy, rotDeg, pad, pivotX, pivotY){
+  pivotX = pivotX || 0; pivotY = pivotY || 0;
   const rad = (rotDeg || 0) * Math.PI / 180;
   const cos = Math.cos(rad), sin = Math.sin(rad);
   const corners = [
@@ -1763,8 +1875,9 @@ function rotatedWorldBBox(localMinX, localMinY, localMaxX, localMaxY, ox, oy, ro
   ];
   let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
   corners.forEach(c => {
-    const wx = ox + c.x * cos - c.y * sin;
-    const wy = oy + c.x * sin + c.y * cos;
+    const dx = c.x - pivotX, dy = c.y - pivotY;
+    const wx = ox + pivotX + dx * cos - dy * sin;
+    const wy = oy + pivotY + dx * sin + dy * cos;
     if(wx < minX) minX = wx; if(wx > maxX) maxX = wx;
     if(wy < minY) minY = wy; if(wy > maxY) maxY = wy;
   });
@@ -1846,10 +1959,11 @@ function worldBBoxForLayer(layer){
     const ext = localExtentOf(pts.concat(extraPts));
     return rotatedWorldBBox(ext.minX, ext.minY, ext.maxX, ext.maxY, p.x, p.y, p.rotation, pad);
   }
-  // box / shape — local geometry is exactly the 0..width, 0..height rect
+  // box / shape — local geometry is exactly the 0..width, 0..height rect, rotated
+  // around its own centre (see layerPivot)
   const pad = strokeHalf + margin;
   const w = p.width || 100, h = p.height || 50;
-  return rotatedWorldBBox(0, 0, w, h, p.x, p.y, p.rotation, pad);
+  return rotatedWorldBBox(0, 0, w, h, p.x, p.y, p.rotation, pad, w/2, h/2);
 }
 
 function contentBBox(){
@@ -1894,7 +2008,9 @@ function renderLayerSvg(layer, interactive){
       hit = `<rect data-id="${layer.id}" data-role="move" x="-8" y="${p.height ? 0 : -h/2}" width="${w+16}" height="${h}" fill="transparent"/>`;
     }
   }
-  return `<g class="layer-group" data-id="${layer.id}" transform="translate(${p.x},${p.y}) rotate(${p.rotation})">${hit}${inner}</g>`;
+  const piv = layerPivot(layer);
+  const rot = piv.cx || piv.cy ? `rotate(${p.rotation},${piv.cx},${piv.cy})` : `rotate(${p.rotation})`;
+  return `<g class="layer-group" data-id="${layer.id}" transform="translate(${p.x},${p.y}) ${rot}">${hit}${inner}</g>`;
 }
 
 function handleRect(id, role, x, y, extraClass, title){
@@ -2038,7 +2154,9 @@ function selectionOverlaySvg(layer){
     }
     handles += pts.map((pt,i)=>handleRect(layer.id, 'point:'+i, pt.x-5, pt.y-5, 'pt', pts.length>2 ? 'Drag to move — double-click to delete' : 'Drag to move') + handleTag(pt.x-5, pt.y-5, String(i+1), 8, 3)).join('');
   }
-  return `<g class="selection-overlay" transform="translate(${p.x},${p.y}) rotate(${p.rotation})">${outline}${handles}</g>`;
+  const selPiv = layerPivot(layer);
+  const selRot = selPiv.cx || selPiv.cy ? `rotate(${p.rotation},${selPiv.cx},${selPiv.cy})` : `rotate(${p.rotation})`;
+  return `<g class="selection-overlay" transform="translate(${p.x},${p.y}) ${selRot}">${outline}${handles}</g>`;
 }
 
 /* ============================= LAYER MANAGEMENT ============================= */
@@ -2866,7 +2984,23 @@ function renderStage(){
     const selLayer = layers.find(l=>l.id===selectedId);
     overlaysSvg = selLayer ? selectionOverlaySvg(selLayer) : '';
   }
-  stage.innerHTML = staffGridSvg() + layers.map(l=>renderLayerSvg(l, true)).join('\n') + overlaysSvg;
+  const guidesSvg = smartGuidesSvg();
+  stage.innerHTML = staffGridSvg() + layers.map(l=>renderLayerSvg(l, true)).join('\n') + overlaysSvg + guidesSvg;
+}
+
+// Dashed alignment guide lines — Figma-style — shown while dragging a layer near another
+// layer's (or the canvas') centre or edge; snapGuides is populated by getSnapCoordinates
+// as a side effect of the same drag that's currently in progress.
+function smartGuidesSvg(){
+  if(!dragState || dragState.role!=='move') return '';
+  let s = '';
+  if(snapGuides.v !== null){
+    s += `<line class="smart-guide" x1="${snapGuides.v}" y1="0" x2="${snapGuides.v}" y2="${canvasH}"/>`;
+  }
+  if(snapGuides.h !== null){
+    s += `<line class="smart-guide" x1="0" y1="${snapGuides.h}" x2="${canvasW}" y2="${snapGuides.h}"/>`;
+  }
+  return s;
 }
 
 function renderAll(){
@@ -3343,13 +3477,13 @@ function onDocMouseMove(e){
     const totalLen = Math.max(1, p.length);
     p.tailLength = clamp(Math.round(totalLen - local.lx), 0, Math.max(0, totalLen - 5));
   } else if(dragState.role==='resize-e'){
-    const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
+    const local = toLocalPivot(pt.x, pt.y, layer);
     p.width = clamp(local.lx, 10, Math.max(canvasW, MAX_SHAPE_EXTENT));
   } else if(dragState.role==='resize-s'){
-    const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
+    const local = toLocalPivot(pt.x, pt.y, layer);
     p.height = clamp(local.ly, 10, Math.max(canvasH, MAX_SHAPE_EXTENT));
   } else if(dragState.role==='resize-se'){
-    const local = toLocal(pt.x, pt.y, p.x, p.y, p.rotation);
+    const local = toLocalPivot(pt.x, pt.y, layer);
     if(e.ctrlKey) {
       const sz = clamp(Math.max(local.lx, local.ly), 10, Math.max(canvasW, canvasH, MAX_SHAPE_EXTENT));
       p.width = sz;
@@ -3418,7 +3552,7 @@ function onDocMouseUp(){
       }
       else if(dragState.role==='line-chirprate') p.chirpRate = Math.round(p.chirpRate*10)/10;
     }
-    dragState = null; renderAll(); finalizeHistory();
+    dragState = null; snapGuides.v = null; snapGuides.h = null; renderAll(); finalizeHistory();
   } 
 }
 
