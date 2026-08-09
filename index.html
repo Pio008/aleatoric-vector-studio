@@ -1031,8 +1031,7 @@ const DEFAULTS = {
   shape: {
     x:60, y:60, rotation:0,
     shapeType:'circle', sides:5, cornerRadius:0, apexOffset:50, pointRatio:38,
-    width:22, height:22, thickness:2, fillMode:'filled', accentSize:16, color:'#000000',
-    fixedStroke:true
+    width:22, height:22, thickness:6.5, fillMode:'filled', accentSize:16, color:'#000000'
   },
   custom: {
     x:100, y:80, rotation:0,
@@ -1752,12 +1751,11 @@ function shapeElement(p){
   const w = p.width, h = p.height;
   const outline = p.fillMode==='outline' || p.fillMode==='dot' || p.fillMode==='diagonal';
   const fillAttr = outline ? 'none' : p.color;
-  const vecEffect = p.fixedStroke ? ' vector-effect="non-scaling-stroke"' : '';
-  const strokeAttr = outline ? `stroke="${p.color}" stroke-width="${p.thickness}"${vecEffect}` : '';
+  const strokeAttr = outline ? `stroke="${p.color}" stroke-width="${p.thickness}"` : '';
   if(p.shapeType==='circle'){
     return `<ellipse cx="${w/2}" cy="${h/2}" rx="${Math.max(0.5, w/2)}" ry="${Math.max(0.5, h/2)}" fill="${fillAttr}" ${strokeAttr}/>`;
   }
-  if(p.shapeType==='cross') return `<path d="M${w/2},0 L${w/2},${h} M0,${h/2} L${w},${h/2}" fill="none" stroke="${p.color}" stroke-width="${p.thickness}" stroke-linecap="round"${vecEffect}/>`;
+  if(p.shapeType==='cross') return `<path d="M${w/2},0 L${w/2},${h} M0,${h/2} L${w},${h/2}" fill="none" stroke="${p.color}" stroke-width="${p.thickness}" stroke-linecap="round"/>`;
   const verts = shapeVertices(p.shapeType, w, h, p);
   if(!verts) return '';
   const d = roundedPolygonPath(verts, p.cornerRadius||0);
