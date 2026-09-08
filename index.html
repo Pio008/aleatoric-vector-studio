@@ -333,6 +333,7 @@
   /* selection / handles inside svg */
   .layer-group, .layer-group *{cursor:move;}
   .sel-outline{fill:none; stroke:var(--rubric); stroke-width:1; stroke-dasharray:3,4; opacity:0.35; pointer-events:none; vector-effect:non-scaling-stroke;}
+  .seg-hit-dot{fill:var(--good); opacity:0.35; stroke:none; cursor:pointer;}
   .sel-outline.multi{stroke-width:1.4; opacity:0.6;}
   .rubber-band{fill:var(--rubric); fill-opacity:0.08; stroke:var(--rubric); stroke-width:1; stroke-dasharray:3,3; pointer-events:none; vector-effect:non-scaling-stroke;}
   .smart-guide{stroke:#ff3b8d; stroke-width:1; stroke-dasharray:4,3; pointer-events:none; vector-effect:non-scaling-stroke;}
@@ -490,7 +491,7 @@
     color:var(--ink); border-radius:3px; padding:3px 8px; cursor:pointer;
   }
   .env-add-btn:hover{border-color:var(--rubric-soft); color:var(--rubric-soft);}
-  .env-pt-row{display:flex; align-items:center; gap:8px; margin-bottom:6px;}
+  .env-pt-row{display:flex; align-items:center; gap:8px; margin-bottom:2px;}
   .env-pt-idx{
     width:18px; height:18px; line-height:18px; text-align:center; border-radius:50%;
     background:var(--paper-deep); color:var(--ink-soft); font-size:10.5px; flex-shrink:0;
@@ -498,6 +499,8 @@
   .env-pt-field{display:flex; align-items:center; gap:4px; font-size:11px; color:var(--ink-soft); flex:1;}
   .env-pt-field input{width:100%; min-width:0; padding:3px 5px; font-size:12px; border:1px solid var(--border); border-radius:3px; background:var(--panel); color:var(--ink);}
   .env-pt-field input:disabled{opacity:0.4;}
+  .env-seg-row{display:flex; justify-content:space-between; align-items:center; font-size:10.5px; color:var(--ink-soft); padding:0 2px 6px; margin-top:-2px;}
+  .env-seg-label{font-weight:600; opacity:0.8;}
   .env-pt-del{
     display:flex;align-items:center;justify-content:center;
     flex-shrink:0; width:20px; height:20px; border:1px solid var(--border); background:var(--panel);
@@ -758,6 +761,77 @@
     background:var(--paper-deep); color:var(--ink);
   }
 
+  /* ---- on-canvas segment popover ---- */
+  .seg-popover{
+    position:fixed;
+    z-index:120;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:6px;
+    box-shadow:0 8px 28px rgba(0,0,0,0.55);
+    padding:10px 12px 12px;
+    min-width:210px;
+    pointer-events:auto;
+    font-family:'Inter',sans-serif;
+  }
+  .seg-popover.hidden{display:none;}
+  .seg-popover-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:9px;
+  }
+  .seg-popover-title{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px; text-transform:uppercase; letter-spacing:0.08em;
+    color:var(--ink-faint);
+  }
+  .seg-popover-close{
+    background:none; border:none; cursor:pointer; color:var(--ink-faint);
+    padding:2px; border-radius:3px; display:flex; align-items:center;
+  }
+  .seg-popover-close:hover{color:var(--rubric-soft); background:var(--paper-deep);}
+  .seg-popover-close svg{width:13px;height:13px;}
+  .seg-popover-dash{margin-bottom:9px;}
+  .seg-popover-dash label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--ink-soft); display:block; margin-bottom:4px;
+  }
+  .seg-popover-dash select{
+    width:100%; padding:5px 7px;
+    border:1px solid var(--border); border-radius:3px;
+    background:var(--paper-deep); color:var(--ink);
+    font-family:'Inter',sans-serif; font-size:12.5px;
+  }
+  .seg-popover-curve label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px; text-transform:uppercase; letter-spacing:0.06em;
+    color:var(--ink-soft);
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:4px;
+  }
+  .seg-popover-curve input[type=number]{
+    width:52px; padding:2px 5px;
+    border:1px solid var(--border); border-radius:2px;
+    background:var(--paper-deep); font-family:'IBM Plex Mono',monospace;
+    font-size:11px; color:var(--ink); text-align:right;
+  }
+  .seg-popover-curve input[type=range]{
+    width:100%; accent-color:var(--rubric); margin-top:2px;
+  }
+  .seg-popover-split{
+    margin-top:10px; padding-top:9px;
+    border-top:1px solid var(--border);
+  }
+  .seg-popover-split button{
+    width:100%; padding:6px 8px;
+    background:var(--paper-deep); border:1px solid var(--border);
+    border-radius:3px; color:var(--ink-soft);
+    font-family:'Inter',sans-serif; font-size:12px;
+    cursor:pointer; text-align:center;
+    transition:border-color .12s, color .12s;
+  }
+  .seg-popover-split button:hover{border-color:var(--rubric-soft); color:var(--rubric-soft);}
+
   .wave-readout{
     display:flex; flex-wrap:wrap; gap:0;
     border:1px solid var(--border); border-radius:3px;
@@ -888,6 +962,7 @@
         <label><input type="checkbox" id="gridToggle" checked onchange="toggleGrid()"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> Ruled guide</label>
         <label><input type="checkbox" id="snapGridToggle" checked><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14V9a6 6 0 0 1 12 0v5"/><path d="M6 14a3 3 0 0 0 6 0M12 14a3 3 0 0 0 6 0"/><path d="M6 9H2.5M21.5 9H18"/></svg> Snap Grid (10px)</label>
         <label><input type="checkbox" id="snapElementToggle" checked><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14V9a6 6 0 0 1 12 0v5"/><path d="M6 14a3 3 0 0 0 6 0M12 14a3 3 0 0 0 6 0"/><path d="M6 9H2.5M21.5 9H18"/></svg> Snap Ends</label>
+        <label><input type="checkbox" id="centreGuideToggle" onchange="renderStage()"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="2.5"/></svg> Centre guides</label>
         <label>Canvas W <input type="number" id="canvasW" value="300" min="40" max="10000" onchange="resizeCanvasFromInputs()"></label>
         <label>Canvas H <input type="number" id="canvasH" value="250" min="40" max="10000" onchange="resizeCanvasFromInputs()"></label>
         <label>Zoom <input type="range" id="zoom" min="0.5" max="4" step="0.1" value="2.25" oninput="onZoomSliderInput(this)"></label>
@@ -1036,6 +1111,7 @@ const DEFAULTS = {
   custom: {
     x:100, y:80, rotation:0,
     points:[], closed:false,
+    segStyles:[],
     lineType:'straight', amplitude:12, cycles:2, phase:0, decay:0, chirpRate:-1, damping:0.6,
     ampPoints:[{u:0,amp:24},{u:1,amp:1}], periodPoints:[{u:0,period:20},{u:1,period:60}], tailLength:10,
     startDirection:'up', reverseProgression:false, waveform:'sine',
@@ -1133,6 +1209,7 @@ function layerCenterOffset(layer){
 function getSnapCoordinates(targetX, targetY, skipId) {
   const snapEl = document.getElementById('snapElementToggle').checked;
   const snapGrid = document.getElementById('snapGridToggle').checked;
+  const centreGuide = document.getElementById('centreGuideToggle').checked;
   const tolerance = 10;
   snapGuides.v = null; snapGuides.h = null;
 
@@ -1151,11 +1228,13 @@ function getSnapCoordinates(targetX, targetY, skipId) {
         }
       }
     }
+  }
 
-    // Figma-style smart guides: align this layer's own bbox centre or edges to another
-    // layer's bbox centre/edges, or to the canvas centre — snapping the position and
-    // lighting up a dashed guide line so it's visible, rather than needing a manual
-    // "centre" action. Only kicks in when the plain anchor-point snap above found nothing.
+  // Figma-style smart guides: align this layer's own bbox centre or edges to another
+  // layer's bbox centre/edges, or to the canvas centre — snapping the position and
+  // lighting up a dashed guide line so it's visible, rather than needing a manual
+  // "centre" action. Only active while the Centre guides toggle is on.
+  if (centreGuide) {
     const mover = layers.find(l=>l.id===skipId);
     if(mover){
       const off = layerCenterOffset(mover);
@@ -1243,7 +1322,7 @@ function schemaFor(layer){
       fields.push({key:'reverseProgression', label:'Reverse (swap wide/narrow ends)', type:'checkbox', group:'wave'});
     }
     fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:60, step:0.1, group:'stroke'});
-    fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted'], group:'stroke'});
+    fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted','invisible'], group:'stroke'});
     fields.push({key:'cap', label:'Line cap', type:'select', options:['butt','round','square'], group:'stroke'});
     fields.push({key:'color', label:'Ink colour', type:'color', group:'stroke'});
     fields.push({key:'arrowType', label:'Arrowhead', type:'select', options:['none','triangle','flat','hollow','stroke'], group:'arrow'});
@@ -1334,8 +1413,12 @@ function schemaFor(layer){
       fields.push({key:'startDirection', label:'First swing', type:'select', options:['up','down'], group:'wave'});
       fields.push({key:'reverseProgression', label:'Reverse (swap wide/narrow ends)', type:'checkbox', group:'wave'});
     }
+    if(t==='straight'){
+      fields.push({key:'pointList', label:'Points (exact X / Y)', type:'pointList', group:'shape'});
+      // segStyles edited via right-click popover on canvas — no side-panel list needed
+    }
     fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:60, step:0.1, group:'stroke'});
-    fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted'], group:'stroke'});
+    fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted','invisible'], group:'stroke'});
     fields.push({key:'cap', label:'Line cap', type:'select', options:['butt','round','square'], group:'stroke'});
     fields.push({key:'fixedStroke', label:'Fixed stroke', type:'checkbox', group:'stroke'});
     fields.push({key:'color', label:'Ink colour', type:'color', group:'stroke'});
@@ -1563,6 +1646,12 @@ function dashArrayFor(style, thickness){
   if(style==='dotted') return `${(thickness*0.1).toFixed(1)},${(thickness*2.4).toFixed(1)}`;
   return 'none';
 }
+// 'invisible' is a dash style like any other, but rather than a dasharray it drops the
+// stroke entirely — the path is still present (so selection/handles keep working) but
+// nothing is painted. Used wherever a dash/segment style value feeds a stroke colour.
+function strokeColorFor(style, color){
+  return style==='invisible' ? 'none' : color;
+}
 
 function getLinePoints(p){
   if(p.lineType==='straight') return [{x:0,y:0},{x:p.length,y:0}];
@@ -1632,8 +1721,9 @@ function lineElement(p){
     : catmullRomPath(pts);
 
   const dash = dashArrayFor(p.dash, p.thickness);
+  const strokeColor = strokeColorFor(p.dash, p.color);
   const vecEffect = p.fixedStroke ? ' vector-effect="non-scaling-stroke"' : '';
-  let out = `<path d="${d}" fill="none" stroke="${p.color}" stroke-width="${p.thickness}" stroke-linecap="${p.cap}" stroke-linejoin="round"${dash!=='none' ? ` stroke-dasharray="${dash}"`:''}${vecEffect}/>`;
+  let out = `<path d="${d}" fill="none" stroke="${strokeColor}" stroke-width="${p.thickness}" stroke-linecap="${p.cap}" stroke-linejoin="round"${dash!=='none' ? ` stroke-dasharray="${dash}"`:''}${vecEffect}/>`;
   
   // Always point straight relative to the main vector (Math.PI for start, 0 for end)
   out += renderArrowheads(pts, p, Math.PI, 0);
@@ -1795,6 +1885,34 @@ function waveSegmentPoints(p0, p1, lineParams){
   }));
 }
 
+// Builds the SVG path 'd' for one straight or curved segment between two hand-drawn
+// (pen/dot) anchor points — curveAmount bows the segment out via a quadratic control
+// point placed perpendicular to the segment (a light, hand-wobbled arc rather than a
+// full sine wave) — the further from 0, the tighter the bow.
+function customSegmentPath(a, b, curveAmount){
+  if(!curveAmount) return `M ${a.x.toFixed(2)},${a.y.toFixed(2)} L ${b.x.toFixed(2)},${b.y.toFixed(2)}`;
+  const dx = b.x-a.x, dy = b.y-a.y;
+  const len = Math.hypot(dx,dy) || 1;
+  const nx = -dy/len, ny = dx/len; // unit perpendicular
+  // curveAmount is a percentage of the segment's own length, so it scales sensibly with
+  // segment size instead of a fixed pixel bow — 100% bows the midpoint out by the full
+  // segment length, which reads as a tight half-circle-like arc.
+  const bow = (curveAmount/100) * len * 0.5;
+  const mx = (a.x+b.x)/2 + nx*bow, my = (a.y+b.y)/2 + ny*bow;
+  return `M ${a.x.toFixed(2)},${a.y.toFixed(2)} Q ${mx.toFixed(2)},${my.toFixed(2)} ${b.x.toFixed(2)},${b.y.toFixed(2)}`;
+}
+
+// Reads segment i's style, falling back to the line's own dash/straight defaults when
+// that segment has no override — so per-segment styling is opt-in and doesn't require
+// setting every segment explicitly.
+function customSegStyle(p, i){
+  const override = (p.segStyles || [])[i];
+  return {
+    dash: (override && override.dash) ? override.dash : (p.dash || 'solid'),
+    curveAmount: (override && override.curveAmount) ? override.curveAmount : 0
+  };
+}
+
 function customElement(p){
   const pts = p.points||[];
   if(pts.length<2) return '';
@@ -1821,8 +1939,39 @@ function customElement(p){
     if(p.closed) d += ' Z';
   }
   const dash = dashArrayFor(p.dash, p.thickness);
+  const strokeColor = strokeColorFor(p.dash, p.color);
   const vecEffect = p.fixedStroke ? ' vector-effect="non-scaling-stroke"' : '';
-  let out = `<path d="${d}" fill="none" stroke="${p.color}" stroke-width="${p.thickness}" stroke-linecap="${p.cap}" stroke-linejoin="round"${dash!=='none' ? ` stroke-dasharray="${dash}"`:''}${vecEffect}/>`;
+  let out;
+  if(p.lineType==='straight' && (p.segStyles||[]).some(s=>s && (s.dash || s.curveAmount))){
+    // At least one segment has a per-segment override: render each segment as its own
+    // path so dash style and straight/curved can differ segment to segment, instead of
+    // one uniform stroke for the whole line.
+    out = '';
+    const segCount = pts.length-1 + (p.closed && pts.length>2 ? 1 : 0);
+    for(let i=0; i<segCount; i++){
+      const a = pts[i % pts.length], b = pts[(i+1) % pts.length];
+      const style = customSegStyle(p, i);
+      const segD = customSegmentPath(a, b, style.curveAmount);
+      const segDash = dashArrayFor(style.dash, p.thickness);
+      const segStrokeColor = strokeColorFor(style.dash, p.color);
+      out += `<path d="${segD}" fill="none" stroke="${segStrokeColor}" stroke-width="${p.thickness}" stroke-linecap="${p.cap}" stroke-linejoin="round"${segDash!=='none' ? ` stroke-dasharray="${segDash}"`:''}${vecEffect}/>`;
+    }
+  } else if(p.lineType==='straight' && p.dash && p.dash!=='solid' && pts.length>2){
+    // Straight + dashed/dotted/invisible with no per-segment overrides: a single dasharray
+    // running the whole polyline lands its on/off phase at each corner essentially at
+    // random — often a gap sits right on the vertex, hiding the joint. Render one path per
+    // segment instead, each restarting its dasharray at 0 so a mark reliably sits at every
+    // vertex (moot for 'invisible', but harmless to share the same per-segment path).
+    out = '';
+    const segCount = pts.length-1 + (p.closed && pts.length>2 ? 1 : 0);
+    for(let i=0; i<segCount; i++){
+      const a = pts[i % pts.length], b = pts[(i+1) % pts.length];
+      const segD = `M ${a.x.toFixed(2)},${a.y.toFixed(2)} L ${b.x.toFixed(2)},${b.y.toFixed(2)}`;
+      out += `<path d="${segD}" fill="none" stroke="${strokeColor}" stroke-width="${p.thickness}" stroke-linecap="${p.cap}" stroke-linejoin="round"${dash!=='none' ? ` stroke-dasharray="${dash}"`:''}${vecEffect}/>`;
+    }
+  } else {
+    out = `<path d="${d}" fill="none" stroke="${strokeColor}" stroke-width="${p.thickness}" stroke-linecap="${p.cap}" stroke-linejoin="round"${dash!=='none' ? ` stroke-dasharray="${dash}"`:''}${vecEffect}/>`;
+  }
   
   if(!p.closed){
     // Calculate macro angles to keep the arrowhead straight ignoring local waves
@@ -1896,6 +2045,21 @@ function customLocalPoints(p){
     let segPts = waveSegmentPoints(a, b, p);
     if(i>0) segPts = segPts.slice(1);
     allPts = allPts.concat(segPts);
+  }
+  // Curved segment overrides bow outward past their straight endpoints — include each
+  // curve's bulge point (same offset math as customSegmentPath) so bounding box / hit
+  // area don't clip it.
+  if(p.lineType==='straight' && (p.segStyles||[]).some(s=>s && s.curveAmount)){
+    for(let i=0; i<segCount; i++){
+      const amt = customSegStyle(p, i).curveAmount;
+      if(!amt) continue;
+      const a = pts[i % pts.length], b = pts[(i+1) % pts.length];
+      const dx = b.x-a.x, dy = b.y-a.y;
+      const len = Math.hypot(dx,dy) || 1;
+      const nx = -dy/len, ny = dx/len;
+      const bow = (amt/100) * len * 0.5;
+      allPts.push({x:(a.x+b.x)/2 + nx*bow, y:(a.y+b.y)/2 + ny*bow});
+    }
   }
   return allPts;
 }
@@ -1998,6 +2162,24 @@ function renderLayerSvg(layer, interactive){
         hit = `<rect data-id="${layer.id}" data-role="move" x="${minX-10}" y="${minY-10}" width="${maxX-minX+20}" height="${maxY-minY+20}" fill="transparent"/>`;
       } else {
         hit = `<rect data-id="${layer.id}" data-role="move" x="-20" y="-20" width="40" height="40" fill="transparent"/>`;
+      }
+      // Per-segment invisible hit bands — wide enough to click comfortably, positioned
+      // slightly above the actual segment so the popover doesn't obscure it.
+      const rawPts = p.points || [];
+      const segCount = rawPts.length - 1 + (p.closed && rawPts.length > 2 ? 1 : 0);
+      for(let si=0; si<segCount; si++){
+        const a = rawPts[si % rawPts.length];
+        const b = rawPts[(si+1) % rawPts.length];
+        const mx = ((a.x+b.x)/2).toFixed(2);
+        const my = ((a.y+b.y)/2).toFixed(2);
+        // Midpoint tick (split marker) — tiny vertical line at segment centre
+        hit += `<line data-id="${layer.id}" data-role="seg-mid:${si}" x1="${mx}" y1="${(parseFloat(my)-7).toFixed(2)}" x2="${mx}" y2="${(parseFloat(my)+7).toFixed(2)}" stroke="var(--rubric-soft)" stroke-width="1.5" stroke-dasharray="2,2" opacity="0" class="seg-mid-tick" pointer-events="none"/>`;
+        // Small dot sitting just above the segment's midpoint — the sole trigger for
+        // the style popover. Deliberately NOT a hit band along the whole segment: that
+        // used to sit on top of the drag/move hit-area and swallow mousedowns meant for
+        // dragging the line, making it hard to grab anywhere except right on a point.
+        // Kept at a low constant opacity — a faint marker rather than fully invisible.
+        hit += `<circle data-id="${layer.id}" data-role="seg:${si}" cx="${mx}" cy="${(parseFloat(my)-8).toFixed(2)}" r="5" class="seg-hit-dot"/>`;
       }
     } else {
       const w = p.length || p.width || 40;
@@ -2440,7 +2622,175 @@ function renderField(f, layer){
   if(f.type==='envelopeEditor'){
     return waveEnvelopeEditorHtml(layer);
   }
+  if(f.type==='segStyleList'){
+    return segStyleListEditorHtml(layer);
+  }
+  if(f.type==='pointList'){
+    return pointListEditorHtml(layer);
+  }
   return '';
+}
+
+// Per-segment dash/curve override editor for hand-drawn (pen/dot) 'custom' lines. Only
+// offered while the line's own style is 'straight' — a bare polyline between anchor
+// points is the only shape where "make this one stretch curved instead" reads as a
+// deliberate, local choice; the other line styles already carry their own continuous
+// wave shape end-to-end.
+function segStyleListEditorHtml(layer){
+  const p = layer.params;
+  const pts = p.points || [];
+  const segCount = Math.max(0, pts.length - 1 + (p.closed && pts.length > 2 ? 1 : 0));
+  const styles = p.segStyles || [];
+  const rows = [];
+  for(let i=0; i<segCount; i++){
+    const s = styles[i] || {};
+    const dashVal = s.dash || '';
+    const curveVal = s.curveAmount || 0;
+    rows.push(`
+    <div class="env-pt-row" style="flex-wrap:wrap;">
+      <span class="env-pt-idx">${i+1}\u2192${(i+2>pts.length)?1:i+2}</span>
+      <select style="flex:1;min-width:90px;" onchange="updateSegStyle('${layer.id}',${i},'dash',this.value)">
+        <option value="" ${dashVal===''?'selected':''}>Default (${p.dash||'solid'})</option>
+        <option value="solid" ${dashVal==='solid'?'selected':''}>Solid</option>
+        <option value="dashed" ${dashVal==='dashed'?'selected':''}>Dashed</option>
+        <option value="dotted" ${dashVal==='dotted'?'selected':''}>Dotted</option>
+        <option value="invisible" ${dashVal==='invisible'?'selected':''}>Invisible</option>
+      </select>
+      <label class="env-pt-field" style="min-width:110px;" title="0 = straight. Negative and positive bow to opposite sides; further from 0 = tighter arc.">
+        Curve
+        <input type="number" min="-100" max="100" step="1" value="${curveVal}"
+          onchange="updateSegStyle('${layer.id}',${i},'curveAmount',parseFloat(this.value)||0)">
+      </label>
+    </div>`);
+  }
+  return `
+    <div class="param-subhead">Segment style</div>
+    <div class="env-section">
+      ${rows.join('') || '<div class="empty-note">Add more points to get separate segments.</div>'}
+    </div>`;
+}
+
+function updateSegStyle(id, segIdx, field, value){
+  const layer = layers.find(l=>l.id===id); if(!layer) return;
+  pushHistory();
+  const p = layer.params;
+  if(!p.segStyles) p.segStyles = [];
+  if(!p.segStyles[segIdx]) p.segStyles[segIdx] = {};
+  if(field==='dash'){
+    p.segStyles[segIdx].dash = value || null;
+  } else if(field==='curveAmount'){
+    p.segStyles[segIdx].curveAmount = value || 0;
+  }
+  renderAll();
+  finalizeHistory();
+}
+
+// Exact X/Y editor for hand-drawn (pen/dot) 'custom' lines' own anchor points — mirrors
+// segStyleListEditorHtml's scope (offered only while the line's own style is 'straight')
+// and its closed-shape wraparound so the two panels always describe the same segments.
+// Small inline SVG preview of the point list: draws the actual polyline/polygon with
+// numbered dots so the numbers below can be read against the real shape instead of
+// requiring the reader to reconstruct geometry from midpoint/length text alone.
+function pointListPreviewSvg(pts, closed){
+  if(pts.length < 2) return '';
+  const pad = 14;
+  const xs = pts.map(p=>p.x), ys = pts.map(p=>p.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const spanX = Math.max(1, maxX - minX), spanY = Math.max(1, maxY - minY);
+  const boxW = 260, boxH = 130;
+  const drawW = boxW - pad*2, drawH = boxH - pad*2;
+  const scale = Math.min(drawW/spanX, drawH/spanY);
+  // Center the shape within the box on both axes rather than pinning to a corner.
+  const usedW = spanX*scale, usedH = spanY*scale;
+  const offX = pad + (drawW-usedW)/2, offY = pad + (drawH-usedH)/2;
+  const sx = x => offX + (x-minX)*scale;
+  const sy = y => offY + (y-minY)*scale;
+  const pathPts = pts.map(p=>`${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`);
+  const d = `M ${pathPts.join(' L ')}${closed ? ' Z' : ''}`;
+  const dots = pts.map((p,i)=>{
+    const cx = sx(p.x).toFixed(1), cy = sy(p.y).toFixed(1);
+    return `
+      <circle cx="${cx}" cy="${cy}" r="9" fill="var(--panel)" stroke="var(--rubric-soft)" stroke-width="1.5"/>
+      <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="600" fill="var(--rubric-soft)">${i+1}</text>`;
+  }).join('');
+  return `
+    <div class="env-preview" style="background:var(--paper-deep); border:1px solid var(--border); border-radius:6px; margin-bottom:10px; display:flex; justify-content:center;">
+      <svg viewBox="0 0 ${boxW} ${boxH}" width="100%" style="max-width:${boxW}px; height:auto; display:block;">
+        <path d="${d}" fill="none" stroke="var(--ink-soft)" stroke-width="1.5"/>
+        ${dots}
+      </svg>
+    </div>`;
+}
+
+function pointListEditorHtml(layer){
+  const p = layer.params;
+  const pts = p.points || [];
+  const closesLoop = !!(p.closed && pts.length > 2);
+  const totalLen = pts.length>=2 ? Math.hypot(pts[pts.length-1].x-pts[0].x, pts[pts.length-1].y-pts[0].y) : 0;
+  const rows = pts.map((pt,i)=>{
+    const pointRow = `
+    <div class="env-pt-row">
+      <span class="env-pt-idx">${i+1}</span>
+      <label class="env-pt-field">X
+        <input type="number" step="1" value="${Math.round(pt.x*10)/10}"
+          onchange="updatePointCoord('${layer.id}',${i},'x',this.value)">
+      </label>
+      <label class="env-pt-field">Y
+        <input type="number" step="1" value="${Math.round(pt.y*10)/10}"
+          onchange="updatePointCoord('${layer.id}',${i},'y',this.value)">
+      </label>
+      <button type="button" class="env-add-btn" title="Match this point's Y to another point" onclick="promptMatchY('${layer.id}',${i})">= Y</button>
+    </div>`;
+    // Between-point info: this segment's own length, plus how far its midpoint sits from
+    // the shape's start — same readout as the jagged-line points panel. The closing
+    // segment (last point back to the first, when the shape is closed) gets a row too.
+    if(i < pts.length-1 || (closesLoop && i===pts.length-1)){
+      const next = pts[(i+1) % pts.length];
+      const segLen = Math.hypot(next.x-pt.x, next.y-pt.y);
+      const segRow = `
+    <div class="env-seg-row">
+      <span class="env-seg-label">${i+1}\u2192${(i+2>pts.length)?1:i+2}</span>
+      <span>${segLen.toFixed(1)}px</span>
+    </div>`;
+      return pointRow + segRow;
+    }
+    return pointRow;
+  }).join('');
+  return `
+    <div class="param-subhead">Points</div>
+    <div class="env-section">
+      ${pointListPreviewSvg(pts, closesLoop)}
+      ${rows}
+      <div class="env-seg-row" style="margin-top:2px;"><span class="env-seg-label">Total</span><span>${totalLen.toFixed(1)}px</span></div>
+    </div>`;
+}
+
+function updatePointCoord(id, idx, axis, value){
+  const layer = layers.find(l=>l.id===id); if(!layer) return;
+  const pt = (layer.params.points||[])[idx]; if(!pt) return;
+  const v = parseFloat(value);
+  if(isNaN(v)) return;
+  pushHistory();
+  pt[axis] = v;
+  renderAll();
+  finalizeHistory();
+}
+
+// Quick way to make two anchor points genuinely symmetric: type the number of the point
+// whose height you want to copy, sidestepping both the grid snap and needing pixel-perfect
+// mouse placement.
+function promptMatchY(id, idx){
+  const layer = layers.find(l=>l.id===id); if(!layer) return;
+  const pts = layer.params.points || [];
+  const answer = prompt(`Match point ${idx+1}'s Y to which point number? (1-${pts.length})`);
+  if(answer===null) return;
+  const src = parseInt(answer,10) - 1;
+  if(isNaN(src) || !pts[src]) return;
+  pushHistory();
+  pts[idx].y = pts[src].y;
+  renderAll();
+  finalizeHistory();
 }
 
 function envelopePointRowHtml(layer, which, idx, pts){
@@ -2700,9 +3050,8 @@ function buildParamPanel(){
 }
 
 function ensureCustomLayerForToolMode(){
-  // Prefer the currently selected custom layer, otherwise the most recent
-  // custom layer, otherwise create a fresh one — mirrors MuseScore dropping
-  // you straight into note input without making you pick a staff first.
+  // For dot mode: prefer the currently selected custom layer, then the most recent one.
+  // For pen (sketch) mode this is NOT used — each stroke gets its own fresh layer.
   let layer = layers.find(l=>l.id===selectedId && l.type==='custom');
   if(!layer) layer = [...layers].reverse().find(l=>l.type==='custom');
   if(!layer){
@@ -2715,8 +3064,11 @@ function ensureCustomLayerForToolMode(){
   return layer;
 }
 function togglePenToolbar(){
-  if(penSketchMode){ toggleSketchMode(penSketchLayerId, false); return; }
-  const layer = ensureCustomLayerForToolMode();
+  if(penSketchMode){ toggleSketchMode(null, false); return; }
+  // Always start pen mode with a fresh layer — each drawn stroke creates its own
+  // new layer in finalizePenStroke, so we just need an initial target layer.
+  addLayer('custom');
+  const layer = layers[layers.length-1];
   toggleSketchMode(layer.id, true);
 }
 function toggleDotToolbar(){
@@ -2764,10 +3116,13 @@ function toggleAddPoint(id, checked){
 function toggleSketchMode(id, checked){
   penSketchMode = checked;
   penSketchLayerId = checked ? id : null;
-  selectedId = id;
-  selectedIds = new Set([id]);
+  if(id){
+    selectedId = id;
+    selectedIds = new Set([id]);
+  }
   if(checked && addPointMode) toggleAddPoint(addPointLayerId, false); // the two drawing modes shouldn't overlap
   document.getElementById('stage').classList.toggle('pen-mode', checked);
+  updateToolModeButtons();
   renderAll();
 }
 function undoLastPoint(id){
@@ -2983,7 +3338,7 @@ function renderStage(){
     overlaysSvg = selLayer ? selectionOverlaySvg(selLayer) : '';
   }
   const guidesSvg = smartGuidesSvg();
-  stage.innerHTML = staffGridSvg() + layers.map(l=>renderLayerSvg(l, true)).join('\n') + overlaysSvg + guidesSvg;
+  stage.innerHTML = staffGridSvg() + layers.map(l=>renderLayerSvg(l, true)).join('\n') + overlaysSvg + centreGuidesSvg();
 }
 
 // Dashed alignment guide lines — Figma-style — shown while dragging a layer near another
@@ -2999,6 +3354,18 @@ function smartGuidesSvg(){
     s += `<line class="smart-guide" x1="0" y1="${snapGuides.h}" x2="${canvasW}" y2="${snapGuides.h}"/>`;
   }
   return s;
+}
+
+function centreGuidesSvg(){
+  const toggle = document.getElementById('centreGuideToggle');
+  if(!toggle || !toggle.checked) return '';
+  const cx = (canvasW / 2).toFixed(2);
+  const cy = (canvasH / 2).toFixed(2);
+  return `<g class="centre-guides" pointer-events="none">
+    <line x1="${cx}" y1="0" x2="${cx}" y2="${canvasH}" stroke="#ff3b8d" stroke-width="0.75" stroke-dasharray="5,4" opacity="0.7" vector-effect="non-scaling-stroke"/>
+    <line x1="0" y1="${cy}" x2="${canvasW}" y2="${cy}" stroke="#ff3b8d" stroke-width="0.75" stroke-dasharray="5,4" opacity="0.7" vector-effect="non-scaling-stroke"/>
+    <circle cx="${cx}" cy="${cy}" r="3" fill="none" stroke="#ff3b8d" stroke-width="1" opacity="0.85" vector-effect="non-scaling-stroke"/>
+  </g>`;
 }
 
 function renderAll(){
@@ -3557,36 +3924,42 @@ function onDocMouseUp(){
 function finalizePenStroke(){
   const raw = penRawPoints;
   penRawPoints = [];
-  const layer = layers.find(l=>l.id===penSketchLayerId);
-  if(raw.length < 2 || !layer) return; // a stray click, not a stroke — ignore it
+  if(raw.length < 2) return; // a stray click, not a stroke — ignore it
   const {points, closed} = cleanupSketchStroke(raw);
   if(points.length < 2) return;
 
   pushHistory();
-  // The layer's own x/y origin becomes the sketch's own top-left-ish anchor point, so the
-  // stored points sit in local space exactly like manually-placed custom points do.
+
+  // Always create a brand-new custom layer for each stroke so previous drawings
+  // are never overwritten — the user can keep drawing stroke after stroke.
+  const id = 'el' + (uid++);
+  const params = JSON.parse(JSON.stringify(DEFAULTS['custom']));
+  const count = layers.filter(l=>l.type==='custom').length + 1;
+  const newLayer = {id, type:'custom', name:`Custom ${count}`, visible:true, params};
+  layers.push(newLayer);
+
+  // The layer's own x/y origin becomes the sketch's anchor so stored points
+  // sit in local space exactly like manually-placed custom points do.
   const originX = points[0].x, originY = points[0].y;
   const localPoints = points.map(pt => ({x: pt.x - originX, y: pt.y - originY}));
-  const wasFresh = !layer.params.points || layer.params.points.length === 0;
 
-  layer.params.x = originX;
-  layer.params.y = originY;
-  layer.params.points = localPoints;
-  layer.params.closed = closed;
-  layer.params.lineType = 'smooth';
-  if(wasFresh){
-    // Only hand out sensible starting defaults for a brand-new shape — if the person is
-    // re-sketching over an existing one, keep whatever stroke settings they'd already dialed in.
-    layer.params.thickness = closed ? 11 : 2;
-    layer.params.fixedStroke = closed;
-  }
+  newLayer.params.x = originX;
+  newLayer.params.y = originY;
+  newLayer.params.points = localPoints;
+  newLayer.params.closed = closed;
+  newLayer.params.lineType = 'smooth';
+  newLayer.params.thickness = closed ? 11 : 2;
+  newLayer.params.fixedStroke = closed;
 
-  selectedId = layer.id;
-  selectedIds = new Set([layer.id]);
-  penSketchMode = false;
-  penSketchLayerId = null;
-  document.getElementById('stage').classList.remove('pen-mode');
-  showToast(`Sketch simplified to ${points.length} point${points.length===1?'':'s'}${closed?' (closed)':''}`);
+  selectedId = newLayer.id;
+  selectedIds = new Set([newLayer.id]);
+
+  // Keep pen mode alive so the user can immediately draw the next stroke
+  // without re-clicking the pen tool — point it at the fresh layer.
+  penSketchLayerId = newLayer.id;
+  // penSketchMode stays true; stage keeps its pen-mode class
+
+  showToast(`Stroke done (${points.length} pts) — draw another or press Esc to finish`);
   renderAll();
 }
 
@@ -3617,6 +3990,9 @@ function performPointDoubleClickAction(layer, role, e){
     if(p.points.length <= 2){ e.preventDefault(); return; } // always keep at least 2 anchors
     pushHistory();
     p.points.splice(idx, 1);
+    // Deleting point idx merges segment (idx-1) and segment idx into one — keep the
+    // earlier segment's style and drop the later one so indices stay aligned.
+    if(p.segStyles && p.segStyles.length) p.segStyles.splice(idx, 1);
     renderAll();
     finalizeHistory();
     e.preventDefault();
@@ -3642,6 +4018,12 @@ function performPointDoubleClickAction(layer, role, e){
       const snapWorld = snapToOwnPoints(layer, pt.x, pt.y, -1);
       const finalLocal = snapWorld ? toLocal(snapWorld.x, snapWorld.y, p.x, p.y, p.rotation) : local;
       pts.splice(bestIdx + 1, 0, {x: finalLocal.lx, y: finalLocal.ly});
+      // Splitting segment bestIdx into two: both halves inherit its style so the visual
+      // doesn't change until the person deliberately edits one half.
+      if(p.segStyles && p.segStyles.length){
+        const inherited = p.segStyles[bestIdx];
+        p.segStyles.splice(bestIdx, 0, inherited ? {...inherited} : undefined);
+      }
       renderAll();
       finalizeHistory();
     }
@@ -4023,7 +4405,19 @@ document.addEventListener('keydown', function(e){
     const anyModalOpen = ['shortcutsModal','saveModal','loadModal'].some(id=>!document.getElementById(id).classList.contains('hidden'));
     if(anyModalOpen){ closeAllModals(); e.preventDefault(); return; }
     if(addPointMode){ toggleAddPoint(addPointLayerId, false); e.preventDefault(); return; }
-    if(penSketchMode){ toggleSketchMode(penSketchLayerId, false); e.preventDefault(); return; }
+    if(penSketchMode){
+      // Clean up the placeholder empty layer created when pen mode started
+      // (only if the user never drew anything into it)
+      const placeholderId = penSketchLayerId;
+      toggleSketchMode(null, false);
+      const placeholder = layers.find(l=>l.id===placeholderId && l.type==='custom');
+      if(placeholder && (!placeholder.params.points || placeholder.params.points.length===0)){
+        layers = layers.filter(l=>l.id!==placeholderId);
+        if(selectedId===placeholderId){ selectedId = layers.length ? layers[layers.length-1].id : null; selectedIds = selectedId ? new Set([selectedId]) : new Set(); }
+      }
+      renderAll();
+      e.preventDefault(); return;
+    }
     if(selectedId || selectedIds.size){ selectedId = null; selectedIds = new Set(); renderAll(); e.preventDefault(); }
     return;
   }
@@ -4076,5 +4470,261 @@ document.addEventListener('keyup', function(e){
   if(canvasWrapEl) canvasWrapEl.addEventListener('wheel', onCanvasWheelZoom, {passive:false});
 })();
 </script>
+
+<!-- ===== SEGMENT POPOVER ===== -->
+<div id="segPopover" class="seg-popover hidden">
+  <div class="seg-popover-head">
+    <span class="seg-popover-title" id="segPopoverTitle">Segment 1→2</span>
+    <button class="seg-popover-close" onclick="hideSegPopover()" title="Close">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+    </button>
+  </div>
+  <div class="seg-popover-dash">
+    <label>Style</label>
+    <select id="segPopoverDash" onchange="onSegPopoverDashChange(this.value)">
+      <option value="solid">Default (solid)</option>
+      <option value="dashed">Dashed</option>
+      <option value="dotted">Dotted</option>
+      <option value="invisible">Invisible</option>
+    </select>
+  </div>
+  <div class="seg-popover-curve">
+    <label>Curve <input type="number" id="segPopoverCurveNum" min="-100" max="100" step="1" value="0" oninput="onSegPopoverCurveInput(this.value)"></label>
+    <input type="range" id="segPopoverCurveSlider" min="-100" max="100" step="1" value="0"
+      oninput="onSegPopoverCurveInput(this.value)"
+      onmousedown="ensureHistorySnapshot()" ontouchstart="ensureHistorySnapshot()"
+      onchange="finalizeHistory()">
+  </div>
+  <div class="seg-popover-split">
+    <button onclick="splitSegAtMid()">Split at midpoint</button>
+  </div>
+</div>
+
+<script>
+// ===== SEGMENT POPOVER STATE =====
+let segPopoverLayerId = null;
+let segPopoverSegIdx  = null;
+
+function showSegPopover(layerId, segIdx, clientX, clientY){
+  segPopoverLayerId = layerId;
+  segPopoverSegIdx  = segIdx;
+
+  const layer = layers.find(l=>l.id===layerId);
+  if(!layer) return;
+  const p = layer.params;
+  const pts = p.points || [];
+  const a = pts[segIdx % pts.length];
+  const b = pts[(segIdx+1) % pts.length];
+  if(!a || !b) return;
+
+  // Current style
+  const style = customSegStyle(p, segIdx);
+
+  document.getElementById('segPopoverTitle').textContent = `Segment ${segIdx+1}\u2192${segIdx+2}`;
+  document.getElementById('segPopoverDash').value = style.dash || 'solid';
+  document.getElementById('segPopoverCurveNum').value = style.curveAmount || 0;
+  document.getElementById('segPopoverCurveSlider').value = style.curveAmount || 0;
+
+  const pop = document.getElementById('segPopover');
+  pop.classList.remove('hidden');
+
+  // Use SVG getScreenCTM to convert world coords → screen coords exactly,
+  // accounting for zoom, scroll, and any CSS transform on the stage.
+  const stage = document.getElementById('stage');
+  const ctm = stage.getScreenCTM();
+
+  // Midpoint in layer-local space → world space
+  const mx = (a.x + b.x) / 2;
+  const my = (a.y + b.y) / 2;
+  const rad = (p.rotation || 0) * Math.PI / 180;
+  const cosR = Math.cos(rad), sinR = Math.sin(rad);
+  const wx = p.x + mx * cosR - my * sinR;
+  const wy = p.y + mx * sinR + my * cosR;
+
+  // World → screen via CTM
+  let screenX, screenY;
+  if(ctm){
+    screenX = ctm.a * wx + ctm.c * wy + ctm.e;
+    screenY = ctm.b * wx + ctm.d * wy + ctm.f;
+  } else {
+    // Fallback: use mouse position
+    screenX = clientX;
+    screenY = clientY - 60;
+  }
+
+  // Force a layout pass so offsetWidth/Height are accurate
+  pop.style.visibility = 'hidden';
+  pop.style.left = '0px';
+  pop.style.top  = '0px';
+  // Use a small rAF so the browser has computed the size after un-hiding
+  requestAnimationFrame(() => {
+    const pw = pop.offsetWidth  || 220;
+    const ph = pop.offsetHeight || 180;
+
+    // Place popover above the segment midpoint (28px clear of the line)
+    let left = screenX - pw / 2;
+    let top  = screenY - ph - 28;
+
+    // Keep within viewport
+    const vw = window.innerWidth, vh = window.innerHeight;
+    left = Math.max(8, Math.min(left, vw - pw - 8));
+    if(top < 8) top = screenY + 28; // flip below if not enough room above
+
+    pop.style.left = left + 'px';
+    pop.style.top  = top  + 'px';
+    pop.style.visibility = 'visible';
+  });
+}
+
+function hideSegPopover(){
+  document.getElementById('segPopover').classList.add('hidden');
+  segPopoverLayerId = null;
+  segPopoverSegIdx  = null;
+  // Remove any hover highlight
+  document.querySelectorAll('.seg-hover-highlight').forEach(el=>el.remove());
+}
+
+function getOrCreateSegStyle(p, idx){
+  if(!p.segStyles) p.segStyles = [];
+  while(p.segStyles.length <= idx) p.segStyles.push(null);
+  if(!p.segStyles[idx]) p.segStyles[idx] = {dash: null, curveAmount: 0};
+  return p.segStyles[idx];
+}
+
+function onSegPopoverDashChange(val){
+  const layer = layers.find(l=>l.id===segPopoverLayerId);
+  if(!layer) return;
+  ensureHistorySnapshot();
+  const seg = getOrCreateSegStyle(layer.params, segPopoverSegIdx);
+  seg.dash = val === 'solid' ? null : val;
+  finalizeHistory();
+  renderStage();
+}
+
+function onSegPopoverCurveInput(val){
+  const layer = layers.find(l=>l.id===segPopoverLayerId);
+  if(!layer) return;
+  const num = parseInt(val, 10) || 0;
+  document.getElementById('segPopoverCurveNum').value    = num;
+  document.getElementById('segPopoverCurveSlider').value = num;
+  const seg = getOrCreateSegStyle(layer.params, segPopoverSegIdx);
+  seg.curveAmount = num;
+  // Force straight lineType so per-segment curves render
+  if(layer.params.lineType !== 'straight') layer.params.lineType = 'straight';
+  renderStage();
+  document.getElementById('svgOut').value = fullSvgSource();
+}
+
+function splitSegAtMid(){
+  const layer = layers.find(l=>l.id===segPopoverLayerId);
+  if(!layer) return;
+  const p = layer.params;
+  const pts = p.points || [];
+  const si  = segPopoverSegIdx;
+  const a   = pts[si % pts.length];
+  const b   = pts[(si+1) % pts.length];
+  if(!a || !b) return;
+  pushHistory();
+  const mid = {x:(a.x+b.x)/2, y:(a.y+b.y)/2};
+  pts.splice(si+1, 0, mid);
+  // New segment inherits style then both halves reset to Default
+  if(p.segStyles && p.segStyles.length){
+    p.segStyles.splice(si, 0, null);
+    p.segStyles[si]   = null;
+    p.segStyles[si+1] = null;
+  }
+  hideSegPopover();
+  finalizeHistory();
+  renderAll();
+}
+
+// ===== HOVER DETECTION FOR SEGMENTS =====
+(function(){
+  let hoverTimer = null;
+  let hoveredSegEl = null;
+  let highlightEl  = null;
+
+  function clearHighlight(){
+    if(highlightEl && highlightEl.parentNode) highlightEl.parentNode.removeChild(highlightEl);
+    highlightEl = null;
+  }
+
+  function onStageMouseMove_seg(e){
+    if(penSketchMode || addPointMode || dragState || penDrawing) return;
+    const el = e.target;
+    if(!el) return;
+    const role = el.getAttribute && el.getAttribute('data-role');
+    if(!role || !role.startsWith('seg:')) {
+      if(hoveredSegEl){
+        hoveredSegEl = null;
+        clearHighlight();
+        if(hoverTimer) clearTimeout(hoverTimer);
+        hoverTimer = setTimeout(()=>{
+          const pop = document.getElementById('segPopover');
+          if(pop && !pop.matches(':hover')) hideSegPopover();
+        }, 300);
+      }
+      return;
+    }
+    if(el === hoveredSegEl) return;
+    hoveredSegEl = el;
+    if(hoverTimer){ clearTimeout(hoverTimer); hoverTimer = null; }
+
+    const layerId = el.getAttribute('data-id');
+    const segIdx  = parseInt(role.split(':')[1], 10);
+
+    const layer = layers.find(l=>l.id===layerId);
+    if(layer){
+      const p = layer.params;
+      const pts = p.points || [];
+      const a = pts[segIdx % pts.length];
+      const b = pts[(segIdx+1) % pts.length];
+      if(a && b){
+        clearHighlight();
+        const stage = document.getElementById('stage');
+        const hl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        const rad = (p.rotation||0) * Math.PI/180;
+        const cosR = Math.cos(rad), sinR = Math.sin(rad);
+        const wax = p.x + a.x*cosR - a.y*sinR, way = p.y + a.x*sinR + a.y*cosR;
+        const wbx = p.x + b.x*cosR - b.y*sinR, wby = p.y + b.x*sinR + b.y*cosR;
+        hl.setAttribute('x1', wax); hl.setAttribute('y1', way);
+        hl.setAttribute('x2', wbx); hl.setAttribute('y2', wby);
+        hl.setAttribute('stroke', 'var(--rubric-soft)');
+        hl.setAttribute('stroke-width', '4');
+        hl.setAttribute('stroke-linecap', 'round');
+        hl.setAttribute('opacity', '0.45');
+        hl.setAttribute('pointer-events', 'none');
+        hl.classList.add('seg-hover-highlight');
+        stage.appendChild(hl);
+        highlightEl = hl;
+      }
+    }
+    showSegPopover(layerId, segIdx, e.clientX, e.clientY);
+  }
+
+  // Clear highlight when popover closes
+  const origHide = window.hideSegPopover;
+  window.hideSegPopover = function(){
+    clearHighlight();
+    origHide && origHide();
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    const stage = document.getElementById('stage');
+    if(stage) stage.addEventListener('mousemove', onStageMouseMove_seg);
+
+    const pop = document.getElementById('segPopover');
+    if(pop){
+      pop.addEventListener('mouseleave', function(){
+        hoverTimer = setTimeout(()=>{ hideSegPopover(); }, 200);
+      });
+      pop.addEventListener('mouseenter', function(){
+        if(hoverTimer){ clearTimeout(hoverTimer); hoverTimer = null; }
+      });
+    }
+  });
+})();
+</script>
+
 </body>
 </html>
