@@ -2163,23 +2163,38 @@ function renderLayerSvg(layer, interactive){
       } else {
         hit = `<rect data-id="${layer.id}" data-role="move" x="-20" y="-20" width="40" height="40" fill="transparent"/>`;
       }
-      // Per-segment invisible hit bands — wide enough to click comfortably, positioned
-      // slightly above the actual segment so the popover doesn't obscure it.
-      const rawPts = p.points || [];
-      const segCount = rawPts.length - 1 + (p.closed && rawPts.length > 2 ? 1 : 0);
-      for(let si=0; si<segCount; si++){
-        const a = rawPts[si % rawPts.length];
-        const b = rawPts[(si+1) % rawPts.length];
-        const mx = ((a.x+b.x)/2).toFixed(2);
-        const my = ((a.y+b.y)/2).toFixed(2);
-        // Midpoint tick (split marker) — tiny vertical line at segment centre
-        hit += `<line data-id="${layer.id}" data-role="seg-mid:${si}" x1="${mx}" y1="${(parseFloat(my)-7).toFixed(2)}" x2="${mx}" y2="${(parseFloat(my)+7).toFixed(2)}" stroke="var(--rubric-soft)" stroke-width="1.5" stroke-dasharray="2,2" opacity="0" class="seg-mid-tick" pointer-events="none"/>`;
-        // Small dot sitting just above the segment's midpoint — the sole trigger for
-        // the style popover. Deliberately NOT a hit band along the whole segment: that
-        // used to sit on top of the drag/move hit-area and swallow mousedowns meant for
-        // dragging the line, making it hard to grab anywhere except right on a point.
-        // Kept at a low constant opacity — a faint marker rather than fully invisible.
-        hit += `<circle data-id="${layer.id}" data-role="seg:${si}" cx="${mx}" cy="${(parseFloat(my)-8).toFixed(2)}" r="5" class="seg-hit-dot"/>`;
+      // Per-segment style overlay (dash/curve popover trigger) — only meaningful while
+      // the line's own style is 'straight'. Every other lineType (smooth, wavy, zigzag,
+      // chirp, arc, dampedWave) already renders one continuous shape end-to-end, so a
+      // per-segment override doesn't apply and the dot shouldn't be offered — see the
+      // matching restriction on segStyleListEditorHtml.
+      if(p.lineType === 'straight'){
+        const rawPts = p.points || [];
+        const segCount = rawPts.length - 1 + (p.closed && rawPts.length > 2 ? 1 : 0);
+        for(let si=0; si<segCount; si++){
+          const a = rawPts[si % rawPts.length];
+          const b = rawPts[(si+1) % rawPts.length];
+          const mx = (a.x+b.x)/2;
+          const my = (a.y+b.y)/2;
+          // Perpendicular to the segment's own direction, not a fixed vertical shift —
+          // a hardcoded "up" offset only clears the line when it happens to be
+          // horizontal; for a vertical or diagonal segment it lands right back on top
+          // of the line instead of beside it.
+          const segDx = b.x-a.x, segDy = b.y-a.y;
+          const segLen = Math.hypot(segDx, segDy) || 1;
+          const nx = -segDy/segLen, ny = segDx/segLen;
+          const dotX = mx + nx*8, dotY = my + ny*8;
+          // Midpoint tick (split marker) — tiny line across the segment centre, aligned
+          // with the segment's own direction
+          hit += `<line data-id="${layer.id}" data-role="seg-mid:${si}" x1="${(mx-nx*7).toFixed(2)}" y1="${(my-ny*7).toFixed(2)}" x2="${(mx+nx*7).toFixed(2)}" y2="${(my+ny*7).toFixed(2)}" stroke="var(--rubric-soft)" stroke-width="1.5" stroke-dasharray="2,2" opacity="0" class="seg-mid-tick" pointer-events="none"/>`;
+          // Small dot sitting just to the side of the segment's midpoint — the sole
+          // trigger for the style popover. Deliberately NOT a hit band along the whole
+          // segment: that used to sit on top of the drag/move hit-area and swallow
+          // mousedowns meant for dragging the line, making it hard to grab anywhere
+          // except right on a point.
+          // Kept at a low constant opacity — a faint marker rather than fully invisible.
+          hit += `<circle data-id="${layer.id}" data-role="seg:${si}" cx="${dotX.toFixed(2)}" cy="${dotY.toFixed(2)}" r="5" class="seg-hit-dot"/>`;
+        }
       }
     } else {
       const w = p.length || p.width || 40;
