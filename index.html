@@ -2240,7 +2240,7 @@ function contentBBox(){
     if(b.minX < minX) minX=b.minX; if(b.maxX > maxX) maxX=b.maxX;
     if(b.minY < minY) minY=b.minY; if(b.maxY > maxY) maxY=b.maxY;
   });
-  return {minX: Math.max(0, minX), minY: Math.max(0, minY), maxX: Math.min(canvasW, maxX), maxY: Math.min(canvasH, maxY)};
+  return {minX, minY, maxX, maxY};
 }
 
 function renderLayerSvg(layer, interactive){
