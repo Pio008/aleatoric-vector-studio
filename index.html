@@ -49,12 +49,23 @@
     height:100vh;
   }
   .app{
-    padding:16px 20px;
+    padding:20px 22px;
     flex:1 1 auto;
     min-height:0;
     display:flex;
     flex-direction:column;
   }
+  /* One consistent keyboard-focus treatment for every interactive element, instead of
+     each browser's mismatched default outline. :focus-visible keeps it to keyboard
+     navigation, so a mouse click doesn't leave a ring sitting on the button. */
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible,
+  [tabindex]:focus-visible{
+    outline:2px solid var(--rubric-soft);
+    outline-offset:2px;
+    border-radius:3px;
+  }
+  input[type=range]:focus-visible{outline-offset:4px;}
+  textarea#svgOut:focus-visible{outline-offset:-2px;}
   header{
     flex:none;
     display:flex;
@@ -64,7 +75,7 @@
     gap:8px;
     background:var(--panel);
     border-bottom:1px solid var(--border);
-    padding:9px 18px;
+    padding:12px 22px;
   }
   h1{
     font-family:'Fraunces',serif;
@@ -93,7 +104,7 @@
      without ever having to scroll the page to find them. */
   .layout{
     display:flex;
-    gap:18px;
+    gap:20px;
     flex:1 1 auto;
     min-height:0;
   }
@@ -102,7 +113,7 @@
     width:230px;
     display:flex;
     flex-direction:column;
-    gap:18px;
+    gap:20px;
     min-height:0;
     overflow-y:auto;
   }
@@ -155,33 +166,32 @@
   .panel{
     background:var(--panel);
     border:1px solid var(--border);
-    border-radius:5px;
+    border-radius:10px;
     overflow:hidden;
   }
   .panel-head{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:11px;
-    text-transform:uppercase;
-    letter-spacing:0.09em;
-    font-weight:500;
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    letter-spacing:0.01em;
     color:var(--ink-soft);
-    padding:11px 14px 11px 12px;
+    padding:14px 18px 14px 16px;
     border-bottom:1px solid var(--border);
     border-left:3px solid var(--rubric);
     background:var(--paper);
   }
-  .panel-body{padding:12px 14px;}
+  .panel-body{padding:16px 18px;}
 
   /* ---- add buttons ---- */
-  .add-row{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+  .add-row{display:flex;flex-direction:column;gap:7px;margin-bottom:16px;}
   .add-btn{
-    display:flex;align-items:center;gap:8px;
+    display:flex;align-items:center;gap:9px;
     background:var(--paper);
-    border:1px solid var(--border);
-    border-radius:3px;
-    padding:8px 10px;
+    border:1px solid transparent;
+    border-radius:8px;
+    padding:11px 14px;
     font-family:'Inter',sans-serif;
-    font-size:13px;
+    font-size:13.5px;
     font-weight:500;
     color:var(--ink);
     cursor:pointer;
@@ -201,39 +211,57 @@
   .add-btn svg{width:16px;height:16px;stroke:var(--ink-soft);}
 
   /* ---- layers list ---- */
-  .layers{display:flex;flex-direction:column;gap:5px;}
+  .layers{display:flex;flex-direction:column;gap:6px;}
   .layer-row{
-    display:flex;align-items:center;gap:7px;
-    padding:7px 8px;
-    border:1px solid transparent;
-    border-radius:3px;
+    display:flex;align-items:center;gap:8px;
+    padding:9px 11px;
+    border-radius:8px;
     cursor:pointer;
     font-size:12.5px;
+    transition:box-shadow .15s ease, background .15s ease;
   }
   .layer-row:hover{background:var(--paper-deep);}
   .layer-row.selected{
-    border-color:var(--rubric-soft);
     background:var(--paper-deep);
-    box-shadow:inset 0 0 0 1px var(--rubric-soft);
+    box-shadow:inset 0 0 0 2px var(--rubric-soft);
   }
-  .layer-row .name{flex:1; overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .layer-row .tag{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:9.5px;
+  .layer-row .name{flex:1; min-width:0; overflow:hidden;text-overflow:ellipsis;white-space:nowrap; cursor:text;}
+  .layer-row .type-icon{
+    display:flex; align-items:center; justify-content:center;
+    flex:none; width:17px; height:17px;
     color:var(--ink-faint);
-    text-transform:uppercase;
-    background:var(--paper-deep);
-    padding:2px 5px;
-    border-radius:2px;
   }
+  .layer-row .type-icon svg{width:15px;height:15px;}
+  .layer-row.selected .type-icon{color:var(--rubric-soft);}
+  .layer-row .name-edit{
+    flex:1; min-width:0;
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;
+    color:var(--ink);
+    background:var(--paper-deep);
+    border:1px solid var(--rubric-soft);
+    border-radius:5px;
+    padding:0 5px;
+    /* pull the border into the row's existing padding so the row height never grows */
+    margin-top:-1px;
+    margin-bottom:-1px;
+    /* match the row's own line height so the input sits flush */
+    height:calc(1em + 6px);
+    box-sizing:border-box;
+    outline:none;
+    display:block;
+  }
+  .row-actions{display:flex; align-items:center; gap:1px; flex:none;}
   .layer-row button{
     display:flex;align-items:center;justify-content:center;
     background:none;border:none;cursor:pointer;
     color:var(--ink-faint);
     line-height:1;
     padding:3px;
-    border-radius:3px;
+    border-radius:5px;
+    outline:none;
   }
+  .layer-row button:focus-visible{outline:2px solid var(--rubric-soft); outline-offset:2px;}
   .layer-row button svg{width:13px;height:13px;flex:none;display:block;}
   .layer-row button:hover{color:var(--rubric-soft); background:var(--paper);}
   .empty-note{
@@ -244,15 +272,15 @@
 
   /* ---- canvas area ---- */
   .canvas-toolbar{
-    display:flex;align-items:center;gap:8px;flex-wrap:wrap;
-    padding:9px 16px;
+    display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+    padding:11px 18px;
     border-bottom:1px solid var(--border);
     font-size:12px;
     color:var(--ink-soft);
   }
   .canvas-toolbar label{display:flex;align-items:center;gap:5px;}
   .canvas-toolbar label:has(input[type=checkbox]){
-    padding:5px 11px 5px 9px;
+    padding:6px 13px 6px 10px;
     border:1px solid var(--border);
     border-radius:20px;
     background:var(--paper);
@@ -269,17 +297,17 @@
   .canvas-toolbar label:has(input[type=checkbox]:checked) svg{stroke:var(--rubric-soft);}
   .canvas-toolbar input[type=checkbox]{accent-color:var(--rubric); margin:0;}
   .canvas-toolbar label:has(input[type=number]){
-    padding:5px 9px;
+    padding:6px 10px;
     background:var(--panel);
     border:1px solid var(--border);
-    border-radius:5px;
+    border-radius:7px;
   }
   .canvas-toolbar input[type=number]{
     width:52px;
     background:var(--paper-deep);
     color:var(--ink);
     border:1px solid var(--border);
-    border-radius:3px;
+    border-radius:5px;
     padding:3px 5px;
     font-family:'IBM Plex Mono',monospace;
     font-size:11.5px;
@@ -289,6 +317,12 @@
     font-size:10.5px;
     color:var(--ink-faint);
   }
+  /* The staff-grid row always shows its own on/off checkbox; the rest of that row
+     (spacing fields, the mm hint) only matters once it's switched on, so it stays
+     collapsed until then instead of permanently taking up a full row. display:contents
+     keeps the wrapped fields acting as direct flex items when shown. */
+  .staff-grid-detail{display:contents;}
+  #museGridToolbar:not(:has(#staffGridToggle:checked)) .staff-grid-detail{display:none;}
   .canvas-wrap{
     padding:34px;
     display:flex;
@@ -383,24 +417,24 @@
 
   /* ---- param controls ---- */
   .param-tabs{
-    display:inline-flex; gap:2px; flex-wrap:wrap;
-    margin-bottom:18px;
-    padding:3px;
+    display:inline-flex; gap:3px; flex-wrap:wrap;
+    margin-bottom:20px;
+    padding:4px;
     background:var(--paper-deep);
     border:1px solid var(--border);
-    border-radius:5px;
+    border-radius:10px;
   }
   .param-tab{
     background:none;border:none;cursor:pointer;
-    padding:7px 13px;
-    border-radius:3px;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:10.5px;text-transform:uppercase;letter-spacing:0.06em;
+    padding:7px 14px;
+    border-radius:7px;
+    font-family:'Inter',sans-serif;
+    font-size:12.5px;font-weight:500;
     color:var(--ink-soft);
     transition:background .15s ease, color .15s ease;
   }
   .param-tab:hover{color:var(--ink); background:rgba(255,255,255,0.06);}
-  .param-tab.active{color:var(--rubric-soft); background:var(--paper-deep); box-shadow:0 1px 2px rgba(0,0,0,0.3);}
+  .param-tab.active{color:var(--rubric-soft); font-weight:600; background:var(--paper-deep); box-shadow:0 1px 2px rgba(0,0,0,0.3);}
   .param-tab-panel{display:none;}
   .param-tab-panel.active{
     display:grid;
@@ -411,25 +445,25 @@
   }
   .param-subhead{
     grid-column:1/-1;
-    font-family:'IBM Plex Mono',monospace;
-    font-size:10px;text-transform:uppercase;letter-spacing:0.08em;
+    font-family:'Inter',sans-serif;
+    font-size:11px;font-weight:600;letter-spacing:0.01em;
     color:var(--ink-faint);
     border-top:1px solid var(--border);
     margin-top:10px; padding-top:12px;
   }
   .param-subhead:first-child{border-top:none; margin-top:0; padding-top:0;}
-  .field{margin-bottom:16px;}
+  .field{margin-bottom:18px;}
   .field:last-child{margin-bottom:0;}
-  .field-row{display:flex; gap:12px; margin-bottom:16px;}
+  .field-row{display:flex; gap:14px; margin-bottom:18px;}
   .field-row:last-child{margin-bottom:0;}
   .field-row .field{flex:1; margin-bottom:0; min-width:0;}
   .field label{
     display:flex;justify-content:space-between;align-items:center;
     gap:6px;
-    font-size:11.5px;
+    font-size:12.5px;
     color:var(--ink-soft);
-    margin-bottom:6px;
-    font-family:'IBM Plex Mono',monospace;
+    margin-bottom:7px;
+    font-family:'Inter',sans-serif;
   }
   .field label .val-input{
     width:56px !important;
@@ -467,44 +501,44 @@
   .field label .swatch.chirp{background:var(--chirp);}
   .field select, .field input[type=number], .field input[type=text]{
     width:100%;
-    padding:6px 8px;
+    padding:9px 11px;
     border:1px solid var(--border);
-    border-radius:3px;
+    border-radius:7px;
     background:var(--paper-deep);
     font-family:'Inter',sans-serif;
     font-size:12.5px;
     color:var(--ink);
   }
   .field input[type=color]{
-    width:100%;height:30px;border:1px solid var(--border);border-radius:3px;background:var(--paper-deep);padding:2px;
+    width:100%;height:32px;border:1px solid var(--border);border-radius:7px;background:var(--paper-deep);padding:2px;
   }
   .field.checkbox{display:flex;align-items:center;gap:8px;}
   .field.checkbox label{margin:0;}
   .env-section{margin-bottom:14px;}
   .env-section-head{
     display:flex; align-items:center; justify-content:space-between;
-    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em;
-    margin-bottom:6px;
+    font-family:'Inter',sans-serif; font-size:11.5px; font-weight:600; color:var(--ink-soft);
+    margin-bottom:7px;
   }
   .env-add-btn{
     font-family:'Inter',sans-serif; font-size:11.5px; border:1px solid var(--border); background:var(--panel);
-    color:var(--ink); border-radius:3px; padding:3px 8px; cursor:pointer;
+    color:var(--ink); border-radius:6px; padding:4px 9px; cursor:pointer;
   }
   .env-add-btn:hover{border-color:var(--rubric-soft); color:var(--rubric-soft);}
-  .env-pt-row{display:flex; align-items:center; gap:8px; margin-bottom:2px;}
+  .env-pt-row{display:flex; align-items:center; gap:8px; margin-bottom:4px;}
   .env-pt-idx{
     width:18px; height:18px; line-height:18px; text-align:center; border-radius:50%;
     background:var(--paper-deep); color:var(--ink-soft); font-size:10.5px; flex-shrink:0;
   }
   .env-pt-field{display:flex; align-items:center; gap:4px; font-size:11px; color:var(--ink-soft); flex:1;}
-  .env-pt-field input{width:100%; min-width:0; padding:3px 5px; font-size:12px; border:1px solid var(--border); border-radius:3px; background:var(--panel); color:var(--ink);}
+  .env-pt-field input{width:100%; min-width:0; padding:4px 6px; font-size:12px; border:1px solid var(--border); border-radius:5px; background:var(--panel); color:var(--ink);}
   .env-pt-field input:disabled{opacity:0.4;}
   .env-seg-row{display:flex; justify-content:space-between; align-items:center; font-size:10.5px; color:var(--ink-soft); padding:0 2px 6px; margin-top:-2px;}
   .env-seg-label{font-weight:600; opacity:0.8;}
   .env-pt-del{
     display:flex;align-items:center;justify-content:center;
-    flex-shrink:0; width:20px; height:20px; border:1px solid var(--border); background:var(--panel);
-    color:var(--ink-soft); border-radius:3px; cursor:pointer; line-height:1;
+    flex-shrink:0; width:22px; height:22px; border:1px solid var(--border); background:var(--panel);
+    color:var(--ink-soft); border-radius:6px; cursor:pointer; line-height:1;
   }
   .env-pt-del svg{width:11px;height:11px;}
   .env-pt-del:hover:not(:disabled){border-color:var(--rubric-soft); color:var(--rubric-soft);}
@@ -536,8 +570,8 @@
     background:var(--ink);
     color:var(--paper);
     border:none;
-    border-radius:4px;
-    padding:9px 10px;
+    border-radius:8px;
+    padding:10px 12px;
     font-family:'Inter',sans-serif;
     font-size:12.5px;
     font-weight:600;
@@ -559,9 +593,9 @@
     font-family:'IBM Plex Mono',monospace;
     font-size:10.5px;
     line-height:1.5;
-    padding:8px;
+    padding:9px;
     border:1px solid var(--border);
-    border-radius:3px;
+    border-radius:7px;
     background:var(--paper-deep);
     color:var(--ink-soft);
     resize:vertical;
@@ -578,20 +612,21 @@
   .toolbar{
     flex:none;
     display:flex;align-items:center;gap:2px;flex-wrap:wrap;
-    padding:7px 16px;
+    padding:9px 18px;
     background:var(--panel);
     border-bottom:1px solid var(--border);
   }
-  .tsep{width:1px;align-self:stretch;margin:5px 6px;background:var(--border);}
+  .tsep{width:1px;align-self:stretch;margin:5px 8px;background:var(--border);}
   .tbtn{
     display:flex;align-items:center;gap:6px;
-    background:none;border:none;border-radius:4px;
+    background:none;border:none;border-radius:7px;
     padding:6px 9px;
     font-family:'Inter',sans-serif;
     font-size:12px;font-weight:500;
     color:var(--ink);
     cursor:pointer;
     white-space:nowrap;
+    transition:background .15s ease, color .15s ease;
   }
   .tbtn svg{width:16px;height:16px;stroke:currentColor;flex:none;display:block;}
   .tbtn.icon-only{
@@ -607,9 +642,10 @@
     display:flex;align-items:center;gap:6px;
     border:1px solid var(--border);
     background:var(--panel);
-    border-radius:4px;
-    padding:7px 12px 7px 10px;
+    border-radius:8px;
+    padding:9px 15px 9px 13px;
     font-weight:600;
+    transition:background .15s ease, border-color .15s ease, color .15s ease;
   }
   .toolmode-btn .icon{width:15px;height:15px;flex:none;display:flex;}
   .toolmode-btn .icon svg{width:15px;height:15px;stroke:var(--ink-soft);}
@@ -618,20 +654,22 @@
   .toolmode-btn.pen.active .icon svg{stroke:#fff;}
   .toolmode-btn.dot.active{background:var(--rubric); border-color:var(--rubric); color:#fff;}
   .toolmode-btn.dot.active .icon svg{stroke:#fff; fill:#fff;}
-  .toolmode-group{display:flex;align-items:center;gap:4px;}
+  .toolmode-btn.select.active{background:var(--ink); border-color:var(--ink); color:var(--paper-deep);}
+  .toolmode-btn.select.active .icon svg{stroke:var(--paper-deep);}
+  .toolmode-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
   .mode-banner{
     display:flex; align-items:center; gap:8px;
     font-family:'IBM Plex Mono',monospace;
     font-size:11px; letter-spacing:0.02em;
     color:#fff;
-    padding:7px 14px;
+    padding:8px 16px;
   }
   .mode-banner.hidden{display:none;}
   .mode-banner.pen{background:var(--period);}
   .mode-banner.dot{background:var(--rubric);}
   .mode-banner .exit{
     margin-left:auto; background:rgba(255,255,255,0.18); border:none; color:#fff;
-    border-radius:3px; padding:2px 8px; cursor:pointer; font-family:'Inter',sans-serif; font-size:11px;
+    border-radius:6px; padding:3px 9px; cursor:pointer; font-family:'Inter',sans-serif; font-size:11px;
   }
   .mode-banner .exit:hover{background:rgba(255,255,255,0.3);}
   .autosave-indicator{
@@ -645,26 +683,36 @@
 
   .tmenu-wrap{position:relative;}
   .tmenu{
-    position:absolute; top:calc(100% + 4px); left:0;
+    position:absolute; top:calc(100% + 6px); left:0;
     background:var(--panel);
     border:1px solid var(--border);
-    border-radius:5px;
+    border-radius:10px;
     box-shadow:0 8px 24px rgba(0,0,0,0.5);
     display:flex; flex-direction:column;
     min-width:210px;
     z-index:50;
-    padding:4px;
+    padding:5px;
   }
   .tmenu.hidden{display:none;}
   .tmenu button{
     display:flex; align-items:center; gap:9px;
     text-align:left; background:none; border:none; cursor:pointer;
-    padding:8px 10px; border-radius:3px;
+    padding:9px 11px; border-radius:6px;
     font-family:'Inter',sans-serif; font-size:12.5px; color:var(--ink);
   }
   .tmenu button svg{width:15px;height:15px;flex:none;stroke:var(--ink-soft);}
   .tmenu button:hover{background:var(--paper-deep);}
   .tmenu button:hover svg{stroke:var(--rubric-soft);}
+  /* .tmenu button (styled for plain menu-list rows) would otherwise win over .btn's
+     own styling for the Copy/Download buttons nested in the Export popover. */
+  .tmenu .export-btns button.btn{
+    display:inline-flex; text-align:center; justify-content:center;
+    background:var(--ink); color:var(--paper);
+    padding:9px 10px; font-weight:600; flex:1;
+  }
+  .tmenu .export-btns button.btn.secondary{
+    background:var(--paper-deep); color:var(--ink); border:1px solid var(--border);
+  }
 
   /* ---- toast ---- */
   .toast-wrap{
@@ -696,7 +744,7 @@
   .modal{
     background:var(--panel);
     border:1px solid var(--border);
-    border-radius:6px;
+    border-radius:12px;
     width:100%; max-width:480px;
     max-height:80vh;
     display:flex; flex-direction:column;
@@ -704,24 +752,24 @@
   }
   .modal-head{
     display:flex; align-items:center; justify-content:space-between;
-    padding:14px 18px;
+    padding:16px 20px;
     border-bottom:1px solid var(--border);
     font-family:'Fraunces',serif; font-size:17px; font-weight:600;
   }
   .modal-head button{
     display:flex;align-items:center;justify-content:center;
     background:none;border:none;cursor:pointer;color:var(--ink-soft);
-    line-height:1; padding:5px; border-radius:4px;
+    line-height:1; padding:6px; border-radius:6px;
   }
   .modal-head button svg{width:16px;height:16px;}
   .modal-head button:hover{color:var(--rubric-soft); background:var(--paper-deep);}
-  .modal-body{padding:16px 18px; overflow-y:auto;}
-  .modal-foot{padding:12px 18px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end;}
+  .modal-body{padding:18px 20px; overflow-y:auto;}
+  .modal-foot{padding:14px 20px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end;}
 
   .shortcut-list{display:flex; flex-direction:column; gap:2px;}
   .shortcut-row{
     display:flex; justify-content:space-between; align-items:center;
-    padding:7px 2px;
+    padding:8px 2px;
     border-bottom:1px solid var(--paper-deep);
     font-size:13px;
   }
@@ -733,30 +781,33 @@
     background:var(--paper-deep);
     border:1px solid var(--border);
     border-bottom-width:2px;
-    border-radius:3px;
+    border-radius:5px;
     padding:2px 6px;
     color:var(--ink);
   }
 
   .project-row{
     display:flex;align-items:center;gap:8px;
-    padding:9px 8px;
-    border:1px solid var(--border);
-    border-radius:3px;
-    margin-bottom:6px;
+    padding:10px 12px;
+    border:1px solid transparent;
+    background:var(--paper);
+    border-radius:8px;
+    margin-bottom:7px;
     font-size:13px;
+    transition:border-color .15s ease;
   }
+  .project-row:hover{border-color:var(--border);}
   .project-row .pname{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500;}
   .project-row .pmeta{font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-faint);}
   .project-row button{
-    background:none;border:1px solid var(--border);border-radius:3px;
-    cursor:pointer; font-size:11px; padding:4px 8px; color:var(--ink-soft);
+    background:none;border:1px solid var(--border);border-radius:6px;
+    cursor:pointer; font-size:11px; padding:5px 9px; color:var(--ink-soft);
     font-family:'Inter',sans-serif;
   }
   .project-row button:hover{border-color:var(--rubric-soft); color:var(--rubric-soft);}
-  .save-name-row{display:flex; gap:8px; margin-bottom:14px;}
+  .save-name-row{display:flex; gap:8px; margin-bottom:16px;}
   .save-name-row input{
-    flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:3px;
+    flex:1; padding:9px 12px; border:1px solid var(--border); border-radius:7px;
     font-family:'Inter',sans-serif; font-size:13px;
     background:var(--paper-deep); color:var(--ink);
   }
@@ -767,74 +818,74 @@
     z-index:120;
     background:var(--panel);
     border:1px solid var(--border);
-    border-radius:6px;
-    box-shadow:0 8px 28px rgba(0,0,0,0.55);
-    padding:10px 12px 12px;
-    min-width:210px;
+    border-radius:12px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.55);
+    padding:14px 16px 16px;
+    min-width:220px;
     pointer-events:auto;
     font-family:'Inter',sans-serif;
   }
   .seg-popover.hidden{display:none;}
   .seg-popover-head{
     display:flex; align-items:center; justify-content:space-between;
-    margin-bottom:9px;
+    margin-bottom:12px;
   }
   .seg-popover-title{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:10px; text-transform:uppercase; letter-spacing:0.08em;
-    color:var(--ink-faint);
+    font-family:'Inter',sans-serif;
+    font-size:13px; font-weight:600;
+    color:var(--ink);
   }
   .seg-popover-close{
     background:none; border:none; cursor:pointer; color:var(--ink-faint);
-    padding:2px; border-radius:3px; display:flex; align-items:center;
+    padding:3px; border-radius:6px; display:flex; align-items:center;
   }
   .seg-popover-close:hover{color:var(--rubric-soft); background:var(--paper-deep);}
   .seg-popover-close svg{width:13px;height:13px;}
-  .seg-popover-dash{margin-bottom:9px;}
+  .seg-popover-dash{margin-bottom:12px;}
   .seg-popover-dash label{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:10px; text-transform:uppercase; letter-spacing:0.06em;
-    color:var(--ink-soft); display:block; margin-bottom:4px;
+    font-family:'Inter',sans-serif;
+    font-size:11.5px; font-weight:600;
+    color:var(--ink-soft); display:block; margin-bottom:6px;
   }
   .seg-popover-dash select{
-    width:100%; padding:5px 7px;
-    border:1px solid var(--border); border-radius:3px;
+    width:100%; padding:8px 9px;
+    border:1px solid var(--border); border-radius:7px;
     background:var(--paper-deep); color:var(--ink);
     font-family:'Inter',sans-serif; font-size:12.5px;
   }
   .seg-popover-curve label{
-    font-family:'IBM Plex Mono',monospace;
-    font-size:10px; text-transform:uppercase; letter-spacing:0.06em;
+    font-family:'Inter',sans-serif;
+    font-size:11.5px; font-weight:600;
     color:var(--ink-soft);
     display:flex; justify-content:space-between; align-items:center;
-    margin-bottom:4px;
+    margin-bottom:6px;
   }
   .seg-popover-curve input[type=number]{
-    width:52px; padding:2px 5px;
-    border:1px solid var(--border); border-radius:2px;
+    width:54px; padding:3px 6px;
+    border:1px solid var(--border); border-radius:5px;
     background:var(--paper-deep); font-family:'IBM Plex Mono',monospace;
     font-size:11px; color:var(--ink); text-align:right;
   }
   .seg-popover-curve input[type=range]{
-    width:100%; accent-color:var(--rubric); margin-top:2px;
+    width:100%; accent-color:var(--rubric); margin-top:3px;
   }
   .seg-popover-split{
-    margin-top:10px; padding-top:9px;
+    margin-top:12px; padding-top:12px;
     border-top:1px solid var(--border);
   }
   .seg-popover-split button{
-    width:100%; padding:6px 8px;
+    width:100%; padding:9px 10px;
     background:var(--paper-deep); border:1px solid var(--border);
-    border-radius:3px; color:var(--ink-soft);
-    font-family:'Inter',sans-serif; font-size:12px;
+    border-radius:7px; color:var(--ink-soft);
+    font-family:'Inter',sans-serif; font-size:12.5px; font-weight:500;
     cursor:pointer; text-align:center;
-    transition:border-color .12s, color .12s;
+    transition:border-color .15s ease, color .15s ease;
   }
   .seg-popover-split button:hover{border-color:var(--rubric-soft); color:var(--rubric-soft);}
 
   .wave-readout{
     display:flex; flex-wrap:wrap; gap:0;
-    border:1px solid var(--border); border-radius:3px;
+    border:1px solid var(--border); border-radius:7px;
     margin:-2px 0 14px; overflow:hidden;
   }
   .wave-readout .cell{
@@ -862,17 +913,6 @@
   </header>
 
   <div class="toolbar">
-    <div class="toolmode-group">
-      <button class="tbtn toolmode-btn pen" id="toolPenBtn" onclick="togglePenToolbar()" title="Pen — freehand sketch mode (P)">
-        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
-        Pen
-      </button>
-      <button class="tbtn toolmode-btn dot" id="toolDotBtn" onclick="toggleDotToolbar()" title="Dot — click to place points (D)">
-        <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg></span>
-        Dot
-      </button>
-    </div>
-    <div class="tsep"></div>
     <button class="tbtn icon-only" onclick="newProject()" title="New project">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5L13.5 3Z"/><path d="M13 3v5a1 1 0 0 0 1 1h5"/><path d="M12 12v6M9 15h6"/></svg>
     </button>
@@ -892,6 +932,26 @@
     </button>
     <div class="tsep"></div>
     <div class="tmenu-wrap">
+      <button class="tbtn" onclick="toggleExportMenu(event)" title="Export SVG">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4.5 19h15"/></svg>
+        Export
+      </button>
+      <div class="tmenu hidden" id="exportMenu" style="padding:12px; min-width:230px;">
+        <div class="field" style="margin-bottom:10px;">
+          <label class="field-label" style="display:block;margin-bottom:4px;">MuseScore import fix (&times;)
+            <input type="number" id="museCompFactor" value="13.6" min="1" max="50" step="0.05" oninput="renderAll()" style="width:70px;">
+          </label>
+          <span class="hint">Compensates for MuseScore's SVG import undersizing. Exported mm are pre-multiplied so the image lands at the intended size without retyping.</span>
+        </div>
+        <div class="export-btns">
+          <button class="btn" onclick="copySvg()">Copy SVG</button>
+          <button class="btn secondary" onclick="downloadSvg()">Download</button>
+        </div>
+        <div class="copy-flash" id="copyFlash"></div>
+        <textarea id="svgOut" readonly></textarea>
+      </div>
+    </div>
+    <div class="tmenu-wrap">
       <button class="tbtn icon-only" onclick="toggleMoreMenu(event)" title="More">
         <svg viewBox="0 0 24 24" stroke="none"><circle cx="5" cy="12" r="1.7" fill="currentColor"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><circle cx="19" cy="12" r="1.7" fill="currentColor"/></svg>
       </button>
@@ -909,9 +969,24 @@
 <div class="app">
   <div class="layout">
     <div class="col-left">
-    <div class="panel panel-elements">
-      <div class="panel-head">Elements</div>
+    <div class="panel panel-tools">
+      <div class="panel-head">Tools</div>
       <div class="panel-body">
+        <div class="toolmode-group">
+          <button class="tbtn toolmode-btn select active" id="toolSelectBtn" onclick="exitToolMode()" title="Select (Esc)">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l5.5 15L13 12l6-2.5L5 3Z"/></svg></span>
+            Select
+          </button>
+          <button class="tbtn toolmode-btn pen" id="toolPenBtn" onclick="togglePenToolbar()" title="Pen — freehand sketch mode (P)">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></span>
+            Pen
+          </button>
+          <button class="tbtn toolmode-btn dot" id="toolDotBtn" onclick="toggleDotToolbar()" title="Dot — click to place points (D)">
+            <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="12" cy="12" r="3.2" fill="currentColor" stroke="none"/></svg></span>
+            Dot
+          </button>
+        </div>
+        <div class="divider"></div>
         <div class="add-row">
           <button class="add-btn" onclick="addLayer('line')">
             <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M2 17c3-9 5 9 8 0s5 9 8 0 4 4 4 4"/></svg></span>
@@ -927,28 +1002,16 @@
           </button>
           <button class="add-btn" onclick="addLayer('custom')">
             <span class="icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6"><path d="M5 18L12 6L19 15" stroke-dasharray="1 3.2"/><circle cx="5" cy="18" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="6" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="15" r="1.6" fill="currentColor" stroke="none"/></svg></span>
-            Add custom (dots)
+            Add custom
           </button>
         </div>
-        <div class="layers" id="layerList"></div>
       </div>
     </div>
 
-    <div class="panel panel-export">
-      <div class="panel-head">Export</div>
+    <div class="panel panel-elements">
+      <div class="panel-head">Layers</div>
       <div class="panel-body">
-        <div class="field" style="margin-bottom:10px;">
-          <label class="field-label" style="display:block;margin-bottom:4px;">MuseScore import fix (&times;)
-            <input type="number" id="museCompFactor" value="13.6" min="1" max="50" step="0.05" oninput="renderAll()" style="width:70px;">
-          </label>
-          <span class="hint">Compensates for MuseScore's SVG import undersizing. Exported mm are pre-multiplied so the image lands at the intended size without retyping.</span>
-        </div>
-        <div class="export-btns">
-          <button class="btn" onclick="copySvg()">Copy SVG</button>
-          <button class="btn secondary" onclick="downloadSvg()">Download</button>
-        </div>
-        <div class="copy-flash" id="copyFlash"></div>
-        <textarea id="svgOut" readonly></textarea>
+        <div class="layers" id="layerList"></div>
       </div>
     </div>
     </div>
@@ -969,12 +1032,14 @@
       </div>
       <div class="canvas-toolbar" id="museGridToolbar">
         <label><input type="checkbox" id="staffGridToggle" onchange="renderStage()"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> MuseScore grid</label>
-        <label>sp (px) <input type="number" id="spSize" value="20" min="2" max="200" step="0.5" oninput="renderStage()"></label>
-        <label>Staff lines <input type="number" id="staffLineCount" value="5" min="1" max="12" step="1" oninput="renderStage()"></label>
-        <label>Staves <input type="number" id="staffCount" value="1" min="1" max="8" step="1" oninput="renderStage()"></label>
-        <label>Staff distance (sp) <input type="number" id="staffDistanceSp" value="7" min="1" max="40" step="0.5" oninput="renderStage()"></label>
-        <label>Bar guide (sp) <input type="number" id="barWidthSp" value="9.41" min="0.5" max="200" step="0.5" oninput="renderStage()"></label>
-        <span class="hint" id="gridMmHint"></span>
+        <span class="staff-grid-detail">
+          <label>sp (px) <input type="number" id="spSize" value="20" min="2" max="200" step="0.5" oninput="renderStage()"></label>
+          <label>Staff lines <input type="number" id="staffLineCount" value="5" min="1" max="12" step="1" oninput="renderStage()"></label>
+          <label>Staves <input type="number" id="staffCount" value="1" min="1" max="8" step="1" oninput="renderStage()"></label>
+          <label>Staff distance (sp) <input type="number" id="staffDistanceSp" value="7" min="1" max="40" step="0.5" oninput="renderStage()"></label>
+          <label>Bar guide (sp) <input type="number" id="barWidthSp" value="9.41" min="0.5" max="200" step="0.5" oninput="renderStage()"></label>
+          <span class="hint" id="gridMmHint"></span>
+        </span>
       </div>
       <div class="canvas-wrap" id="canvasWrap">
         <div class="canvas-scale-wrap" id="canvasScaleWrap">
@@ -1031,6 +1096,35 @@
 
 <div class="toast-wrap" id="toastWrap"></div>
 
+<div id="segPopover" class="seg-popover hidden">
+  <div class="seg-popover-head">
+    <span class="seg-popover-title" id="segPopoverTitle">Segment 1→2</span>
+    <button class="seg-popover-close" onclick="hideSegPopover()" title="Close">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
+    </button>
+  </div>
+  <div class="seg-popover-dash">
+    <label>Style</label>
+    <select id="segPopoverDash" onchange="onSegPopoverDashChange(this.value)">
+      <option value="">Default</option>
+      <option value="solid">Solid</option>
+      <option value="dashed">Dashed</option>
+      <option value="dotted">Dotted</option>
+      <option value="invisible">Invisible</option>
+    </select>
+  </div>
+  <div class="seg-popover-curve">
+    <label>Curve <input type="number" id="segPopoverCurveNum" min="-100" max="100" step="1" value="0" oninput="onSegPopoverCurveInput(this.value)"></label>
+    <input type="range" id="segPopoverCurveSlider" min="-100" max="100" step="1" value="0"
+      oninput="onSegPopoverCurveInput(this.value)"
+      onmousedown="ensureHistorySnapshot()" ontouchstart="ensureHistorySnapshot()"
+      onchange="finalizeHistory()">
+  </div>
+  <div class="seg-popover-split">
+    <button onclick="splitSegmentAt(segPopoverLayerId, segPopoverSegIdx); hideSegPopover();">Split at midpoint</button>
+  </div>
+</div>
+
 
 <script>
 /* ============================= STATE ============================= */
@@ -1054,6 +1148,7 @@ let addPointMode = false;
 let addPointLayerId = null;
 let penSketchMode = false;
 let penSketchLayerId = null;
+let continueLayerId = null; // set when user explicitly selects a layer to continue drawing on (Pen or Dot)
 let penDrawing = false;
 let penRawPoints = [];
 
@@ -1121,6 +1216,14 @@ const DEFAULTS = {
 };
 
 const LABELS = { line:'Line', box:'Box', shape:'Shape', custom:'Custom' };
+// One icon per element type, matching the Add buttons' own icons — used by the layer
+// list so each row shows its type as an icon instead of a text badge.
+const TYPE_ICON = {
+  line: '<svg viewBox="0 0 24 24" fill="none"><path d="M2 17c3-9 5 9 8 0s5 9 8 0 4 4 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  box: '<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="6" width="16" height="12" rx="1" stroke="currentColor" stroke-width="1.6"/></svg>',
+  shape: '<svg viewBox="0 0 24 24" fill="none"><path d="M12 3l9 18H3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+  custom: '<svg viewBox="0 0 24 24" fill="none"><path d="M5 18L12 6L19 15" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 3" stroke-linecap="round"/><circle cx="5" cy="18" r="1.8" fill="currentColor"/><circle cx="12" cy="6" r="1.8" fill="currentColor"/><circle cx="19" cy="15" r="1.8" fill="currentColor"/></svg>'
+};
 
 /* ============================= MATH & SNAPPING HELPERS ============================= */
 function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
@@ -1415,7 +1518,7 @@ function schemaFor(layer){
     }
     if(t==='straight'){
       fields.push({key:'pointList', label:'Points (exact X / Y)', type:'pointList', group:'shape'});
-      // segStyles edited via right-click popover on canvas — no side-panel list needed
+      fields.push({key:'segStyles', label:'Segment style', type:'segStyleList', group:'shape'});
     }
     fields.push({key:'thickness', label:'Stroke width', type:'range', min:0.3, max:60, step:0.1, group:'stroke'});
     fields.push({key:'dash', label:'Dash style', type:'select', options:['solid','dashed','dotted','invisible'], group:'stroke'});
@@ -2186,13 +2289,15 @@ function renderLayerSvg(layer, interactive){
           const dotX = mx + nx*8, dotY = my + ny*8;
           // Midpoint tick (split marker) — tiny line across the segment centre, aligned
           // with the segment's own direction
-          hit += `<line data-id="${layer.id}" data-role="seg-mid:${si}" x1="${(mx-nx*7).toFixed(2)}" y1="${(my-ny*7).toFixed(2)}" x2="${(mx+nx*7).toFixed(2)}" y2="${(my+ny*7).toFixed(2)}" stroke="var(--rubric-soft)" stroke-width="1.5" stroke-dasharray="2,2" opacity="0" class="seg-mid-tick" pointer-events="none"/>`;
-          // Small dot sitting just to the side of the segment's midpoint — the sole
-          // trigger for the style popover. Deliberately NOT a hit band along the whole
-          // segment: that used to sit on top of the drag/move hit-area and swallow
-          // mousedowns meant for dragging the line, making it hard to grab anywhere
-          // except right on a point.
-          // Kept at a low constant opacity — a faint marker rather than fully invisible.
+          // Small dot sitting just to the side of the segment's midpoint — click it (or
+          // the segment itself) to select this layer; its dash/curve/split controls then
+          // show in the Inspector's Shape tab (see segStyleListEditorHtml), not in a
+          // popover here. The <title> is the only on-canvas hint of that now.
+          // Small dot sitting just to the side of the segment's midpoint. Hovering it
+          // shows the segment popover (see onStageHoverMove); clicking just selects
+          // the parent layer and jumps the Inspector to Shape, where the same
+          // dash/curve/split controls live as a full list (see onStageMouseDown's
+          // 'seg:' branch and segStyleListEditorHtml) — two ways into one set of data.
           hit += `<circle data-id="${layer.id}" data-role="seg:${si}" cx="${dotX.toFixed(2)}" cy="${dotY.toFixed(2)}" r="5" class="seg-hit-dot"/>`;
         }
       }
@@ -2363,15 +2468,31 @@ function addLayer(type){
   layers.push({id, type, name:`${LABELS[type]} ${count}`, visible:true, params});
   selectedId = id;
   selectedIds = new Set([id]);
+  // If Pen or Dot is already active and this is a new custom layer, point the live
+  // session at it right away — otherwise "Add custom" would create and select a new
+  // layer while the pen/dot tool kept drawing into whatever it was targeting before.
+  if(type==='custom'){
+    if(penSketchMode) penSketchLayerId = id;
+    else if(addPointMode) addPointLayerId = id;
+  }
   renderAll();
 }
 function deleteLayer(id, ev){
   if(ev) ev.stopPropagation();
+  const wasDotTarget = addPointMode && addPointLayerId === id;
+  const wasPenTarget = penSketchMode && penSketchLayerId === id;
+  // Clear stale references before removing the layer
+  if(wasDotTarget){ addPointMode = false; addPointLayerId = null; document.getElementById('stage').classList.remove('adding-points'); }
+  if(wasPenTarget){ penSketchMode = false; penSketchLayerId = null; document.getElementById('stage').classList.remove('pen-mode'); }
   pushHistory();
   layers = layers.filter(l=>l.id!==id);
   selectedIds.delete(id);
   if(selectedId===id) selectedId = layers.length ? layers[layers.length-1].id : null;
-  renderAll();
+  // If we were in a drawing mode, immediately re-enter it with a fresh layer
+  // so the user can keep drawing without having to press the tool button again.
+  if(wasDotTarget) toggleDotToolbar();
+  else if(wasPenTarget) togglePenToolbar();
+  else { updateToolModeButtons(); renderAll(); }
 }
 function duplicateLayer(id, ev){
   if(ev) ev.stopPropagation();
@@ -2397,11 +2518,27 @@ function selectLayer(id, ev){
       selectedIds.add(id);
       selectedId = id;
     }
+    renderAll();
   } else {
+    // If this layer is already the sole selection, skip the full renderAll so the layer
+    // list DOM is preserved — a dblclick fires its two clicks in rapid succession, and
+    // rebuilding innerHTML between them destroys the element the dblclick is targeting.
+    const alreadySelected = selectedId === id && selectedIds.size === 1;
     selectedId = id;
     selectedIds = new Set([id]);
+    if(alreadySelected){
+      // Minimal update: just keep the params panel and stage in sync without rebuilding
+      // the layer list. The row's 'selected' class is already correct.
+      buildParamPanel();
+      renderStage();
+      document.getElementById('svgOut').value = fullSvgSource();
+      updateHistoryButtons();
+      updateToolModeButtons();
+      scheduleAutosave();
+    } else {
+      renderAll();
+    }
   }
-  renderAll();
 }
 function moveLayer(id, dir, ev){
   ev.stopPropagation();
@@ -2461,15 +2598,52 @@ function buildLayerList(){
     return;
   }
   el.innerHTML = layers.map((l)=>`
-    <div class="layer-row ${selectedIds.has(l.id)?'selected':''}" onclick="selectLayer('${l.id}', event)">
-      <span class="tag">${l.type}</span>
-      <span class="name">${l.name}</span>
-      <button onclick="moveLayer('${l.id}',1,event)" title="Move up">${ICONS.up}</button>
-      <button onclick="moveLayer('${l.id}',-1,event)" title="Move down">${ICONS.down}</button>
-      <button onclick="duplicateLayer('${l.id}',event)" title="Duplicate">${ICONS.duplicate}</button>
-      <button onclick="deleteLayer('${l.id}',event)" title="Delete">${ICONS.trash}</button>
+    <div class="layer-row ${selectedIds.has(l.id)?'selected':''}" onclick="selectLayer('${l.id}', event)" ondblclick="setContinueLayer('${l.id}', event)">
+      <span class="type-icon" title="${LABELS[l.type]||l.type}">${TYPE_ICON[l.type]||''}</span>
+      <span class="name" data-id="${l.id}" ondblclick="startRenameLayer('${l.id}', event)" title="${escapeHtml(l.name)} — double-click to rename">${escapeHtml(l.name)}</span>
+      <span class="row-actions">
+        <button onclick="moveLayer('${l.id}',1,event)" title="Move up">${ICONS.up}</button>
+        <button onclick="moveLayer('${l.id}',-1,event)" title="Move down">${ICONS.down}</button>
+        <button onclick="duplicateLayer('${l.id}',event)" title="Duplicate">${ICONS.duplicate}</button>
+        <button onclick="deleteLayer('${l.id}',event)" title="Delete">${ICONS.trash}</button>
+      </span>
     </div>
   `).join('');
+}
+// Turns a layer row's name into an inline text input, focused and pre-selected.
+// Commits on blur/Enter, reverts on Escape — the same convention as every other
+// layer panel (Figma, Illustrator, etc). Existing global keyboard shortcuts already
+// ignore keystrokes while an <input> is focused, so typing a name never triggers
+// Pen mode, delete, nudge, and so on; Escape is the one key that would otherwise
+// also bubble up to deselect the layer, so that specific case stops it there.
+function startRenameLayer(id, ev){
+  ev.stopPropagation();
+  const layer = layers.find(l=>l.id===id);
+  // Use the live DOM element (via data-id) as belt-and-suspenders in case the list
+  // was rebuilt between the two clicks of the double-click.
+  const nameEl = document.querySelector(`#layerList [data-id="${id}"]`) || ev.currentTarget;
+  if(!layer || !nameEl) return;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'name-edit';
+  input.maxLength = 60;
+  input.value = layer.name;
+  input.onclick = e => e.stopPropagation();
+  input.onmousedown = e => e.stopPropagation();
+  nameEl.replaceWith(input);
+  input.focus();
+  input.select();
+  let settled = false;
+  input.addEventListener('blur', ()=>{
+    if(settled) return; settled = true;
+    const val = input.value.trim();
+    if(val) layer.name = val;
+    renderAll();
+  });
+  input.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); input.blur(); }
+    else if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); settled = true; renderAll(); }
+  });
 }
 
 /* ============================= MULTI-SELECTION SHARED FIELDS ============================= */
@@ -2676,6 +2850,7 @@ function segStyleListEditorHtml(layer){
         <input type="number" min="-100" max="100" step="1" value="${curveVal}"
           onchange="updateSegStyle('${layer.id}',${i},'curveAmount',parseFloat(this.value)||0)">
       </label>
+      <button type="button" class="env-pt-del" style="width:auto;padding:0 8px;" title="Split this segment at its midpoint" onclick="splitSegmentAt('${layer.id}',${i})">Split</button>
     </div>`);
   }
   return `
@@ -2685,19 +2860,184 @@ function segStyleListEditorHtml(layer){
     </div>`;
 }
 
-function updateSegStyle(id, segIdx, field, value){
+// Value-only mutation, no history bookkeeping — shared by updateSegStyle (below, for
+// one-shot commits like a dropdown or a number field's onchange) and the popover's
+// curve slider (which snapshots once on mousedown and finalizes once on change, via
+// ensureHistorySnapshot/finalizeHistory in its own markup, rather than one undo step
+// per pixel of drag).
+function setSegStyleValue(id, segIdx, field, value){
   const layer = layers.find(l=>l.id===id); if(!layer) return;
-  pushHistory();
   const p = layer.params;
   if(!p.segStyles) p.segStyles = [];
   if(!p.segStyles[segIdx]) p.segStyles[segIdx] = {};
-  if(field==='dash'){
-    p.segStyles[segIdx].dash = value || null;
-  } else if(field==='curveAmount'){
-    p.segStyles[segIdx].curveAmount = value || 0;
-  }
+  if(field==='dash') p.segStyles[segIdx].dash = value || null;
+  else if(field==='curveAmount') p.segStyles[segIdx].curveAmount = value || 0;
+}
+function updateSegStyle(id, segIdx, field, value){
+  pushHistory();
+  setSegStyleValue(id, segIdx, field, value);
   renderAll();
   finalizeHistory();
+}
+function splitSegmentAt(layerId, segIdx){
+  const layer = layers.find(l=>l.id===layerId);
+  if(!layer) return;
+  const p = layer.params;
+  const pts = p.points || [];
+  const a = pts[segIdx % pts.length];
+  const b = pts[(segIdx+1) % pts.length];
+  if(!a || !b) return;
+  pushHistory();
+  const mid = {x:(a.x+b.x)/2, y:(a.y+b.y)/2};
+  pts.splice(segIdx+1, 0, mid);
+  if(p.segStyles && p.segStyles.length){
+    p.segStyles.splice(segIdx, 0, null);
+    p.segStyles[segIdx]   = null;
+    p.segStyles[segIdx+1] = null;
+  }
+  finalizeHistory();
+  renderAll();
+}
+
+// ===== SEGMENT HOVER POPOVER =====
+// A quicker, on-canvas way to reach a segment's style while your mouse is already on
+// it — reads and writes the exact same layer.params.segStyles as the Inspector's
+// Segment style list (via setSegStyleValue/updateSegStyle/splitSegmentAt above), so
+// the two views can never disagree. Hover detection is a plain mousemove listener on
+// the stage, guarded by the same dragState/penSketchMode/addPointMode checks every
+// other on-canvas interaction already respects — not a second, uncoordinated pipeline.
+let segPopoverLayerId = null;
+let segPopoverSegIdx  = null;
+let segHoverEl = null;
+let segHoverTimer = null;
+let segHoverHighlightEl = null;
+
+function clearSegHoverHighlight(){
+  if(segHoverHighlightEl && segHoverHighlightEl.parentNode) segHoverHighlightEl.parentNode.removeChild(segHoverHighlightEl);
+  segHoverHighlightEl = null;
+}
+
+function showSegPopover(layerId, segIdx, clientX, clientY){
+  segPopoverLayerId = layerId;
+  segPopoverSegIdx  = segIdx;
+
+  const layer = layers.find(l=>l.id===layerId);
+  if(!layer) return;
+  const p = layer.params;
+  const pts = p.points || [];
+  const a = pts[segIdx % pts.length];
+  const b = pts[(segIdx+1) % pts.length];
+  if(!a || !b) return;
+
+  const style = customSegStyle(p, segIdx);
+  const rawOverride = (p.segStyles || [])[segIdx] || {};
+
+  document.getElementById('segPopoverTitle').textContent = `Segment ${segIdx+1}\u2192${segIdx+2}`;
+  const dashSelect = document.getElementById('segPopoverDash');
+  dashSelect.querySelector('option[value=""]').textContent = `Default (${p.dash || 'solid'})`;
+  dashSelect.value = rawOverride.dash || '';
+  document.getElementById('segPopoverCurveNum').value = style.curveAmount || 0;
+  document.getElementById('segPopoverCurveSlider').value = style.curveAmount || 0;
+
+  const pop = document.getElementById('segPopover');
+  pop.classList.remove('hidden');
+
+  // Screen-space position via getScreenCTM, same as every other canvas→screen
+  // conversion in the app (see svgPointFromClient) — accounts for zoom/scroll/pan.
+  const stage = document.getElementById('stage');
+  const ctm = stage.getScreenCTM();
+  const mx = (a.x + b.x) / 2;
+  const my = (a.y + b.y) / 2;
+  const rad = (p.rotation || 0) * Math.PI / 180;
+  const cosR = Math.cos(rad), sinR = Math.sin(rad);
+  const wx = p.x + mx * cosR - my * sinR;
+  const wy = p.y + mx * sinR + my * cosR;
+
+  let screenX, screenY;
+  if(ctm){
+    screenX = ctm.a * wx + ctm.c * wy + ctm.e;
+    screenY = ctm.b * wx + ctm.d * wy + ctm.f;
+  } else {
+    screenX = clientX;
+    screenY = clientY - 60;
+  }
+
+  pop.style.visibility = 'hidden';
+  pop.style.left = '0px';
+  pop.style.top  = '0px';
+  requestAnimationFrame(() => {
+    const pw = pop.offsetWidth  || 220;
+    const ph = pop.offsetHeight || 180;
+    let left = screenX - pw / 2;
+    let top  = screenY - ph - 28;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    left = Math.max(8, Math.min(left, vw - pw - 8));
+    if(top < 8) top = screenY + 28;
+    pop.style.left = left + 'px';
+    pop.style.top  = top  + 'px';
+    pop.style.visibility = 'visible';
+  });
+
+  clearSegHoverHighlight();
+  const hl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  const wax = p.x + a.x*cosR - a.y*sinR, way = p.y + a.x*sinR + a.y*cosR;
+  const wbx = p.x + b.x*cosR - b.y*sinR, wby = p.y + b.x*sinR + b.y*cosR;
+  hl.setAttribute('x1', wax); hl.setAttribute('y1', way);
+  hl.setAttribute('x2', wbx); hl.setAttribute('y2', wby);
+  hl.setAttribute('stroke', 'var(--rubric-soft)');
+  hl.setAttribute('stroke-width', '4');
+  hl.setAttribute('stroke-linecap', 'round');
+  hl.setAttribute('opacity', '0.45');
+  hl.setAttribute('pointer-events', 'none');
+  hl.classList.add('seg-hover-highlight');
+  stage.appendChild(hl);
+  segHoverHighlightEl = hl;
+}
+
+function hideSegPopover(){
+  document.getElementById('segPopover').classList.add('hidden');
+  segPopoverLayerId = null;
+  segPopoverSegIdx  = null;
+  clearSegHoverHighlight();
+}
+
+function onSegPopoverDashChange(val){
+  if(segPopoverLayerId==null) return;
+  updateSegStyle(segPopoverLayerId, segPopoverSegIdx, 'dash', val);
+}
+
+function onSegPopoverCurveInput(val){
+  if(segPopoverLayerId==null) return;
+  const num = parseInt(val, 10) || 0;
+  document.getElementById('segPopoverCurveNum').value    = num;
+  document.getElementById('segPopoverCurveSlider').value = num;
+  setSegStyleValue(segPopoverLayerId, segPopoverSegIdx, 'curveAmount', num);
+  const layer = layers.find(l=>l.id===segPopoverLayerId);
+  if(layer && layer.params.lineType !== 'straight') layer.params.lineType = 'straight';
+  renderStage();
+  document.getElementById('svgOut').value = fullSvgSource();
+}
+
+function onStageHoverMove(e){
+  if(dragState || penSketchMode || addPointMode) return; // an active gesture owns the canvas
+  const hitEl = e.target.closest && e.target.closest('[data-role^="seg:"]');
+  if(!hitEl){
+    if(segHoverEl){
+      segHoverEl = null;
+      if(segHoverTimer) clearTimeout(segHoverTimer);
+      segHoverTimer = setTimeout(()=>{
+        const pop = document.getElementById('segPopover');
+        if(pop && !pop.matches(':hover')) hideSegPopover();
+      }, 300);
+    }
+    return;
+  }
+  if(hitEl === segHoverEl) return;
+  segHoverEl = hitEl;
+  if(segHoverTimer){ clearTimeout(segHoverTimer); segHoverTimer = null; }
+  const layerId = hitEl.getAttribute('data-id');
+  const segIdx  = parseInt(hitEl.getAttribute('data-role').split(':')[1], 10);
+  showSegPopover(layerId, segIdx, e.clientX, e.clientY);
 }
 
 // Exact X/Y editor for hand-drawn (pen/dot) 'custom' lines' own anchor points — mirrors
@@ -2974,6 +3314,25 @@ function renderSchemaFields(schema, layer){
   return `<div class="param-tabs">${tabs}</div>${panels}`;
 }
 
+// Groups shared (multi-selection) fields into the same tab strip that a single
+// selection uses (see renderSchemaFields) — so the Inspector is one consistent panel
+// regardless of how many elements are selected, instead of two differently-shaped
+// panels a person has to learn separately.
+function renderSharedTabbedFields(shared, selLayers){
+  const groupOrder = ['shape','wave','stroke','arrow','position'];
+  const byGroup = {};
+  shared.forEach(f=>{ (byGroup[f.group] = byGroup[f.group] || []).push(f); });
+  const groups = groupOrder.filter(g=>byGroup[g]);
+  if(!groups.length) return '';
+  if(!groups.includes(activeParamGroup)) activeParamGroup = groups[0];
+  const tabs = groups.map(g=>
+    `<button type="button" class="param-tab ${g===activeParamGroup?'active':''}" data-group="${g}" onclick="switchParamTab('${g}')">${GROUP_LABELS[g] || g}</button>`
+  ).join('');
+  const panels = groups.map(g=>
+    `<div class="param-tab-panel ${g===activeParamGroup?'active':''}" data-group="${g}">${byGroup[g].map(f=>renderSharedField(f, selLayers)).join('')}</div>`
+  ).join('');
+  return `<div class="param-tabs">${tabs}</div>${panels}`;
+}
 function buildParamPanel(){
   const title = document.getElementById('paramTitle');
   const body = document.getElementById('paramBody');
@@ -2981,15 +3340,9 @@ function buildParamPanel(){
     const selLayers = [...selectedIds].map(id=>layers.find(l=>l.id===id)).filter(Boolean);
     title.textContent = `${selLayers.length} elements selected`;
     const shared = computeSharedFields(selLayers);
-    const groupOrder = ['shape','wave','stroke','arrow','position'];
-    const byGroup = {};
-    shared.forEach(f=>{ (byGroup[f.group] = byGroup[f.group] || []).push(f); });
-    const sections = groupOrder.filter(g=>byGroup[g]).map(g=>
-      `<div class="param-subhead">${GROUP_LABELS[g] || g}</div>${byGroup[g].map(f=>renderSharedField(f, selLayers)).join('')}`
-    ).join('');
     const note = `<div class="mouse-note">Drag any of them on canvas to move the whole group together, or press Delete/⌘D to remove or duplicate the group. Click one element without Shift to edit all of its parameters individually.</div>`;
     body.innerHTML = shared.length
-      ? note + `<div class="param-subhead">Shared properties (editing applies to all ${selLayers.length})</div>` + sections
+      ? note + renderSharedTabbedFields(shared, selLayers)
       : note + `<div class="no-selection">These elements have no editable properties in common.</div>`;
     body.querySelectorAll('[data-indeterminate="true"]').forEach(el=>{ el.indeterminate = true; });
     return;
@@ -3065,35 +3418,72 @@ function buildParamPanel(){
 }
 
 function ensureCustomLayerForToolMode(){
-  // For dot mode: prefer the currently selected custom layer, then the most recent one.
-  // For pen (sketch) mode this is NOT used — each stroke gets its own fresh layer.
-  let layer = layers.find(l=>l.id===selectedId && l.type==='custom');
-  if(!layer) layer = [...layers].reverse().find(l=>l.type==='custom');
-  if(!layer){
-    addLayer('custom');
-    layer = layers[layers.length-1];
-  } else {
+  // Shared by Pen and Dot: continue an existing custom layer if:
+  //   1. The user explicitly double-clicked one (continueLayerId), OR
+  //   2. The currently selected layer is already a custom type (user selected it, then
+  //      pressed Pen or Dot)
+  // Any other entry starts a fresh layer.
+  const continueId = continueLayerId
+    || (layers.find(l=>l.id===selectedId && l.type==='custom') ? selectedId : null);
+  continueLayerId = null; // consume — must be re-set each time
+  const layer = continueId ? layers.find(l=>l.id===continueId && l.type==='custom') : null;
+  if(layer){
     selectedId = layer.id;
     selectedIds = new Set([layer.id]);
+    return layer;
   }
-  return layer;
+  addLayer('custom');
+  return layers[layers.length-1];
+}
+// Leaves whichever draw mode is active (Pen or Dot) and returns to plain selection —
+// shared by the Escape key and the Select tool-rail button so both go through the same
+// cleanup (in particular: a pen stroke that was started but never drawn shouldn't leave
+// a stray empty layer behind).
+function exitToolMode(){
+  if(addPointMode){
+    toggleAddPoint(addPointLayerId, false);
+  } else if(penSketchMode){
+    const placeholderId = penSketchLayerId;
+    toggleSketchMode(null, false);
+    const placeholder = layers.find(l=>l.id===placeholderId && l.type==='custom');
+    if(placeholder && (!placeholder.params.points || placeholder.params.points.length===0)){
+      layers = layers.filter(l=>l.id!==placeholderId);
+      if(selectedId===placeholderId){ selectedId = layers.length ? layers[layers.length-1].id : null; selectedIds = selectedId ? new Set([selectedId]) : new Set(); }
+    }
+  }
+  updateToolModeButtons();
+  renderAll();
 }
 function togglePenToolbar(){
   if(penSketchMode){ toggleSketchMode(null, false); return; }
-  // Always start pen mode with a fresh layer — each drawn stroke creates its own
-  // new layer in finalizePenStroke, so we just need an initial target layer.
-  addLayer('custom');
-  const layer = layers[layers.length-1];
+  // Same "continue or start fresh" decision Dot mode uses — see ensureCustomLayerForToolMode.
+  // Every stroke drawn while Pen stays active is appended onto this one layer
+  // (finalizePenStroke), so picking the right starting layer here is all this needs to do.
+  const layer = ensureCustomLayerForToolMode();
   toggleSketchMode(layer.id, true);
+}
+function setContinueLayer(id, ev){
+  // Double-clicking a custom layer row (not the name span, which handles rename) marks
+  // it for continuation next time a draw tool (Pen or Dot) is activated. If neither is
+  // currently active, this also enters Dot mode targeting it right away.
+  if(ev.target.classList.contains('name')) return;
+  const layer = layers.find(l=>l.id===id);
+  if(!layer || layer.type!=='custom') return;
+  continueLayerId = id;
+  if(!penSketchMode && !addPointMode) toggleDotToolbar(); // no draw tool active — enter dot mode targeting this layer
 }
 function toggleDotToolbar(){
   if(addPointMode){ toggleAddPoint(addPointLayerId, false); return; }
+  // If the user explicitly selected an existing custom layer (tracked by continueLayerId,
+  // set only on double-click), continue that layer. Otherwise always start a fresh one.
   const layer = ensureCustomLayerForToolMode();
   toggleAddPoint(layer.id, true);
 }
 function updateToolModeButtons(){
+  const selectBtn = document.getElementById('toolSelectBtn');
   const penBtn = document.getElementById('toolPenBtn');
   const dotBtn = document.getElementById('toolDotBtn');
+  if(selectBtn) selectBtn.classList.toggle('active', !penSketchMode && !addPointMode);
   if(penBtn) penBtn.classList.toggle('active', !!penSketchMode);
   if(dotBtn) dotBtn.classList.toggle('active', !!addPointMode);
 
@@ -3120,6 +3510,7 @@ document.addEventListener('DOMContentLoaded', function(){
 function toggleAddPoint(id, checked){
   addPointMode = checked;
   addPointLayerId = checked ? id : null;
+  if(!checked) continueLayerId = null; // exiting dot mode — next activation starts fresh
   selectedId = id;
   selectedIds = new Set([id]);
   if(checked && penSketchMode) toggleSketchMode(penSketchLayerId, false);
@@ -3131,6 +3522,7 @@ function toggleAddPoint(id, checked){
 function toggleSketchMode(id, checked){
   penSketchMode = checked;
   penSketchLayerId = checked ? id : null;
+  if(!checked) continueLayerId = null; // exiting pen mode — next activation starts fresh
   if(id){
     selectedId = id;
     selectedIds = new Set([id]);
@@ -3652,6 +4044,16 @@ function onStageMouseDown(e){
     e.preventDefault();
     return;
   }
+  if(role.startsWith('seg:')){
+    // Selecting a segment just selects its parent layer (done above) and surfaces
+    // the Segment style list in the Inspector — there's no drag gesture for the
+    // marker itself. Jump the Inspector to Shape (where that list lives) so it's
+    // immediately visible rather than one more click away.
+    activeParamGroup = 'shape';
+    renderAll();
+    e.preventDefault();
+    return;
+  }
   
   const layer = layers.find(l=>l.id===id); if(!layer) return;
   const pt = svgPointFromClient(e.clientX, e.clientY);
@@ -3945,36 +4347,55 @@ function finalizePenStroke(){
 
   pushHistory();
 
-  // Always create a brand-new custom layer for each stroke so previous drawings
-  // are never overwritten — the user can keep drawing stroke after stroke.
-  const id = 'el' + (uid++);
-  const params = JSON.parse(JSON.stringify(DEFAULTS['custom']));
-  const count = layers.filter(l=>l.type==='custom').length + 1;
-  const newLayer = {id, type:'custom', name:`Custom ${count}`, visible:true, params};
-  layers.push(newLayer);
+  // Draw into whichever layer Pen mode is currently targeting. The first stroke on a
+  // fresh layer (from togglePenToolbar / ensureCustomLayerForToolMode) becomes its
+  // points, same as before — but a stroke drawn on a layer that already has points,
+  // either a later stroke in this same session or a layer the user chose to continue,
+  // is appended onto the end of that same path instead of spawning a new layer. A new
+  // layer only appears when the user asks for one: Esc then Pen again with nothing
+  // selected, or the "Add custom" button.
+  let layer = layers.find(l=>l.id===penSketchLayerId && l.type==='custom');
+  const isFreshLayer = !layer || !layer.params.points || layer.params.points.length===0;
 
-  // The layer's own x/y origin becomes the sketch's anchor so stored points
-  // sit in local space exactly like manually-placed custom points do.
-  const originX = points[0].x, originY = points[0].y;
-  const localPoints = points.map(pt => ({x: pt.x - originX, y: pt.y - originY}));
+  if(!layer){
+    const id = 'el' + (uid++);
+    const params = JSON.parse(JSON.stringify(DEFAULTS['custom']));
+    const count = layers.filter(l=>l.type==='custom').length + 1;
+    layer = {id, type:'custom', name:`Custom ${count}`, visible:true, params};
+    layers.push(layer);
+  }
 
-  newLayer.params.x = originX;
-  newLayer.params.y = originY;
-  newLayer.params.points = localPoints;
-  newLayer.params.closed = closed;
-  newLayer.params.lineType = 'smooth';
-  newLayer.params.thickness = closed ? 11 : 2;
-  newLayer.params.fixedStroke = closed;
+  if(isFreshLayer){
+    // The layer's own x/y origin becomes the sketch's anchor so stored points
+    // sit in local space exactly like manually-placed custom points do.
+    const originX = points[0].x, originY = points[0].y;
+    layer.params.x = originX;
+    layer.params.y = originY;
+    layer.params.points = points.map(pt => ({x: pt.x - originX, y: pt.y - originY}));
+    layer.params.closed = closed;
+    layer.params.lineType = 'smooth';
+    layer.params.thickness = closed ? 11 : 2;
+    layer.params.fixedStroke = closed;
+  } else {
+    // Continuing: the layer may since have moved or rotated, so run this stroke's
+    // points through the same rotation-aware local-space conversion Dot mode uses
+    // (toLocal) rather than assuming it's still sitting at its original orientation.
+    const added = points.map(pt => {
+      const local = toLocal(pt.x, pt.y, layer.params.x, layer.params.y, layer.params.rotation);
+      return {x: local.lx, y: local.ly};
+    });
+    layer.params.points = layer.params.points.concat(added);
+  }
 
-  selectedId = newLayer.id;
-  selectedIds = new Set([newLayer.id]);
+  selectedId = layer.id;
+  selectedIds = new Set([layer.id]);
 
-  // Keep pen mode alive so the user can immediately draw the next stroke
-  // without re-clicking the pen tool — point it at the fresh layer.
-  penSketchLayerId = newLayer.id;
+  // Keep pen mode alive, still targeting this same layer, so the user can immediately
+  // draw the next stroke as a continuation without re-clicking the pen tool.
+  penSketchLayerId = layer.id;
   // penSketchMode stays true; stage keeps its pen-mode class
 
-  showToast(`Stroke done (${points.length} pts) — draw another or press Esc to finish`);
+  showToast(`Stroke added (${points.length} pts) — draw another to continue, or press Esc to finish`);
   renderAll();
 }
 
@@ -3996,6 +4417,13 @@ document.getElementById('canvasResizeHandle').addEventListener('mousedown', func
 document.getElementById('stage').addEventListener('mousedown', onStageMouseDown);
 document.addEventListener('mousemove', onDocMouseMove);
 document.addEventListener('mouseup', onDocMouseUp);
+document.getElementById('stage').addEventListener('mousemove', onStageHoverMove);
+document.getElementById('segPopover').addEventListener('mouseleave', function(){
+  segHoverTimer = setTimeout(()=>{ hideSegPopover(); }, 200);
+});
+document.getElementById('segPopover').addEventListener('mouseenter', function(){
+  if(segHoverTimer){ clearTimeout(segHoverTimer); segHoverTimer = null; }
+});
 
 function performPointDoubleClickAction(layer, role, e){
   const p = layer.params;
@@ -4246,12 +4674,21 @@ function closeAllModals(){
 }
 function toggleMoreMenu(e){
   e.stopPropagation();
+  closeExportMenu();
   document.getElementById('moreMenu').classList.toggle('hidden');
 }
 function closeMoreMenu(){ document.getElementById('moreMenu').classList.add('hidden'); }
+function toggleExportMenu(e){
+  e.stopPropagation();
+  closeMoreMenu();
+  document.getElementById('exportMenu').classList.toggle('hidden');
+}
+function closeExportMenu(){ document.getElementById('exportMenu').classList.add('hidden'); }
 document.addEventListener('click', function(e){
   const menu = document.getElementById('moreMenu');
   if(menu && !menu.classList.contains('hidden') && !e.target.closest('.tmenu-wrap')) closeMoreMenu();
+  const exportMenu = document.getElementById('exportMenu');
+  if(exportMenu && !exportMenu.classList.contains('hidden') && !e.target.closest('.tmenu-wrap')) closeExportMenu();
 });
 
 const SHORTCUTS = [
@@ -4419,20 +4856,8 @@ document.addEventListener('keydown', function(e){
   if(e.key === 'Escape'){
     const anyModalOpen = ['shortcutsModal','saveModal','loadModal'].some(id=>!document.getElementById(id).classList.contains('hidden'));
     if(anyModalOpen){ closeAllModals(); e.preventDefault(); return; }
-    if(addPointMode){ toggleAddPoint(addPointLayerId, false); e.preventDefault(); return; }
-    if(penSketchMode){
-      // Clean up the placeholder empty layer created when pen mode started
-      // (only if the user never drew anything into it)
-      const placeholderId = penSketchLayerId;
-      toggleSketchMode(null, false);
-      const placeholder = layers.find(l=>l.id===placeholderId && l.type==='custom');
-      if(placeholder && (!placeholder.params.points || placeholder.params.points.length===0)){
-        layers = layers.filter(l=>l.id!==placeholderId);
-        if(selectedId===placeholderId){ selectedId = layers.length ? layers[layers.length-1].id : null; selectedIds = selectedId ? new Set([selectedId]) : new Set(); }
-      }
-      renderAll();
-      e.preventDefault(); return;
-    }
+    if(!document.getElementById('segPopover').classList.contains('hidden')){ hideSegPopover(); e.preventDefault(); return; }
+    if(addPointMode || penSketchMode){ exitToolMode(); e.preventDefault(); return; }
     if(selectedId || selectedIds.size){ selectedId = null; selectedIds = new Set(); renderAll(); e.preventDefault(); }
     return;
   }
@@ -4485,261 +4910,5 @@ document.addEventListener('keyup', function(e){
   if(canvasWrapEl) canvasWrapEl.addEventListener('wheel', onCanvasWheelZoom, {passive:false});
 })();
 </script>
-
-<!-- ===== SEGMENT POPOVER ===== -->
-<div id="segPopover" class="seg-popover hidden">
-  <div class="seg-popover-head">
-    <span class="seg-popover-title" id="segPopoverTitle">Segment 1→2</span>
-    <button class="seg-popover-close" onclick="hideSegPopover()" title="Close">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/></svg>
-    </button>
-  </div>
-  <div class="seg-popover-dash">
-    <label>Style</label>
-    <select id="segPopoverDash" onchange="onSegPopoverDashChange(this.value)">
-      <option value="solid">Default (solid)</option>
-      <option value="dashed">Dashed</option>
-      <option value="dotted">Dotted</option>
-      <option value="invisible">Invisible</option>
-    </select>
-  </div>
-  <div class="seg-popover-curve">
-    <label>Curve <input type="number" id="segPopoverCurveNum" min="-100" max="100" step="1" value="0" oninput="onSegPopoverCurveInput(this.value)"></label>
-    <input type="range" id="segPopoverCurveSlider" min="-100" max="100" step="1" value="0"
-      oninput="onSegPopoverCurveInput(this.value)"
-      onmousedown="ensureHistorySnapshot()" ontouchstart="ensureHistorySnapshot()"
-      onchange="finalizeHistory()">
-  </div>
-  <div class="seg-popover-split">
-    <button onclick="splitSegAtMid()">Split at midpoint</button>
-  </div>
-</div>
-
-<script>
-// ===== SEGMENT POPOVER STATE =====
-let segPopoverLayerId = null;
-let segPopoverSegIdx  = null;
-
-function showSegPopover(layerId, segIdx, clientX, clientY){
-  segPopoverLayerId = layerId;
-  segPopoverSegIdx  = segIdx;
-
-  const layer = layers.find(l=>l.id===layerId);
-  if(!layer) return;
-  const p = layer.params;
-  const pts = p.points || [];
-  const a = pts[segIdx % pts.length];
-  const b = pts[(segIdx+1) % pts.length];
-  if(!a || !b) return;
-
-  // Current style
-  const style = customSegStyle(p, segIdx);
-
-  document.getElementById('segPopoverTitle').textContent = `Segment ${segIdx+1}\u2192${segIdx+2}`;
-  document.getElementById('segPopoverDash').value = style.dash || 'solid';
-  document.getElementById('segPopoverCurveNum').value = style.curveAmount || 0;
-  document.getElementById('segPopoverCurveSlider').value = style.curveAmount || 0;
-
-  const pop = document.getElementById('segPopover');
-  pop.classList.remove('hidden');
-
-  // Use SVG getScreenCTM to convert world coords → screen coords exactly,
-  // accounting for zoom, scroll, and any CSS transform on the stage.
-  const stage = document.getElementById('stage');
-  const ctm = stage.getScreenCTM();
-
-  // Midpoint in layer-local space → world space
-  const mx = (a.x + b.x) / 2;
-  const my = (a.y + b.y) / 2;
-  const rad = (p.rotation || 0) * Math.PI / 180;
-  const cosR = Math.cos(rad), sinR = Math.sin(rad);
-  const wx = p.x + mx * cosR - my * sinR;
-  const wy = p.y + mx * sinR + my * cosR;
-
-  // World → screen via CTM
-  let screenX, screenY;
-  if(ctm){
-    screenX = ctm.a * wx + ctm.c * wy + ctm.e;
-    screenY = ctm.b * wx + ctm.d * wy + ctm.f;
-  } else {
-    // Fallback: use mouse position
-    screenX = clientX;
-    screenY = clientY - 60;
-  }
-
-  // Force a layout pass so offsetWidth/Height are accurate
-  pop.style.visibility = 'hidden';
-  pop.style.left = '0px';
-  pop.style.top  = '0px';
-  // Use a small rAF so the browser has computed the size after un-hiding
-  requestAnimationFrame(() => {
-    const pw = pop.offsetWidth  || 220;
-    const ph = pop.offsetHeight || 180;
-
-    // Place popover above the segment midpoint (28px clear of the line)
-    let left = screenX - pw / 2;
-    let top  = screenY - ph - 28;
-
-    // Keep within viewport
-    const vw = window.innerWidth, vh = window.innerHeight;
-    left = Math.max(8, Math.min(left, vw - pw - 8));
-    if(top < 8) top = screenY + 28; // flip below if not enough room above
-
-    pop.style.left = left + 'px';
-    pop.style.top  = top  + 'px';
-    pop.style.visibility = 'visible';
-  });
-}
-
-function hideSegPopover(){
-  document.getElementById('segPopover').classList.add('hidden');
-  segPopoverLayerId = null;
-  segPopoverSegIdx  = null;
-  // Remove any hover highlight
-  document.querySelectorAll('.seg-hover-highlight').forEach(el=>el.remove());
-}
-
-function getOrCreateSegStyle(p, idx){
-  if(!p.segStyles) p.segStyles = [];
-  while(p.segStyles.length <= idx) p.segStyles.push(null);
-  if(!p.segStyles[idx]) p.segStyles[idx] = {dash: null, curveAmount: 0};
-  return p.segStyles[idx];
-}
-
-function onSegPopoverDashChange(val){
-  const layer = layers.find(l=>l.id===segPopoverLayerId);
-  if(!layer) return;
-  ensureHistorySnapshot();
-  const seg = getOrCreateSegStyle(layer.params, segPopoverSegIdx);
-  seg.dash = val === 'solid' ? null : val;
-  finalizeHistory();
-  renderStage();
-}
-
-function onSegPopoverCurveInput(val){
-  const layer = layers.find(l=>l.id===segPopoverLayerId);
-  if(!layer) return;
-  const num = parseInt(val, 10) || 0;
-  document.getElementById('segPopoverCurveNum').value    = num;
-  document.getElementById('segPopoverCurveSlider').value = num;
-  const seg = getOrCreateSegStyle(layer.params, segPopoverSegIdx);
-  seg.curveAmount = num;
-  // Force straight lineType so per-segment curves render
-  if(layer.params.lineType !== 'straight') layer.params.lineType = 'straight';
-  renderStage();
-  document.getElementById('svgOut').value = fullSvgSource();
-}
-
-function splitSegAtMid(){
-  const layer = layers.find(l=>l.id===segPopoverLayerId);
-  if(!layer) return;
-  const p = layer.params;
-  const pts = p.points || [];
-  const si  = segPopoverSegIdx;
-  const a   = pts[si % pts.length];
-  const b   = pts[(si+1) % pts.length];
-  if(!a || !b) return;
-  pushHistory();
-  const mid = {x:(a.x+b.x)/2, y:(a.y+b.y)/2};
-  pts.splice(si+1, 0, mid);
-  // New segment inherits style then both halves reset to Default
-  if(p.segStyles && p.segStyles.length){
-    p.segStyles.splice(si, 0, null);
-    p.segStyles[si]   = null;
-    p.segStyles[si+1] = null;
-  }
-  hideSegPopover();
-  finalizeHistory();
-  renderAll();
-}
-
-// ===== HOVER DETECTION FOR SEGMENTS =====
-(function(){
-  let hoverTimer = null;
-  let hoveredSegEl = null;
-  let highlightEl  = null;
-
-  function clearHighlight(){
-    if(highlightEl && highlightEl.parentNode) highlightEl.parentNode.removeChild(highlightEl);
-    highlightEl = null;
-  }
-
-  function onStageMouseMove_seg(e){
-    if(penSketchMode || addPointMode || dragState || penDrawing) return;
-    const el = e.target;
-    if(!el) return;
-    const role = el.getAttribute && el.getAttribute('data-role');
-    if(!role || !role.startsWith('seg:')) {
-      if(hoveredSegEl){
-        hoveredSegEl = null;
-        clearHighlight();
-        if(hoverTimer) clearTimeout(hoverTimer);
-        hoverTimer = setTimeout(()=>{
-          const pop = document.getElementById('segPopover');
-          if(pop && !pop.matches(':hover')) hideSegPopover();
-        }, 300);
-      }
-      return;
-    }
-    if(el === hoveredSegEl) return;
-    hoveredSegEl = el;
-    if(hoverTimer){ clearTimeout(hoverTimer); hoverTimer = null; }
-
-    const layerId = el.getAttribute('data-id');
-    const segIdx  = parseInt(role.split(':')[1], 10);
-
-    const layer = layers.find(l=>l.id===layerId);
-    if(layer){
-      const p = layer.params;
-      const pts = p.points || [];
-      const a = pts[segIdx % pts.length];
-      const b = pts[(segIdx+1) % pts.length];
-      if(a && b){
-        clearHighlight();
-        const stage = document.getElementById('stage');
-        const hl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        const rad = (p.rotation||0) * Math.PI/180;
-        const cosR = Math.cos(rad), sinR = Math.sin(rad);
-        const wax = p.x + a.x*cosR - a.y*sinR, way = p.y + a.x*sinR + a.y*cosR;
-        const wbx = p.x + b.x*cosR - b.y*sinR, wby = p.y + b.x*sinR + b.y*cosR;
-        hl.setAttribute('x1', wax); hl.setAttribute('y1', way);
-        hl.setAttribute('x2', wbx); hl.setAttribute('y2', wby);
-        hl.setAttribute('stroke', 'var(--rubric-soft)');
-        hl.setAttribute('stroke-width', '4');
-        hl.setAttribute('stroke-linecap', 'round');
-        hl.setAttribute('opacity', '0.45');
-        hl.setAttribute('pointer-events', 'none');
-        hl.classList.add('seg-hover-highlight');
-        stage.appendChild(hl);
-        highlightEl = hl;
-      }
-    }
-    showSegPopover(layerId, segIdx, e.clientX, e.clientY);
-  }
-
-  // Clear highlight when popover closes
-  const origHide = window.hideSegPopover;
-  window.hideSegPopover = function(){
-    clearHighlight();
-    origHide && origHide();
-  };
-
-  document.addEventListener('DOMContentLoaded', function(){
-    const stage = document.getElementById('stage');
-    if(stage) stage.addEventListener('mousemove', onStageMouseMove_seg);
-
-    const pop = document.getElementById('segPopover');
-    if(pop){
-      pop.addEventListener('mouseleave', function(){
-        hoverTimer = setTimeout(()=>{ hideSegPopover(); }, 200);
-      });
-      pop.addEventListener('mouseenter', function(){
-        if(hoverTimer){ clearTimeout(hoverTimer); hoverTimer = null; }
-      });
-    }
-  });
-})();
-</script>
-
 </body>
 </html>
