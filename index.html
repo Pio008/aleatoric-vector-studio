@@ -883,6 +883,21 @@
   }
   .seg-popover-split button:hover{border-color:var(--rubric-soft); color:var(--rubric-soft);}
 
+  /* ---- More menu: separator + bg-image section ---- */
+  .tmenu-sep{height:1px;background:var(--border);margin:5px 0;}
+  .tmenu #bgImgName{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tmenu #bgImgClear.hidden{display:none;}
+  .tmenu-opacity{
+    display:flex;align-items:center;gap:7px;
+    padding:7px 11px;
+    font-family:'Inter',sans-serif;font-size:12.5px;color:var(--ink-soft);
+  }
+  .tmenu-opacity input[type=range]{flex:1;accent-color:var(--rubric);min-width:60px;}
+  .tmenu-opacity-val{
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;
+    color:var(--rubric-soft);min-width:30px;text-align:right;
+  }
+
   .wave-readout{
     display:flex; flex-wrap:wrap; gap:0;
     border:1px solid var(--border); border-radius:7px;
@@ -959,9 +974,19 @@
         <button onclick="exportProjectFile(); closeMoreMenu();"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7.5 10.5 12 15l4.5-4.5"/><path d="M4.5 19h15"/></svg>Export project (.json)</button>
         <button onclick="document.getElementById('importFile').click(); closeMoreMenu();"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M7.5 7.5 12 3l4.5 4.5"/><path d="M4.5 19h15"/></svg>Import project (.json)</button>
         <button onclick="openShortcutsModal(); closeMoreMenu();"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.5" width="18" height="11" rx="1.8"/><path d="M6.7 10.2h.01M10 10.2h.01M13.3 10.2h.01M16.6 10.2h.01M8 13.6h8"/></svg>Keyboard shortcuts</button>
+        <div class="tmenu-sep"></div>
+        <button onclick="document.getElementById('bgImgFile').click(); closeMoreMenu();"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span id="bgImgName">Load reference image…</span></button>
+        <div class="tmenu-opacity" id="bgOpacityRow">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;flex:none;stroke:var(--ink-faint)"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18" stroke-dasharray="2 3"/></svg>
+          <span>Ref opacity</span>
+          <input type="range" id="bgOpacitySlider" min="0.05" max="1" step="0.05" value="0.25" oninput="setBgOpacity(this.value)">
+          <span class="tmenu-opacity-val" id="bgOpacityVal">25%</span>
+        </div>
+        <button id="bgImgClear" class="hidden" onclick="clearBgImage(); closeMoreMenu();"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9l6 6M15 9l-6 6"/></svg>Clear reference image</button>
       </div>
     </div>
     <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importProjectFile(this.files[0])">
+    <input type="file" id="bgImgFile" accept="image/*" style="display:none" onchange="loadBgImage(this.files[0])">
     <div class="toolbar-spacer"></div>
     <div class="autosave-indicator" id="autosaveIndicator" title="Autosaves to this browser as you work"><span class="autosave-dot" id="autosaveDot"></span>Autosaved</div>
   </div>
@@ -2240,7 +2265,7 @@ function contentBBox(){
     if(b.minX < minX) minX=b.minX; if(b.maxX > maxX) maxX=b.maxX;
     if(b.minY < minY) minY=b.minY; if(b.maxY > maxY) maxY=b.maxY;
   });
-  return {minX, minY, maxX, maxY};
+  return {minX: Math.max(0, minX), minY: Math.max(0, minY), maxX: Math.min(canvasW, maxX), maxY: Math.min(canvasH, maxY)};
 }
 
 function renderLayerSvg(layer, interactive){
@@ -3745,7 +3770,7 @@ function renderStage(){
     overlaysSvg = selLayer ? selectionOverlaySvg(selLayer) : '';
   }
   const guidesSvg = smartGuidesSvg();
-  stage.innerHTML = staffGridSvg() + layers.map(l=>renderLayerSvg(l, true)).join('\n') + overlaysSvg + centreGuidesSvg();
+  stage.innerHTML = bgImageSvg() + staffGridSvg() + layers.map(l=>renderLayerSvg(l, true)).join('\n') + overlaysSvg + centreGuidesSvg();
 }
 
 // Dashed alignment guide lines — Figma-style — shown while dragging a layer near another
@@ -3775,6 +3800,40 @@ function centreGuidesSvg(){
   </g>`;
 }
 
+/* ============================= BACKGROUND REFERENCE IMAGE ============================= */
+function bgImageSvg(){
+  if(!bgImage) return '';
+  return `<image href="${bgImage}" x="0" y="0" width="${canvasW}" height="${canvasH}" preserveAspectRatio="xMidYMid meet" opacity="${bgOpacity}" pointer-events="none"/>`;
+}
+function loadBgImage(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    bgImage = e.target.result;
+    const nameEl = document.getElementById('bgImgName');
+    const clearBtn = document.getElementById('bgImgClear');
+    if(nameEl) nameEl.textContent = file.name;
+    if(clearBtn) clearBtn.classList.remove('hidden');
+    renderStage();
+  };
+  reader.readAsDataURL(file);
+  document.getElementById('bgImgFile').value = '';
+}
+function clearBgImage(){
+  bgImage = null;
+  const nameEl = document.getElementById('bgImgName');
+  const clearBtn = document.getElementById('bgImgClear');
+  if(nameEl) nameEl.textContent = 'Load reference image…';
+  if(clearBtn) clearBtn.classList.add('hidden');
+  renderStage();
+}
+function setBgOpacity(val){
+  bgOpacity = parseFloat(val);
+  const valEl = document.getElementById('bgOpacityVal');
+  if(valEl) valEl.textContent = Math.round(bgOpacity * 100) + '%';
+  renderStage();
+}
+
 function renderAll(){
   buildLayerList();
   buildParamPanel();
@@ -3802,6 +3861,10 @@ function applyZoom(){ renderStage(); }
    on the child), which — unlike text-align:center — keeps scrollLeft/scrollTop behaving
    predictably even while the canvas is being centred or is larger than the viewport. */
 let currentZoom = 2.25;
+
+// Background reference image — stored as a data URL, never exported to SVG
+let bgImage = null;
+let bgOpacity = 0.25;
 function zoomAtPoint(newZoom, clientX, clientY){
   const wrap = document.getElementById('canvasWrap');
   const scaleWrap = document.getElementById('canvasScaleWrap');
