@@ -934,6 +934,33 @@
   .wave-readout .v{
     font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--rubric-soft); margin-top:1px;
   }
+
+  /* ---- Logothetis palette ---- */
+  .logo-pal{margin:-6px 0 16px; border:1px solid var(--border); border-radius:8px; background:var(--panel);}
+  .logo-pal>summary{cursor:pointer; padding:8px 10px; font-size:12px; font-weight:600; color:var(--ink-soft);}
+  .logo-pal .logo-body{padding:4px 10px 10px;}
+  .logo-pal .logo-ctl{display:grid; grid-template-columns:1fr 1fr 44px; gap:6px; margin-bottom:8px; font-size:11px; color:var(--ink-faint);}
+  .logo-pal .logo-ctl input[type=number]{width:100%; background:var(--paper-deep); color:var(--ink); border:1px solid var(--border); border-radius:5px; padding:3px 5px;}
+  .logo-pal .logo-ctl input[type=color]{width:100%; height:26px; padding:0; border:1px solid var(--border); border-radius:5px; background:none;}
+  .logo-pal .logo-h{font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-faint); margin:8px 0 4px;}
+  .logo-pal .logo-grid{display:grid; grid-template-columns:1fr 1fr; gap:5px;}
+  .logo-pal .logo-grid button{background:var(--paper-deep); color:var(--ink); border:1px solid var(--border); border-radius:6px; padding:6px 4px; font-size:11px; cursor:pointer;}
+  .logo-pal .logo-grid button:hover{border-color:var(--rubric-soft);}
+  .logo-pal .logo-grid.p3{grid-template-columns:1fr 1fr 1fr;}
+  .logo-pal .logo-note{font-size:10.5px; color:var(--ink-faint); line-height:1.45; margin-top:8px;}
+  /* Logothetis palette = floating popover (opened from the toolbar), icon grid, hidden by default */
+  .logo-pal{position:static; margin:0; border:0; background:none;}
+  .logo-pal>summary{display:none;}
+  .logo-pal .logo-body{position:fixed; z-index:60; left:284px; top:120px; width:296px; max-height:calc(100vh - 150px); overflow-y:auto;
+    padding:10px 12px 12px; background:var(--panel); border:1px solid var(--border); border-radius:10px; box-shadow:0 12px 32px rgba(0,0,0,.5);}
+  .logo-head{display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:2px;}
+  .logo-head button{background:none; border:0; color:var(--ink-faint); font-size:18px; line-height:1; cursor:pointer; padding:0 2px;}
+  .logo-head button:hover{color:var(--ink);}
+  .logo-pal .logo-grid{grid-template-columns:repeat(4,1fr);}
+  .logo-pal .logo-grid button.ico{height:40px; padding:5px 4px; display:flex; align-items:center; justify-content:center; color:var(--ink);}
+  .logo-pal .logo-grid button.ico svg{width:100%; height:100%;}
+  .layer-row{height:auto; min-height:38px;}
+  .layer-row .name{white-space:normal; text-overflow:clip; overflow-wrap:anywhere; line-height:1.2;}
 </style>
 </head>
 <body>
@@ -983,6 +1010,10 @@
         <textarea id="svgOut" readonly></textarea>
       </div>
     </div>
+    <button class="tbtn" onclick="toggleLogoPalette()" title="Logothetis palette \u2014 symbols after Anestis Logothetis (shape = duration, size = loudness, colour = timbre)">
+      <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="6" cy="7" r="2.6"/><path d="M3 20 21 13V20Z"/><path d="M11 5h10v2H11z"/></svg>
+      Logothetis
+    </button>
     <button class="tbtn" onclick="CircularBridge.open()" title="Circular layout — place scores on rings, spirals, panels and paths">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.6"/><path d="M12 3.5v4M12 16.5v4"/></svg>
       Circular
@@ -1055,6 +1086,14 @@
             Add custom
           </button>
         </div>
+        <details class="logo-pal">
+          <summary>Logothetis palette</summary>
+          <div class="logo-body">
+            <div class="logo-note" style="margin:0 0 8px;">Click a symbol to insert it as one element, then shape it live in the Parameters panel.</div>
+            <div id="logoGrid"></div>
+            
+          </div>
+        </details>
       </div>
     </div>
 
@@ -1544,10 +1583,68 @@ function schemaFor(layer){
     ];
   }
   if(layer.type==='import'){
-    return [
-      {key:'scale', label:'Scale', type:'range', min:0.02, max:8, step:0.01, group:'shape'},
-      ...common
-    ];
+    const g = layer.params.gen, gf = [];
+    if(g === 'text'){
+      gf.push({key:'text', label:'Text', type:'text', group:'shape'},
+        {key:'font', label:'Font', type:'select', options:LOGO_FONTS, group:'shape'},
+        {key:'fontCustom', label:'Other font (type any installed font name)', type:'text', group:'shape'},
+        {key:'fontSize', label:'Font size', type:'range', min:6, max:300, step:1, group:'shape'},
+        {key:'italic', label:'Italic', type:'checkbox', group:'shape'},
+        {key:'bold', label:'Bold', type:'checkbox', group:'shape'},
+        {key:'color', label:'Ink colour', type:'color', group:'stroke'});
+    }
+    if(g === 'logo'){
+      const P = layer.params, use = LOGO_USES[P.sym] || '', many = (P.copies || 1) > 1;
+      if(use !== 'S') gf.push({key:'logoL', label:'Length (duration)', type:'range', min:4, max:2000, step:1, group:'shape'});
+      gf.push({key:'logoS', label:'Size (loudness)', type:'range', min:2, max:400, step:1, group:'shape'},
+        {key:'copies', label:'Copies', type:'range', min:1, max:200, step:1, group:'shape'});
+      if(many) gf.push({key:'spread', label:'Spread', type:'range', min:0, max:1000, step:1, group:'shape'});
+      gf.push({key:'variation', label:'Variation %', type:'range', min:0, max:90, step:1, group:'shape'});
+      if(many || (P.variation || 0) > 0) gf.push({key:'seed', label:'Variation pattern', type:'range', min:1, max:999, step:1, group:'shape'});
+      gf.push({key:'color', label:'Ink colour', type:'color', group:'stroke'});
+    }
+    if(g === 'scatter'){
+      const P = layer.params, R = (key, label, min, max, step) => ({key, label, type:'range', min, max, step, group:'shape'});
+      const d = P.scDist || 'blob', mk = P.scMark || 'dot', lined = ['dash','bar','tick','lens','wedge','mixed'].includes(mk);
+      gf.push({key:'scDist', label:'Where the marks fall', type:'select', options:['blob','disc','rectangle','along curve','horizon rows'], group:'shape'},
+        {key:'scMark', label:'Mark', type:'select', options:['dot','ring','dash','bar','tick','lens','wedge','star','mixed'], group:'shape'},
+        R('scCount', 'Number of marks', 1, 800, 1), R('scW', d === 'along curve' ? 'Length' : 'Width', 10, 1500, 1));
+      if(d !== 'along curve') gf.push(R('scH', 'Height', 10, 1000, 1));
+      else gf.push(R('scBend', 'Curve height', 0, 400, 1), R('scWaves', 'Curve waves', 0.25, 8, 0.25), R('scSpread', 'Spread across the curve', 0, 200, 1));
+      gf.push(R('scMin', 'Smallest mark', 0.3, 100, 0.1), R('scMax', 'Largest mark', 0.3, 200, 0.1));
+      if(d !== 'horizon rows') gf.push(R('scFall', 'Shrink toward the edge', 0, 1, 0.05));
+      if(lined) gf.push(R('scAspect', 'Length \u00f7 thickness', 1, 40, 0.5));
+      gf.push({key:'scRot', label:'Direction of the marks', type:'select', options:['none','random','radial','along'], group:'shape'});
+      gf.push(R('scRotJit', 'Direction scatter \u00b0', 0, 180, 1));
+      if(mk === 'dot') gf.push(R('scRingPct', 'Open circles %', 0, 100, 1));
+      gf.push(R('seed', 'Random pattern', 1, 999, 1), {key:'color', label:'Ink colour', type:'color', group:'stroke'});
+    }
+    if(g === 'swell'){
+      const P = layer.params, path = P.swPath || 'wave', prof = P.swProfile || 'swell', rg = (P.swRough || 0) > 0 || (P.swJitter || 0) > 0;
+      const R = (key, label, min, max, step) => ({key, label, type:'range', min, max, step, group:'shape'});
+      gf.push({key:'swPreset', label:'Look (preset)', type:'select', options:['Custom'].concat(Object.keys(SW_PRESETS)), group:'shape'},
+        {key:'swPath', label:'Path', type:'select', options:['wave','spiral','ring'], group:'shape'},
+        R('swLen', path === 'spiral' ? 'Diameter' : path === 'ring' ? 'Width' : 'Length', 10, 1500, 1));
+      if(path !== 'spiral') gf.push(R('swBend', path === 'ring' ? 'Height' : 'Curve height', 0, 400, 1));
+      if(path !== 'ring') gf.push(R('swWaves', path === 'spiral' ? 'Turns' : 'Curve waves (0.5 = one arch)', 0, path === 'spiral' ? 30 : 8, 0.25));
+      gf.push({key:'swProfile', label:'Thickness profile', type:'select', options:['swell','cresc','dim','even','pulse','attack','cut'], group:'shape'}, R('swThick', 'Maximum thickness', 0.3, 200, 0.1));
+      if(prof === 'swell') gf.push(R('swPeak', 'Thickest at %', 5, 95, 1));
+      if(prof === 'pulse') gf.push(R('swRepeat', 'Pulses', 1, 60, 1));
+      if(prof !== 'even') gf.push(R('swMin', 'Thinnest % of maximum', 0, 100, 1));
+      gf.push(R('swRough', 'Edge roughness', 0, 1.5, 0.05), R('swJitter', 'Line wobble', 0, 60, 0.5));
+      if(rg) gf.push(R('swGrain', 'Roughness detail (smaller = finer)', 1, 30, 0.5), R('seed', 'Random pattern', 1, 999, 1));
+      gf.push(R('swStrands', 'Strands', 1, 16, 1));
+      if((P.swStrands || 1) > 1) gf.push(R('swSpread', 'Strand spread', 0, 300, 1), {key:'swConverge', label:'Strands meet', type:'select', options:['parallel','converge start','converge end','both ends'], group:'shape'});
+      gf.push({key:'swDash', label:'Dashes', type:'select', options:['solid','dashed'], group:'shape'});
+      if(P.swDash === 'dashed') gf.push(R('swDashLen', 'Dash length', 2, 200, 1), R('swGap', 'Gap', 2, 200, 1));
+      if((P.swStrands || 1) > 1) gf.push({key:'swLanes', label:'Strand weights (e.g. 1, 0.2, 0.2 = heavy line + two hairlines)', type:'text', group:'shape'});
+      gf.push({key:'swTex', label:'Band texture', type:'select', options:['solid','hatch','hatch+outline','teeth'], group:'shape'});
+      if(P.swTex && P.swTex !== 'solid') gf.push(R('swTexPitch', 'Texture spacing', 0.6, 40, 0.2));
+      if(P.swTex === 'hatch' || P.swTex === 'hatch+outline') gf.push(R('swTexLine', 'Hairline weight', 0.1, 6, 0.1));
+      if(P.swTex === 'teeth') gf.push(R('swTexDepth', 'Tooth depth', 0, 1, 0.05));
+      gf.push({key:'swHollow', label:'Outline only', type:'checkbox', group:'shape'}, {key:'color', label:'Ink colour', type:'color', group:'stroke'});
+    }
+    return [...gf, {key:'scale', label:'Scale', type:'range', min:0.02, max:8, step:0.01, group:'shape'}, ...common];
   }
   if(layer.type==='box'){
     return [
@@ -1599,10 +1696,35 @@ function schemaFor(layer){
     return [...fields, ...common];
   }
   if(layer.type==='custom'){
+    if(layer.params.ribbon){
+      const P = layer.params, R = (key, label, min, max, step) => ({key, label, type:'range', min, max, step, group:'shape'});
+      const used = (P.rbRough || 0) > 0 || (P.rbJitter || 0) > 0 || (P.points || []).some(q => q.r > 0 || q.j > 0);
+      const f = [{key:'ribbon', label:'Ribbon mode (variable width, hairy edge, strands)', type:'checkbox', group:'shape'},
+        {key:'closed', label:'Close shape', type:'checkbox', group:'shape'},
+        {key:'rbFill', label:'Fill every point\u2019s width from a profile', type:'select', options:['\u2014','even','swell','cresc','dim','pulse','attack','cut'], group:'shape'},
+        {key:'pointList', label:'Points', type:'pointList', group:'shape'},
+        R('thickness', 'Default / maximum thickness', 0.3, 200, 0.1),
+        R('rbRough', 'Edge roughness (default for all points)', 0, 1.5, 0.05), R('rbJitter', 'Line wobble px (default)', 0, 60, 0.5)];
+      if(used) f.push(R('rbGrain', 'Roughness detail (smaller = finer)', 1, 20, 0.5), R('rbSeed', 'Random pattern', 1, 999, 1));
+      f.push({key:'rbCorner', label:'Corners (smooth curve / sharp / rounded right-angle track)', type:'select', options:['smooth','sharp','rounded'], group:'shape'});
+      if(P.rbCorner === 'rounded') f.push(R('rbRadius', 'Corner radius', 1, 200, 1));
+      f.push(R('rbStrands', 'Strands', 1, 16, 1));
+      if((P.rbStrands || 1) > 1) f.push(R('rbSpread', 'Strand spread px (default)', 0, 300, 1));
+      if((P.rbStrands || 1) > 1) f.push({key:'rbLanes', label:'Strand weights (e.g. 1, 0.2, 0.2 = heavy line + two hairlines)', type:'text', group:'shape'});
+      f.push({key:'rbTex', label:'Band texture', type:'select', options:['solid','hatch','hatch+outline','teeth'], group:'shape'});
+      if(P.rbTex && P.rbTex !== 'solid') f.push(R('rbTexPitch', 'Texture spacing', 0.6, 40, 0.2));
+      if(P.rbTex === 'hatch' || P.rbTex === 'hatch+outline') f.push(R('rbTexLine', 'Hairline weight', 0.1, 6, 0.1));
+      if(P.rbTex === 'teeth') f.push(R('rbTexDepth', 'Tooth depth', 0, 1, 0.05));
+      f.push({key:'rbDash', label:'Dashes', type:'select', options:['solid','dashed'], group:'shape'});
+      if(P.rbDash === 'dashed') f.push(R('rbDashLen', 'Dash length', 2, 200, 1), R('rbGap', 'Gap', 2, 200, 1));
+      f.push({key:'rbHollow', label:'Outline only', type:'checkbox', group:'shape'}, {key:'color', label:'Ink colour', type:'color', group:'stroke'});
+      return [...f, ...common];
+    }
     const t = layer.params.lineType;
     const fields = [
       {key:'lineType', label:'Line style', type:'select', options:['straight','smooth','wavy','zigzag','chirp','arc','dampedWave'], group:'shape'},
-      {key:'closed', label:'Close shape', type:'checkbox', group:'shape'}
+      {key:'closed', label:'Close shape', type:'checkbox', group:'shape'},
+      {key:'ribbon', label:'Ribbon mode (variable width, hairy edge, strands)', type:'checkbox', group:'shape'}
     ];
     if(t!=='straight' && t!=='dampedWave' && t!=='smooth'){
       fields.push({key:'amplitude', label:'Amplitude', type:'range', min:0, max:100, step:1, group:'wave'});
@@ -2129,6 +2251,7 @@ function customSegStyle(p, i){
 function customElement(p){
   const pts = p.points||[];
   if(pts.length<2) return '';
+  if(p.ribbon) return ribbonElement(p);
   let allPts, d;
   if(p.lineType==='smooth'){
     allPts = (p.closed && pts.length>2) ? pts.concat([pts[0]]) : pts.slice();
@@ -2340,7 +2463,7 @@ function worldBBoxForLayer(layer){
     return rotatedWorldBBox(b0x, b0y, b1x, b1y, p.x, p.y, p.rotation, 2, (b0x + b1x) / 2, (b0y + b1y) / 2);
   }
   if (layer.type === 'import') {
-    const st = importStore[p.key], hw = st ? st.w * p.scale / 2 : 40, hh = st ? st.h * p.scale / 2 : 20;
+    const st = impStore(p), hw = st ? st.w * p.scale / 2 : 40, hh = st ? st.h * p.scale / 2 : 20;
     return rotatedWorldBBox(-hw, -hh, hw, hh, p.x, p.y, p.rotation, 2);
   }
   // box / shape — local geometry is exactly the 0..width, 0..height rect, rotated
@@ -2371,7 +2494,7 @@ function renderLayerSvg(layer, interactive){
   else if(layer.type==='custom') inner = customElement(p);
   else if(layer.type==='fill'){ const f = fillFollow(layer); inner = `<path d="${p.d}"${f ? ` transform="${f.str}"` : ''} fill="${p.color}" fill-opacity="${p.opacity}" fill-rule="evenodd" stroke="none"/>`; }
   else if(layer.type==='import'){
-    const st = importStore[p.key];
+    const st = impStore(p);
     inner = st ? `<g transform="scale(${p.scale})"><g transform="translate(${-st.cx} ${-st.cy})">${st.markup}</g></g>`
                : `<rect x="-40" y="-20" width="80" height="40" fill="none" stroke="#999" stroke-dasharray="4 3"/>`;
   }
@@ -2379,7 +2502,7 @@ function renderLayerSvg(layer, interactive){
   let hit = '';
   if(interactive){
     if(layer.type === 'import'){
-      const st = importStore[p.key], hw = st ? st.w * p.scale / 2 : 40, hh = st ? st.h * p.scale / 2 : 20;
+      const st = impStore(p), hw = st ? st.w * p.scale / 2 : 40, hh = st ? st.h * p.scale / 2 : 20;
       hit = `<rect data-id="${layer.id}" data-role="move" x="${-hw}" y="${-hh}" width="${hw*2}" height="${hh*2}" fill="transparent"/>`;
     } else if(layer.type === 'fill') {
       { const f = fillFollow(layer); hit = `<path data-id="${layer.id}" data-role="move" d="${p.d}"${f ? ` transform="${f.str}"` : ''} fill="transparent" fill-rule="evenodd"/>`; }
@@ -2482,7 +2605,7 @@ function selectionOverlaySvg(layer){
     const f = fillFollow(layer);
     outline = `<rect class="sel-outline"${f ? ` transform="${f.str}"` : ''} x="${p.bx0}" y="${p.by0}" width="${p.bx1 - p.bx0}" height="${p.by1 - p.by0}"/>`;
   } else if(layer.type==='import'){
-    const st = importStore[p.key], hw = st ? st.w * p.scale / 2 : 40, hh = st ? st.h * p.scale / 2 : 20;
+    const st = impStore(p), hw = st ? st.w * p.scale / 2 : 40, hh = st ? st.h * p.scale / 2 : 20;
     outline = `<rect class="sel-outline" x="${-hw}" y="${-hh}" width="${hw*2}" height="${hh*2}"/>`;
   } else if(layer.type==='box' || layer.type==='shape'){
     outline = `<rect class="sel-outline" x="0" y="0" width="${p.width}" height="${p.height}"/>`;
@@ -2613,6 +2736,553 @@ function addLayer(type){
   }
   renderAll();
 }
+/* ============================= LOGOTHETIS PALETTE =============================
+   One-click, parametric versions of Logothetis's symbols, built only from this tool's own
+   layer types. Length = duration, Size = loudness, Ink = timbre (his own rule). Each
+   preset adds several layers and selects them together so they move as one.
+   Placement conventions: shapes anchor top-left and rotate about their centre; lines
+   anchor at their start point and rotate about it. */
+/* Pitch symbols: Logothetis writes pitch as note NAMES (German letters), so notes are real text. */
+const LOGO_PITCH_NAMES = ['c','des','d','es','e','f','fis','ges','g','as','a','b','h'];
+/* Every symbol below is composed ONLY of the tool's native layer types (circle / diamond /
+   polygon / star shapes and straight / zigzag / chirp / arc / dampedWave lines). Nothing here
+   adds a new shape type: a dot IS the native circle, a lens IS the native diamond, etc. */
+const LOGO = {
+  assoc: [
+    ['dot','Dot \u00b7 quiet-loud, short (also: change of timbre)'], ['lens','Lens \u00b7 quiet-loud-quiet'],
+    ['cresc','Wedge \u00b7 quiet \u2192 loud'], ['line','Line \u00b7 quiet, long'],
+    ['bar','Bar \u00b7 loud, short'], ['bowtie','Bowtie \u00b7 loud-quiet-loud'],
+    ['ring','Open circle \u00b7 change of timbre'], ['dbox','Diagonal box \u00b7 change of timbre, no pitch'],
+    ['star','Starburst \u00b7 rich in overtones'], ['vibrato','Vibrato \u00b7 fading out'], ['tremolo','Tremolo / flutter-tongue']
+  ],
+  action: [
+    ['cloud','Dot cloud \u00b7 scattered points'],
+    ['arrow','Arrow \u00b7 a normal line, so it has every line parameter'],
+    ['ribbon','Free ribbon \u00b7 drag any path; width, hair and strands at every point'], ['swell','Parametric line \u00b7 wave, spiral, ring with presets'],
+    ['scatter','Scatter field \u00b7 dots, dashes, stars with density and size falloff'],
+    ['trem','Tremolo block \u00b7 hatched ribbon'], ['trill','Trill \u00b7 serrated bar'],
+    ['track','Track \u00b7 right-angle path of parallel lines']
+  ]
+};
+/* Symbols whose Length does nothing (only Size drives them): the panel hides the Length slider. */
+const LOGO_USES = {dot:'S', ring:'S', star:'S', bar:'S'};
+function logoBuild(key, L, S, C, cx, cy){
+  const sh = (o, w, h, px, py) => ['shape', Object.assign({shapeType:'circle', fillMode:'filled', thickness:0.5, rotation:0}, o,
+    {width:w, height:h, x:(px==null?cx:px)-w/2, y:(py==null?cy:py)-h/2, color:C})];
+  const ln = (x, y, len, rot, th, o) => ['line', Object.assign({lineType:'straight', x, y, rotation:rot, length:len, thickness:th, cap:'butt', arrowType:'none', color:C}, o||{})];
+  const tri = (rot, w, h, px) => sh({shapeType:'polygon', sides:3, apexOffset:50, rotation:rot}, w, h, px, cy);
+  const fix = (o, nm) => o.concat([nm]);
+  switch(key){
+    case 'dot': return [sh({}, S, S)];
+    case 'lens': return [sh({shapeType:'diamond'}, L, S)];
+    case 'cresc': return [tri(270, S, L, cx)];
+    case 'decresc': return [tri(90, S, L, cx)];
+    case 'bowtie': return [tri(90, S, L/2, cx - L/4), tri(270, S, L/2, cx + L/4)];
+    case 'line': return [ln(cx - L/2, cy, L, 0, S*0.3)];
+    case 'bar': return [ln(cx, cy - S, S*2, 90, S*0.3)];
+    case 'ring': return [sh({fillMode:'outline', thickness:Math.max(0.5, S*0.16)}, S, S)];
+    case 'dbox': return [sh({shapeType:'polygon', sides:4, fillMode:'diagonal', thickness:Math.max(0.5, S*0.1)}, L*0.5, S)];
+    case 'timbre': return [sh({}, S, S, cx - S*1.6), sh({fillMode:'outline', thickness:Math.max(0.5,S*0.12)}, S*0.7, S*0.7, cx - S*0.2),
+                           sh({shapeType:'polygon', sides:4, fillMode:'diagonal', thickness:Math.max(0.5,S*0.1)}, S*1.7, S*0.8, cx + S*1.5)];
+    case 'star': return [sh({shapeType:'star', pointRatio:24}, S*1.8, S*1.8), sh({shapeType:'star', pointRatio:42, rotation:18}, S*1.3, S*1.3)];
+    case 'noise': return [ln(cx - L/2, cy, L, 0, S*0.35, {lineType:'zigzag', amplitude:S*0.35, cycles:Math.max(2, Math.round(L/8)), phase:0, decay:0})];
+    case 'vibrato': return [ln(cx - L/2, cy, L, 0, S*0.3, {lineType:'dampedWave', ampPoints:[{u:0,amp:S*0.6},{u:1,amp:S*0.05}], periodPoints:[{u:0,period:S*0.9},{u:1,period:S*0.9}], tailLength:0, waveform:'sine', startDirection:'up'})];
+    case 'tremolo': return [ln(cx - L/2, cy, L, 0, S*0.15, {lineType:'zigzag', amplitude:S*0.3, cycles:Math.max(2, Math.round(L/5)), phase:0, decay:0})];
+    case 'cloud': {
+      const out = [];
+      for(let i = 0; i < 16; i++){
+        const r1 = Math.abs(Math.sin(i*12.9898 + 1.7)), r2 = Math.abs(Math.sin(i*78.233 + 4.1)), r3 = Math.abs(Math.sin(i*37.719 + 2.3));
+        out.push(fix(sh({}, Math.max(1, S*(0.12 + 0.5*r3)), Math.max(1, S*(0.12 + 0.5*r3)), cx - L/2 + L*r1, cy + (r2 - 0.5)*L*0.6), 'dot'));
+      }
+      return out;
+    }
+    case 'jagged': return [ln(cx - L/2, cy + L*0.12, L, -15, S*0.14, {lineType:'zigzag', amplitude:S*0.5, cycles:Math.max(4, Math.round(L/9)), phase:0, decay:0.5})];
+    case 'glissUp': return [ln(cx - L/2, cy + L*0.15, L, -20, S*0.2, {arrowType:'stroke', arrowPlacement:'end', arrowSize:S*0.7})];
+    case 'glissDown': return [ln(cx - L/2, cy - L*0.15, L, 20, S*0.2, {arrowType:'stroke', arrowPlacement:'end', arrowSize:S*0.7})];
+    case 'sweep': return [ln(cx - L/2, cy, L, 0, S*0.15, {lineType:'chirp', amplitude:S*0.5, cycles:3, chirpRate:1, damping:0.3, phase:0})];
+    case 'arcMove': return [ln(cx - L/2, cy + L*0.1, L, 0, S*0.2, {lineType:'arc', amplitude:L*0.3, arrowType:'stroke', arrowPlacement:'end', arrowSize:S*0.7})];
+  }
+  return [];
+}
+const LOGO_FONTS = ['Fraunces','Georgia','Times New Roman','Palatino Linotype','Arial','Helvetica','Courier New','Comic Sans MS','Segoe Script','Brush Script MT'];
+const _esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+/* Text and swelling strokes live in the tool's existing vector-layer type; their artwork is generated
+   from the layer's own params every time, so every setting stays editable in the Parameters panel. */
+/* ---- Band textures, strand weights and polyline corners (flexible line + ribbon) ----
+   texture  solid | hatch (hairlines across the band: Logothetis's tremolo blocks) | hatch+outline | teeth (serrated edge: a trill)
+   lanes    a list of weights, one per strand, e.g. "1, 0.2, 0.2": a heavy line with two hairlines beside it */
+function texOf(p, k){
+  const t = p[k + 'Tex'] || 'solid';
+  return {tex:t, hatch:t === 'hatch' || t === 'hatch+outline', outline:t === 'hatch+outline', teeth:t === 'teeth',
+    pitch:Math.max(0.6, +p[k + 'TexPitch'] || 3), line:Math.max(0.1, +p[k + 'TexLine'] || 0.7),
+    depth:Math.min(1, Math.max(0, p[k + 'TexDepth'] == null ? 0.5 : +p[k + 'TexDepth']))};
+}
+function laneOf(p, k){
+  const a = String(p[k + 'Lanes'] || '').split(/[\s,;]+/).map(parseFloat).filter(v => isFinite(v) && v > 0);
+  return a.length ? j => a[j % a.length] : () => 1;
+}
+function bandMarkup(d, hd, color, hollow, tex){
+  const body = (tex.hatch && !tex.outline) ? '' : (hollow || tex.outline)
+    ? '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="1.2" stroke-linejoin="round"/>'
+    : '<path d="' + d + '" fill="' + color + '"/>';
+  const hat = hd ? '<path d="' + hd + '" fill="none" stroke="' + color + '" stroke-width="' + tex.line + '" stroke-linecap="butt"/>' : '';
+  return body + hat;
+}
+/* Samples for a ribbon whose path has straight sides: sharp corners, or corners rounded with a radius.
+   Every vertex keeps its own width / roughness / wobble / spread, blended along the path as usual. */
+function ribbonPolySamples(S, pts, closed, R, grain, T, gR, gJ, gS){
+  const V = closed ? pts.concat([pts[0]]) : pts, nV = V.length;
+  const dv = (pt, k, g) => pt[k] == null ? g : pt[k];
+  const nrm = (x, y) => { const l = Math.hypot(x, y) || 1; return [x/l, y/l]; };
+  const dense = [], va = []; let acc = 0;
+  const pushPt = (x, y) => {
+    const L = dense.length;
+    if(!L){ dense.push({x, y, s:0}); return; }
+    const q = dense[L - 1], dd = Math.hypot(x - q.x, y - q.y); if(dd < 1e-6) return;
+    const nn = Math.max(1, Math.ceil(dd/grain));
+    for(let k = 1; k <= nn; k++) dense.push({x:q.x + (x - q.x)*k/nn, y:q.y + (y - q.y)*k/nn, s:acc + dd*k/nn});
+    acc += dd;
+  };
+  for(let i = 0; i < nV; i++){
+    const Vi = V[i];
+    let done = false;
+    if(R > 0 && i > 0 && i < nV - 1){
+      const A = V[i - 1], B = V[i + 1], u1 = nrm(A.x - Vi.x, A.y - Vi.y), u2 = nrm(B.x - Vi.x, B.y - Vi.y);
+      const th = Math.acos(Math.max(-1, Math.min(1, u1[0]*u2[0] + u1[1]*u2[1])));
+      if(th > 0.02 && th < Math.PI - 0.02){
+        const half = th/2, lA = Math.hypot(A.x - Vi.x, A.y - Vi.y), lB = Math.hypot(B.x - Vi.x, B.y - Vi.y);
+        const cap = Math.min(i > 1 ? lA/2 : lA, i < nV - 2 ? lB/2 : lB);   // two neighbouring corners may share a side, half each
+        const dd = Math.min(R/Math.tan(half), cap), rr = dd*Math.tan(half);
+        const T1 = [Vi.x + u1[0]*dd, Vi.y + u1[1]*dd], T2 = [Vi.x + u2[0]*dd, Vi.y + u2[1]*dd];
+        const bs = nrm(u1[0] + u2[0], u1[1] + u2[1]), cc = [Vi.x + bs[0]*rr/Math.sin(half), Vi.y + bs[1]*rr/Math.sin(half)];
+        const a1 = Math.atan2(T1[1] - cc[1], T1[0] - cc[0]), a2 = Math.atan2(T2[1] - cc[1], T2[0] - cc[0]);
+        let da = a2 - a1; while(da > Math.PI) da -= 2*Math.PI; while(da < -Math.PI) da += 2*Math.PI;
+        const na = Math.max(3, Math.ceil(Math.abs(da)*rr/grain)), mid = Math.round(na/2);
+        pushPt(T1[0], T1[1]);
+        for(let k = 1; k <= na; k++){ const a = a1 + da*k/na; pushPt(cc[0] + rr*Math.cos(a), cc[1] + rr*Math.sin(a)); if(k === mid) va[i] = acc; }
+        done = true;
+      }
+    }
+    if(!done){ pushPt(Vi.x, Vi.y); va[i] = acc; }
+  }
+  for(let i = 1; i < nV; i++) if(!(va[i] > va[i - 1])) va[i] = va[i - 1] + 1e-6;
+  let seg = 0;
+  dense.forEach(q => {
+    while(seg < nV - 2 && q.s > va[seg + 1]) seg++;
+    const P1 = V[seg], P2 = V[seg + 1], span = (va[seg + 1] - va[seg]) || 1;
+    const t = Math.max(0, Math.min(1, (q.s - va[seg])/span)), e = t*t*(3 - 2*t);
+    const lv = (key, g) => { const a = dv(P1, key, g), b = dv(P2, key, g); return a + (b - a)*e; };
+    S.push({x:q.x, y:q.y, w:lv('w', T), r:lv('r', gR), j:lv('j', gJ), s:lv('s', gS)});
+  });
+}
+function genImport(p){
+  if(p.gen === 'scatter'){
+    const n = Math.max(1, Math.min(800, Math.round(p.scCount || 60))), W = p.scW || 150, H = p.scH || 110, dist = p.scDist || 'blob', seed = p.seed || 1;
+    const sMin = Math.max(0.3, p.scMin == null ? 1.5 : p.scMin), sMax = Math.max(sMin, p.scMax == null ? 10 : p.scMax), fall = p.scFall == null ? 0.8 : p.scFall;
+    const asp = Math.max(1, p.scAspect || 4), rotMode = p.scRot || 'none', rj = p.scRotJit || 0, mark = p.scMark || 'dot', ringP = (p.scRingPct || 0)/100;
+    const B = p.scBend == null ? 50 : p.scBend, Wv = p.scWaves == null ? 1 : p.scWaves, spread = p.scSpread == null ? 14 : p.scSpread, col = p.color || '#000000';
+    const f = v => String(+(+v).toFixed(2));
+    const rnd = (i, k) => { const x = Math.sin(i*12.9898 + k*78.233 + seed*37.719)*43758.5453; return x - Math.floor(x); };
+    const gauss = (i, k) => Math.sqrt(-2*Math.log(Math.max(1e-6, rnd(i, k))))*Math.cos(2*Math.PI*rnd(i, k + 1));
+    const pts = [];
+    if(dist === 'horizon rows'){
+      const R = Math.max(3, Math.round(Math.sqrt(n)*0.9)), wts = [];
+      for(let r = 0; r < R; r++) wts.push(1/(0.25 + 0.75*(r + 0.5)/R));
+      const tot = wts.reduce((a, b) => a + b, 0); let id = 0;
+      for(let r = 0; r < R; r++){
+        const t = (r + 0.5)/R, cnt = Math.max(1, Math.round(n*wts[r]/tot)), y = -H/2 + H*Math.pow(t, 1.7);
+        for(let c = 0; c < cnt; c++){
+          id++;
+          pts.push({x:-W/2 + W*((c + 0.15 + 0.7*rnd(id, 1))/cnt), y:y + (rnd(id, 2) - 0.5)*H/R*0.5, rel:0, tan:0,
+            size:sMin + (sMax - sMin)*Math.pow(t, 1.3)*(0.75 + 0.5*rnd(id, 3))});
+        }
+      }
+    } else for(let i = 0; i < n; i++){
+      let x, y, rel, tan = 0;
+      if(dist === 'blob'){
+        x = Math.max(-W/2, Math.min(W/2, gauss(i, 1)*W/5)); y = Math.max(-H/2, Math.min(H/2, gauss(i, 3)*H/5));
+        rel = Math.min(1, Math.hypot(x/(W/2), y/(H/2)));
+      } else if(dist === 'disc'){
+        const r = Math.sqrt(rnd(i, 1)), a = 2*Math.PI*rnd(i, 2); x = r*Math.cos(a)*W/2; y = r*Math.sin(a)*H/2; rel = r;
+      } else if(dist === 'rectangle'){
+        x = (rnd(i, 1) - 0.5)*W; y = (rnd(i, 2) - 0.5)*H; rel = Math.max(Math.abs(x)/(W/2), Math.abs(y)/(H/2));
+      } else {
+        const u = rnd(i, 1), cx = (u - 0.5)*W, cy = -B*Math.sin(2*Math.PI*Wv*u), dx = W, dy = -B*2*Math.PI*Wv*Math.cos(2*Math.PI*Wv*u);
+        const tl = Math.hypot(dx, dy) || 1, off = gauss(i, 3)*spread/2; tan = Math.atan2(dy, dx);
+        x = cx - dy/tl*off; y = cy + dx/tl*off; rel = Math.min(1, Math.abs(off)/Math.max(1, spread));
+      }
+      const base = sMin + (sMax - sMin)*Math.pow(rnd(i, 7), 1.8);
+      pts.push({x, y, rel, tan, size:Math.max(sMin*0.6, base*(1 - fall*Math.pow(rel, 1.2)))});
+    }
+    let mk = '', x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    pts.forEach((q, i) => {
+      let kind = mark;
+      if(mark === 'mixed'){ const r = rnd(i, 11); kind = r < 0.6 ? 'dot' : r < 0.76 ? 'ring' : r < 0.88 ? 'star' : 'dash'; }
+      else if(mark === 'dot' && rnd(i, 12) < ringP) kind = 'ring';
+      const s = q.size, th = Math.max(0.5, s/asp);
+      let a = rotMode === 'random' ? rnd(i, 13)*180 : rotMode === 'radial' ? Math.atan2(q.y, q.x)*180/Math.PI : rotMode === 'along' ? q.tan*180/Math.PI : 0;
+      if(rj) a += (rnd(i, 14) - 0.5)*2*rj;
+      if(kind === 'bar') a += 90;
+      let el;
+      if(kind === 'dot') el = '<circle r="' + f(s/2) + '" fill="' + col + '"/>';
+      else if(kind === 'ring') el = '<circle r="' + f(s/2) + '" fill="none" stroke="' + col + '" stroke-width="' + f(Math.max(0.5, s*0.14)) + '"/>';
+      else if(kind === 'dash' || kind === 'bar') el = '<rect x="' + f(-s/2) + '" y="' + f(-th/2) + '" width="' + f(s) + '" height="' + f(th) + '" fill="' + col + '"/>';
+      else if(kind === 'tick') el = '<path d="M' + f(-s/2) + ' 0H' + f(s/2) + '" stroke="' + col + '" stroke-width="0.8" fill="none"/>';
+      else if(kind === 'lens') el = '<path d="M' + f(-s/2) + ' 0Q0 ' + f(-th) + ' ' + f(s/2) + ' 0Q0 ' + f(th) + ' ' + f(-s/2) + ' 0Z" fill="' + col + '"/>';
+      else if(kind === 'wedge') el = '<path d="M' + f(-s/2) + ' 0L' + f(s/2) + ' ' + f(-th) + 'L' + f(s/2) + ' ' + f(th) + 'Z" fill="' + col + '"/>';
+      else { let d = ''; for(let k = 0; k < 16; k++){ const rr = k % 2 ? s*0.17 : s/2, ag = Math.PI*2*k/16; d += (k ? 'L' : 'M') + f(rr*Math.cos(ag)) + ' ' + f(rr*Math.sin(ag)); } el = '<path d="' + d + 'Z" fill="' + col + '"/>'; }
+      mk += '<g transform="translate(' + f(q.x) + ' ' + f(q.y) + ') rotate(' + f(a) + ')">' + el + '</g>';
+      const r = Math.max(s/2, th) + 1; x0 = Math.min(x0, q.x - r); x1 = Math.max(x1, q.x + r); y0 = Math.min(y0, q.y - r); y1 = Math.max(y1, q.y + r);
+    });
+    if(!mk) return null;
+    return {cx:(x0 + x1)/2, cy:(y0 + y1)/2, w:Math.max(1, x1 - x0), h:Math.max(1, y1 - y0), markup:mk};
+  }
+  if(p.gen === 'text'){
+    const size = p.fontSize || 28, txt = String(p.text == null ? '' : p.text) || ' ';
+    const fams = [p.fontCustom && p.fontCustom.trim(), p.font, 'Georgia', 'serif'].filter(Boolean).map(f => /\s/.test(f) ? "'" + f + "'" : f).join(', ');
+    return {cx:0, cy:0, w:Math.max(size*0.6, txt.length*size*0.58), h:size*1.3,
+      markup:'<text x="0" y="0" dy="0.35em" text-anchor="middle" font-family="' + _esc(fams) + '" font-size="' + size + '" font-weight="' + (p.bold ? 700 : 400) + '" font-style="' + (p.italic ? 'italic' : 'normal') + '" fill="' + p.color + '">' + _esc(txt) + '</text>'};
+  }
+  if(p.gen === 'swell'){
+    const L = p.swLen || 200, T = p.swThick == null ? 16 : p.swThick, B = p.swBend || 0, W = p.swWaves == null ? 1 : p.swWaves;
+    const mn = (p.swMin == null ? 5 : p.swMin)/100, c = Math.min(0.95, Math.max(0.05, (p.swPeak || 50)/100)), rep = p.swRepeat || 4;
+    const rough = p.swRough || 0, jit = p.swJitter || 0, seed = p.seed || 1, grain = Math.max(1, p.swGrain || 6);
+    const path = p.swPath || 'wave', m = Math.max(1, Math.round(p.swStrands || 1)), spr = p.swSpread || 0, conv = p.swConverge || 'parallel';
+    const turns = Math.max(0.25, W);
+    const approx = path === 'spiral' ? Math.PI*L*turns/2 : path === 'ring' ? Math.PI*(L/2 + Math.max(B, 1)) : L + 4*Math.abs(B)*W;
+    const N = Math.max(48, Math.min(1500, Math.round(approx/grain))), step = approx/N;
+    const rnd = (i, k) => { const x = Math.sin(i*12.9898 + k*78.233 + seed*37.719)*43758.5453; return x - Math.floor(x); };
+    const prof = u => { const f = p.swProfile === 'cresc' ? u : p.swProfile === 'dim' ? 1 - u : p.swProfile === 'attack' ? Math.exp(-4*u) : p.swProfile === 'cut' ? Math.exp(-4*(1 - u)) : p.swProfile === 'even' ? 1 : p.swProfile === 'pulse' ? 0.5 - 0.5*Math.cos(2*Math.PI*rep*u)
+      : (u <= c ? Math.sin(Math.PI/2*u/c) : Math.cos(Math.PI/2*(u - c)/(1 - c))); return mn + (1 - mn)*f; };
+    const ctr = u => path === 'spiral' ? [L/2*u*Math.cos(2*Math.PI*turns*u), L/2*u*Math.sin(2*Math.PI*turns*u)]
+      : path === 'ring' ? [L/2*Math.cos(2*Math.PI*u), Math.max(B, 1)*Math.sin(2*Math.PI*u)] : [u*L, -B*Math.sin(2*Math.PI*W*u)];
+    const wf = u => conv === 'converge start' ? u : conv === 'converge end' ? 1 - u : conv === 'both ends' ? Math.sin(Math.PI*u) : 1;
+    const P = []; for(let i = 0; i <= N; i++) P.push(ctr(i/N));
+    const dashed = p.swDash === 'dashed', onN = Math.max(2, Math.round((p.swDashLen || 12)/step)), offN = Math.max(1, Math.round((p.swGap || 8)/step));
+    const tex = texOf(p, 'sw'), lane = laneOf(p, 'sw'), hk = Math.max(tex.teeth ? 2 : 1, Math.round(tex.pitch/step));
+    let d = '', hd = '', x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const poly = (up, lo) => { const pts = up.concat(lo.slice().reverse()); d += 'M' + pts.map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(' L') + 'Z ';
+      if(tex.hatch) for(let k = 0; k < up.length; k += hk) hd += 'M' + up[k][0].toFixed(1) + ',' + up[k][1].toFixed(1) + 'L' + lo[k][0].toFixed(1) + ',' + lo[k][1].toFixed(1) + ' ';
+      pts.forEach(q => { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }); };
+    for(let j = 0; j < m; j++){
+      const off = m > 1 ? (j/(m - 1) - 0.5)*spr : 0;
+      let up = [], lo = [];
+      const flush = () => { if(up.length > 1) poly(up, lo); up = []; lo = []; };
+      for(let i = 0; i <= N; i++){
+        if(dashed && (i % (onN + offN)) >= onN){ flush(); continue; }
+        const u = i/N, a = P[Math.max(0, i - 1)], b = P[Math.min(N, i + 1)];
+        const tx = b[0] - a[0], ty = b[1] - a[1], tl = Math.hypot(tx, ty) || 1, nx = -ty/tl, ny = tx/tl;
+        const shift = off*wf(u) + jit*((rnd(i, 5) - 0.5)*1.4 + (rnd(i, 10 + j) - 0.5)*0.6);
+        const t = Math.max(0.25, T*prof(u)*lane(j)*(tex.teeth ? 1 - tex.depth*((i % hk)/hk) : 1)*(1 + rough*0.7*(rnd(i, 20 + j) - 0.5)));
+        const qx = P[i][0] + nx*shift, qy = P[i][1] + ny*shift;
+        up.push([qx + nx*t/2, qy + ny*t/2]); lo.push([qx - nx*t/2, qy - ny*t/2]);
+      }
+      flush();
+    }
+    if(!d) return null;
+    return {cx:(x0 + x1)/2, cy:(y0 + y1)/2, w:Math.max(1, x1 - x0), h:Math.max(1, y1 - y0),
+      markup:bandMarkup(d, hd, p.color, p.swHollow, tex)};
+  }
+  if(p.gen === 'logo'){
+    let markup = '', x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const grow = (ax, ay) => { x0 = Math.min(x0, ax); y0 = Math.min(y0, ay); x1 = Math.max(x1, ax); y1 = Math.max(y1, ay); };
+    logoDefs(p).forEach(d => {
+      const q = Object.assign(JSON.parse(JSON.stringify(DEFAULTS[d[0]])), d[1]);
+      markup += renderLayerSvg({id:'_g', type:d[0], params:q}, false).replace(/ class="layer-group" data-id="[^"]*"/, '');
+      if(d[0] === 'shape'){
+        const mx = q.x + q.width/2, my = q.y + q.height/2, rot = (q.rotation || 0) % 180 !== 0, rx = rot ? Math.hypot(q.width, q.height)/2 : q.width/2, ry = rot ? rx : q.height/2;
+        grow(mx - rx, my - ry); grow(mx + rx, my + ry);
+      } else {
+        const a = (q.rotation || 0)*Math.PI/180, ca = Math.cos(a), sa = Math.sin(a), ex = q.x + q.length*ca, ey = q.y + q.length*sa;
+        const amp = q.lineType === 'straight' ? 0 : (q.ampPoints && q.lineType === 'dampedWave' ? Math.max(...q.ampPoints.map(z => z.amp)) : (q.amplitude || 0));
+        const pad = (q.thickness || 0)/2 + amp + (q.arrowType && q.arrowType !== 'none' ? (q.arrowSize || 0) : 0), nx = -sa*pad, ny = ca*pad;
+        grow(q.x + nx, q.y + ny); grow(q.x - nx, q.y - ny); grow(ex + nx, ey + ny); grow(ex - nx, ey - ny);
+      }
+    });
+    if(!isFinite(x0)) return null;
+    return {cx:(x0 + x1)/2, cy:(y0 + y1)/2, w:Math.max(1, x1 - x0), h:Math.max(1, y1 - y0), markup};
+  }
+  return null;
+}
+/* All the sub-elements of one palette symbol, with the Copies / Spread / Variation applied. */
+function logoDefs(p){
+  const n = Math.max(1, Math.min(200, Math.round(p.copies || 1))), sp = p.spread || 0, vr = (p.variation || 0)/100, seed = p.seed || 1, out = [];
+  const rnd = (i, k) => { const x = Math.sin(i*127.1 + k*311.7 + seed*74.7)*43758.5453; return x - Math.floor(x); };
+  for(let i = 0; i < n; i++){
+    const jl = Math.max(0.15, 1 + vr*(rnd(i,1)*2 - 1)), js = Math.max(0.15, 1 + vr*(rnd(i,2)*2 - 1));
+    const dx = n > 1 ? (rnd(i,3) - 0.5)*2*sp : 0, dy = n > 1 ? (rnd(i,4) - 0.5)*2*sp : 0;
+    out.push(...logoBuild(p.sym, (p.logoL || 90)*jl, (p.logoS || 20)*js, p.color || '#000000', dx, dy));
+  }
+  return out;
+}
+/* "Split into separate layers": every dot / piece becomes its own ordinary layer you can move. */
+function explodeGenLayer(id){
+  const L = layers.find(l => l.id === id); if(!L || L.params.gen !== 'logo') return;
+  const g = genImport(L.params); if(!g) return;
+  pushHistory();
+  const ox = L.params.x - g.cx, oy = L.params.y - g.cy, ids = [];
+  const made = logoDefs(L.params).map(d => {
+    const params = Object.assign(JSON.parse(JSON.stringify(DEFAULTS[d[0]])), d[1]); params.x += ox; params.y += oy;
+    const nid = 'el' + (uid++); ids.push(nid);
+    return {id:nid, type:d[0], name:d[2] || L.name, visible:true, params};
+  });
+  layers.splice(layers.indexOf(L), 1, ...made);
+  selectedId = ids[ids.length - 1]; selectedIds = new Set(ids);
+  renderAll();
+}
+function addNativeArrow(){
+  pushHistory();
+  const id = 'el' + (uid++);
+  layers.push({id, type:'line', name:'Arrow', visible:true, params:Object.assign(JSON.parse(JSON.stringify(DEFAULTS.line)),
+    {x:canvasW/2 - 60, y:canvasH/2, rotation:0, length:120, thickness:2, lineType:'straight', cap:'butt', arrowType:'stroke', arrowPlacement:'end', arrowSize:14, color:'#000000'})});
+  selectedId = id; selectedIds = new Set([id]);
+  renderAll();
+}
+/* Flexible-line presets: each one sets every sw* setting, so switching looks starts clean. */
+const SW_BASE = {swPath:'wave', swLen:200, swThick:16, swBend:40, swWaves:1, swProfile:'swell', swPeak:50, swMin:5, swRepeat:4, swRough:0, swJitter:0, swGrain:6,
+  swStrands:1, swSpread:0, swConverge:'parallel', swDash:'solid', swDashLen:12, swGap:8, swHollow:false,
+  swTex:'solid', swTexPitch:3, swTexLine:0.7, swTexDepth:0.5, swLanes:''};
+const SW_PRESETS = {
+  'Swelling curve':{}, 'Hairline bundle':{swThick:0.8, swProfile:'even', swStrands:9, swSpread:30, swConverge:'both ends', swBend:60},
+  'Fan (strands meet)':{swThick:0.8, swProfile:'even', swStrands:12, swSpread:60, swConverge:'converge end', swBend:0},
+  'Jagged mountain':{swThick:1.5, swProfile:'even', swJitter:14, swGrain:3, swBend:30, swWaves:1.5},
+  'Hairy spike line':{swThick:3, swRough:1.4, swJitter:5, swGrain:2}, 'Dashed':{swThick:3, swProfile:'even', swBend:0, swDash:'dashed'},
+  'Hollow ribbon':{swHollow:true, swThick:22, swBend:35, swWaves:1.5}, 'Spiral':{swPath:'spiral', swLen:160, swWaves:5, swThick:1.2, swProfile:'even', swStrands:3, swSpread:3},
+  'Ring':{swPath:'ring', swLen:160, swBend:90, swThick:1.5, swProfile:'pulse', swRepeat:3, swStrands:5, swSpread:8},
+  'Pulse (seismograph)':{swProfile:'pulse', swRepeat:12, swThick:14, swBend:0, swJitter:2, swGrain:4},
+  'Tremolo block':{swTex:'hatch', swTexPitch:2.2, swTexLine:0.8, swProfile:'dim', swThick:30, swBend:0, swLen:130, swMin:8},
+  'Trill (serrated bar)':{swTex:'teeth', swTexPitch:5, swTexDepth:0.75, swProfile:'even', swThick:9, swBend:0, swLen:170},
+  'Cluster band (hatched, outlined)':{swTex:'hatch+outline', swTexPitch:3.2, swTexLine:0.7, swThick:34, swBend:25, swWaves:1, swLen:180},
+  'Attack and decay':{swProfile:'attack', swThick:28, swMin:2, swBend:0, swLen:150},
+  'Rising to a cut-off':{swProfile:'cut', swThick:28, swMin:2, swBend:0, swLen:150},
+  'Heavy line + two hairlines':{swProfile:'even', swThick:5, swStrands:3, swSpread:16, swBend:0, swLanes:'1, 0.18, 0.18'}
+};
+Object.assign(SUBHEADS, {swTex:'Band texture', rbTex:'Band texture', rbCorner:'Corners', rbRough:'Texture', rbStrands:'Strands', rbDash:'Dashes', swPath:'Path', swProfile:'Thickness', swRough:'Texture', swStrands:'Strands', swDash:'Dashes'});
+/* RIBBON MODE for pen layers. The centre-line is the path you drew / dragged (smoothed through every
+   point). Each point can carry its own width (w), edge roughness (r), line wobble (j) and strand
+   spread (s); values in between are blended smoothly, and a point left empty uses the layer default. */
+function ribbonElement(p){
+  const pts = p.points || [], n = pts.length; if(n < 2) return '';
+  const closed = !!(p.closed && n > 2), seed = p.rbSeed || 1, grain = Math.max(1, p.rbGrain || 4);
+  const T = p.thickness || 8, gR = p.rbRough || 0, gJ = p.rbJitter || 0, gS = p.rbSpread || 0, m = Math.max(1, Math.round(p.rbStrands || 1));
+  const at = i => pts[closed ? ((i % n) + n) % n : Math.max(0, Math.min(n - 1, i))];
+  const dv = (pt, k, g) => pt[k] == null ? g : pt[k];
+  const S = [], segs = closed ? n : n - 1, corner = p.rbCorner || 'smooth', tex = texOf(p, 'rb'), lane = laneOf(p, 'rb');
+  if(corner !== 'smooth') ribbonPolySamples(S, pts, closed, corner === 'rounded' ? (p.rbRadius == null ? 14 : p.rbRadius) : 0, grain, T, gR, gJ, gS);
+  else for(let i = 0; i < segs; i++){
+    const P0 = at(i - 1), P1 = at(i), P2 = at(i + 1), P3 = at(i + 2);
+    const mm = Math.max(4, Math.round(Math.hypot(P2.x - P1.x, P2.y - P1.y)/grain));
+    for(let k = (i === 0 ? 0 : 1); k <= mm; k++){
+      const t = k/mm, t2 = t*t, t3 = t2*t, e = t*t*(3 - 2*t);
+      const cr = (a, b, c, d) => 0.5*(2*b + (-a + c)*t + (2*a - 5*b + 4*c - d)*t2 + (-a + 3*b - 3*c + d)*t3);
+      const lv = (key, g) => { const a = dv(P1, key, g), b = dv(P2, key, g); return a + (b - a)*e; };
+      S.push({x:cr(P0.x, P1.x, P2.x, P3.x), y:cr(P0.y, P1.y, P2.y, P3.y), w:lv('w', T), r:lv('r', gR), j:lv('j', gJ), s:lv('s', gS)});
+    }
+  }
+  const N = S.length; if(N < 2) return '';
+  const rnd = (i, k) => { const x = Math.sin(i*12.9898 + k*78.233 + seed*37.719)*43758.5453; return x - Math.floor(x); };
+  const dashed = p.rbDash === 'dashed', onN = Math.max(2, Math.round((p.rbDashLen || 12)/grain)), offN = Math.max(1, Math.round((p.rbGap || 8)/grain));
+  const hk = Math.max(tex.teeth ? 2 : 1, Math.round(tex.pitch/grain));
+  let d = '', hd = '';
+  for(let j = 0; j < m; j++){
+    let up = [], lo = [];
+    const flush = () => {
+      if(up.length > 1){
+        d += 'M' + up.concat(lo.slice().reverse()).map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(' L') + 'Z ';
+        if(tex.hatch) for(let k = 0; k < up.length; k += hk) hd += 'M' + up[k][0].toFixed(1) + ',' + up[k][1].toFixed(1) + 'L' + lo[k][0].toFixed(1) + ',' + lo[k][1].toFixed(1) + ' ';
+      }
+      up = []; lo = [];
+    };
+    for(let i = 0; i < N; i++){
+      if(dashed && (i % (onN + offN)) >= onN){ flush(); continue; }
+      const a = S[Math.max(0, i - 1)], b = S[Math.min(N - 1, i + 1)], q = S[i];
+      const tx = b.x - a.x, ty = b.y - a.y, tl = Math.hypot(tx, ty) || 1;
+      let nx = -ty/tl, ny = tx/tl, mk = 1;
+      if(corner !== 'smooth'){      // at a corner, offset along the mitre so the band keeps its full width
+        const d1x = q.x - a.x, d1y = q.y - a.y, d2x = b.x - q.x, d2y = b.y - q.y, l1 = Math.hypot(d1x, d1y), l2 = Math.hypot(d2x, d2y);
+        if(l1 > 1e-6 && l2 > 1e-6){
+          const n1x = -d1y/l1, n1y = d1x/l1, n2x = -d2y/l2, n2y = d2x/l2, mx = n1x + n2x, my = n1y + n2y, ml = Math.hypot(mx, my) || 1;
+          nx = mx/ml; ny = my/ml; mk = 1/Math.max(0.35, nx*n1x + ny*n1y);
+        }
+      }
+      const off = m > 1 ? (j/(m - 1) - 0.5)*q.s : 0;
+      const shift = (off + q.j*((rnd(i, 5) - 0.5)*1.4 + (rnd(i, 10 + j) - 0.5)*0.6))*mk;
+      const w = Math.max(0.25, q.w*lane(j)*(tex.teeth ? 1 - tex.depth*((i % hk)/hk) : 1)*(1 + q.r*0.7*(rnd(i, 20 + j) - 0.5)))*mk;
+      const cx = q.x + nx*shift, cy = q.y + ny*shift;
+      up.push([cx + nx*w/2, cy + ny*w/2]); lo.push([cx - nx*w/2, cy - ny*w/2]);
+    }
+    flush();
+  }
+  if(!d) return '';
+  return bandMarkup(d, hd, p.color, p.rbHollow, tex);
+}
+function applyRibbonProfile(P, prof){
+  const pts = P.points || [], n = pts.length, T = P.thickness || 8;
+  pts.forEach((pt, i) => {
+    const u = n > 1 ? i/(n - 1) : 0;
+    const f = prof === 'cresc' ? u : prof === 'dim' ? 1 - u : prof === 'attack' ? Math.exp(-4*u) : prof === 'cut' ? Math.exp(-4*(1 - u)) : prof === 'even' ? 1 : prof === 'pulse' ? 0.5 - 0.5*Math.cos(2*Math.PI*u*Math.max(1, Math.round(n/2))) : Math.sin(Math.PI*u);
+    pt.w = Math.round(Math.max(T*0.04, T*f)*10)/10;
+  });
+}
+function ribbonAttrRow(layer, pt, i){
+  const p = layer.params, f = (key, label, ph, step) => `<label class="env-pt-field">${label}
+        <input type="number" step="${step}" min="0" placeholder="${ph}" value="${pt[key] == null ? '' : Math.round(pt[key]*100)/100}" onchange="updatePointAttr('${layer.id}',${i},'${key}',this.value)"></label>`;
+  return `<div class="env-pt-row" style="padding-left:22px;">${f('w', 'Width', Math.round((p.thickness || 8)*10)/10, 0.5)}${f('r', 'Rough', p.rbRough || 0, 0.1)}${f('j', 'Wobble', p.rbJitter || 0, 0.5)}${(p.rbStrands || 1) > 1 ? f('s', 'Spread', p.rbSpread || 0, 1) : ''}</div>`;
+}
+function updatePointAttr(id, idx, key, value){
+  const layer = layers.find(l => l.id === id); if(!layer) return;
+  const pt = (layer.params.points || [])[idx]; if(!pt) return;
+  pushHistory();
+  if(value === '' || isNaN(parseFloat(value))) delete pt[key]; else pt[key] = Math.max(0, parseFloat(value));
+  renderAll();
+  finalizeHistory();
+}
+/* Palette entry: a ready-made pen path in Ribbon mode. Drag its points on the canvas; set each point's
+   width / roughness / wobble / spread in the Parameters panel; or draw your own path with the Pen and tick Ribbon mode. */
+function addFreeRibbon(){
+  pushHistory();
+  const id = 'el' + (uid++);
+  layers.push({id, type:'custom', name:'Free ribbon', visible:true, params:Object.assign(JSON.parse(JSON.stringify(DEFAULTS.custom)),
+    {x:canvasW/2 - 150, y:canvasH/2 - 50, ribbon:true, lineType:'smooth', thickness:22, color:'#000000',
+     points:[{x:0,y:60,w:1},{x:70,y:20,w:8},{x:150,y:50,w:22},{x:230,y:90,w:10},{x:300,y:40,w:1}]})});
+  selectedId = id; selectedIds = new Set([id]);
+  renderAll();
+}
+function impStore(p){ return p.gen ? genImport(p) : importStore[p.key]; }
+function addGenLayer(extra, name){
+  pushHistory();
+  const id = 'el' + (uid++);
+  layers.push({id, type:'import', name, visible:true, params:Object.assign(JSON.parse(JSON.stringify(DEFAULTS.import)), {x:canvasW/2, y:canvasH/2, key:''}, extra)});
+  selectedId = id; selectedIds = new Set([id]);
+  renderAll();
+}
+const _logoC = () => '#000000';
+const _logoN = (id, d) => d;
+function addLogoText(txt){
+  txt = String(txt || '').trim(); if(!txt) return;
+  addGenLayer({gen:'text', text:txt, font:'Fraunces', fontCustom:'', fontSize:Math.round(_logoN('logoSize', 20)*1.4), italic:true, bold:false, color:_logoC()}, 'Text \u00b7 ' + txt);
+}
+function addLogoNote(name){ addLogoText(name); }
+function addLogoSwell(){
+  addGenLayer(Object.assign({}, SW_BASE, {gen:'swell', swPreset:'Swelling curve', seed:Math.ceil(Math.random()*900), color:'#000000'}), 'Flexible line');
+}
+function addScatter(){
+  addGenLayer({gen:'scatter', scDist:'blob', scMark:'dot', scCount:70, scW:150, scH:110, scMin:1.2, scMax:11, scFall:0.8, scAspect:4, scRot:'none', scRotJit:0,
+    scRingPct:8, scBend:50, scWaves:1, scSpread:14, seed:Math.ceil(Math.random()*900), color:_logoC()}, 'Scatter field');
+}
+function addSwellPreset(name){
+  addGenLayer(Object.assign({}, SW_BASE, SW_PRESETS[name], {gen:'swell', swPreset:name, seed:Math.ceil(Math.random()*900), color:_logoC()}), name);
+}
+/* A right-angle path made of parallel lines with rounded corners: a heavy line with two hairlines, as in the
+   concentric tracks of Logothetis's large scores. Drag its points; every setting is in Parameters. */
+function addTrack(){
+  pushHistory();
+  const id = 'el' + (uid++);
+  layers.push({id, type:'custom', name:'Track', visible:true, params:Object.assign(JSON.parse(JSON.stringify(DEFAULTS.custom)),
+    {x:canvasW/2 - 120, y:canvasH/2, ribbon:true, lineType:'smooth', thickness:5, color:_logoC(), rbCorner:'rounded', rbRadius:18,
+     rbStrands:3, rbSpread:14, rbLanes:'1, 0.2, 0.2',
+     points:[{x:0,y:20},{x:90,y:20},{x:90,y:-30},{x:180,y:-30},{x:180,y:30},{x:250,y:30}]})});
+  selectedId = id; selectedIds = new Set([id]);
+  renderAll();
+}
+/* Copies of the selected element(s) placed around a centre and turned to face outward (flowers, rings, petals) */
+function radialRepeat(){
+  const nEl = document.getElementById('rrN'), aEl = document.getElementById('rrA'), sEl = document.getElementById('rrSpin');
+  const n = Math.max(2, Math.min(72, parseInt(nEl && nEl.value) || 8)), sweep = Math.max(10, Math.min(360, parseFloat(aEl && aEl.value) || 360)), spin = !sEl || sEl.checked;
+  const src = layers.filter(l => selectedIds.has(l.id) && l.type !== 'fill');
+  if(!src.length) return;
+  const C = [canvasW/2, canvasH/2], step = (sweep >= 359.5 ? sweep/n : sweep/(n - 1))*Math.PI/180;
+  pushHistory();
+  const made = [];
+  for(let k = 1; k < n; k++){
+    const th = step*k, co = Math.cos(th), si = Math.sin(th);
+    src.forEach(l => {
+      const c = JSON.parse(JSON.stringify(l)), q = c.params, hasBox = l.type === 'shape' || l.type === 'box';
+      const px = hasBox ? q.x + (q.width || 0)/2 : q.x, py = hasBox ? q.y + (q.height || 0)/2 : q.y;
+      const nx = C[0] + (px - C[0])*co - (py - C[1])*si, ny = C[1] + (px - C[0])*si + (py - C[1])*co;
+      q.x = hasBox ? nx - (q.width || 0)/2 : nx; q.y = hasBox ? ny - (q.height || 0)/2 : ny;
+      if(spin) q.rotation = (((q.rotation || 0) + th*180/Math.PI) % 360 + 360) % 360;
+      c.id = 'el' + (uid++); c.name = l.name + ' \u21bb' + k;
+      layers.push(c); made.push(c.id);
+    });
+  }
+  made.forEach(id => selectedIds.add(id));
+  renderAll();
+}
+function toggleLogoPalette(force){
+  const d = document.querySelector('.logo-pal'); if(!d) return;
+  d.open = force == null ? !d.open : force;
+  if(d.open){
+    const b = d.querySelector('.logo-body'), tb = document.querySelector('.toolbar'), cl = document.querySelector('.col-left');
+    b.style.top = (tb ? tb.getBoundingClientRect().bottom + 8 : 120) + 'px';
+    b.style.left = (cl ? cl.getBoundingClientRect().right + 10 : 284) + 'px';
+  }
+}
+document.addEventListener('keydown', e => { if(e.key === 'Escape'){ const d = document.querySelector('.logo-pal'); if(d && d.open) d.open = false; } });
+function addLogothetis(key){
+  if(key === 'swell') return addLogoSwell();
+  if(key === 'arrow') return addNativeArrow();
+  if(key === 'ribbon') return addFreeRibbon();
+  if(key === 'scatter') return addScatter();
+  if(key === 'trem') return addSwellPreset('Tremolo block');
+  if(key === 'trill') return addSwellPreset('Trill (serrated bar)');
+  if(key === 'track') return addTrack();
+  /* Line, Bar, Vibrato and Tremolo are just line segments: insert them as ordinary line layers,
+     so they carry every line parameter (type, wave, amplitude, thickness, caps, arrowheads ...). */
+  if(['line','bar','vibrato','tremolo'].includes(key)){
+    const d = logoBuild(key, 90, 20, '#000000', 0, 0)[0];
+    const params = Object.assign(JSON.parse(JSON.stringify(DEFAULTS.line)), d[1]); params.x += canvasW/2; params.y += canvasH/2;
+    const row = LOGO.assoc.find(r => r[0] === key) || [key, key];
+    pushHistory();
+    const id = 'el' + (uid++);
+    layers.push({id, type:'line', name:row[1].split(' \u00b7 ')[0], visible:true, params});
+    selectedId = id; selectedIds = new Set([id]);
+    renderAll();
+    return;
+  }
+  if(!logoBuild(key, 90, 20, '#000000', 0, 0).length) return;
+  const row = LOGO.assoc.concat(LOGO.action).find(r => r[0] === key) || [key, key];
+  addGenLayer({gen:'logo', sym:key, logoL:90, logoS:20, copies:1, spread:60, variation:0, seed:Math.ceil(Math.random()*900), color:'#000000'}, row[1].split(' \u00b7 ')[0]);
+}
+(function buildLogoPalette(){
+  const host = document.getElementById('logoGrid'); if(!host) return;
+  const F = i => '<svg viewBox="0 0 48 28" fill="currentColor">' + i + '</svg>';
+  const K = i => '<svg viewBox="0 0 48 28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + i + '</svg>';
+  const ICON = {
+    dot: F('<circle cx="24" cy="14" r="7"/>'),
+    ribbon: F('<path d="M3 21C10 12 16 8 24 10 32 12 38 8 45 5 38 12 32 17 24 17 16 17 10 23 3 21Z"/>'),
+    ring: K('<circle cx="24" cy="14" r="7"/>'), dbox: F('<path d="M10 5H38V23H10Z" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M10 5H38L10 23Z"/>'),
+    arrow: K('<path d="M4 14H42M42 14 33 8M42 14 33 20"/>'), lens: F('<path d="M3 14 24 7 45 14 24 21Z"/>'),
+    cresc: F('<path d="M4 13 44 6V22L4 15Z"/>'), line: F('<rect x="4" y="12" width="40" height="4"/>'),
+    bar: F('<rect x="21" y="3" width="6" height="22"/>'), bowtie: F('<path d="M4 5 24 12 44 5V23L24 16 4 23Z"/>'),
+    timbre: F('<circle cx="9" cy="14" r="5"/><circle cx="23" cy="14" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M31 8H45V20H31Z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M31 8H45L31 20Z"/>'),
+    star: F('<path d="M24 2 27 10 36 6 31 14 43 16 32 19 38 26 28 22 24 27 20 22 10 26 16 19 5 16 17 14 12 6 21 10Z"/>'),
+    vibrato: K('<path d="M3 14c3-12 6-12 9 0s6 12 9 0 6-12 9 0 6 12 9 0"/>'),
+    tremolo: K('<path d="M3 15 6 9 9 19 12 9 15 19 18 9 21 19 24 9 27 19 30 9 33 19 36 9 39 19 42 9 45 15"/>'),
+    cloud: F('<circle cx="8" cy="19" r="2.6"/><circle cx="15" cy="9" r="1.6"/><circle cx="22" cy="16" r="3.6"/><circle cx="30" cy="9" r="2"/><circle cx="36" cy="21" r="1.6"/><circle cx="41" cy="12" r="2.6"/><circle cx="12" cy="14" r="1.2"/><circle cx="29" cy="22" r="1.2"/>'),
+    glissUp: K('<path d="M5 23 42 6M42 6 34 6.5M42 6 38.5 13.5"/>'),
+    swell: F('<path d="M3 16C12 14 16 8 24 7 32 6 38 12 45 12 38 14 32 20 24 21 16 22 12 17 3 16Z"/>'),
+    sweep: K('<path d="M3 14c2.5-9 5-9 7.5 0s4 9 6 0 3-9 4.5 0 2 9 3 0 1.5-9 2.5 0 1 9 2 0"/>'),
+    arcMove: K('<path d="M4 23Q24-8 42 20M42 20 34 18.5M42 20 41 12.5"/>'),
+    scatter: F('<circle cx="24" cy="14" r="4"/><circle cx="17" cy="10" r="2.4"/><circle cx="31" cy="18" r="2.6"/><circle cx="12" cy="18" r="1.6"/><circle cx="36" cy="9" r="1.5"/><circle cx="25" cy="22" r="1.4"/><circle cx="20" cy="19" r="1.2"/><circle cx="6" cy="12" r="1"/><circle cx="42" cy="15" r="1"/>'),
+    trem: K('<path d="M4 8 4 20M8 7 8 21M12 6 12 22M16 6 16 22M20 6.5 20 21.5M24 7 24 21M28 8 28 20M32 9 32 19M36 10 36 18M40 11 40 17M44 12 44 16" stroke-width="1.6"/>'),
+    trill: F('<path d="M3 20 8 8 13 20 18 8 23 20 28 8 33 20 38 8 43 20Z"/>'),
+    track: K('<path d="M4 20H18V8H32V20H44M4 15H14V4H36V15H44" stroke-width="1.8"/>')
+  };
+  const sec = (title, list) => '<div class="logo-h">' + title + '</div><div class="logo-grid">' +
+    list.map(([k, t]) => '<button type="button" class="ico" data-logo="' + k + '" title="' + t + '">' + (ICON[k] || t) + '</button>').join('') + '</div>';
+  const fld = 'background:var(--paper-deep);color:var(--ink);border:1px solid var(--border);border-radius:5px;padding:4px;';
+  const addBtn = 'background:var(--paper-deep);color:var(--ink);border:1px solid var(--border);border-radius:6px;padding:4px 12px;cursor:pointer;';
+  host.innerHTML = '<div class="logo-head"><span>Logothetis palette</span><button type="button" onclick="toggleLogoPalette(false)" title="Close (Esc)">\u00d7</button></div>' +
+    sec('Association factors', LOGO.assoc) + sec('Action signals', LOGO.action) +
+    '<div class="logo-h">Text</div><div style="display:flex;gap:6px;"><input id="logoText" type="text" value="trem. vibrato" style="flex:1;min-width:0;' + fld + '"><button type="button" data-text style="' + addBtn + '">Add</button></div>' +
+    '<div class="logo-h">Note name</div><div style="display:flex;gap:6px;"><select id="logoNote" style="flex:1;' + fld + '">' + LOGO_PITCH_NAMES.map(n => '<option>' + n + '</option>').join('') + '</select><button type="button" data-note style="' + addBtn + '">Add</button></div>' +
+    '<div class="logo-h">Radial repeat</div><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;"><label>copies <input id="rrN" type="number" min="2" max="72" value="8" style="width:52px;' + fld + '"></label><label>over <input id="rrA" type="number" min="10" max="360" value="360" style="width:56px;' + fld + '">\u00b0</label><label title="Turn every copy to face outward, like petals. Untick to keep the copies upright"><input id="rrSpin" type="checkbox" checked> turn each</label><button type="button" data-radial title="Repeat the selected element(s) around the centre of the canvas" style="' + addBtn + '">Repeat selection</button></div>' +
+    '<div class="logo-note">Hover a symbol for its meaning. Select it on the canvas to shape it in Parameters.</div>';
+  host.addEventListener('click', e => { const b = e.target.closest('[data-logo]'); if(b) addLogothetis(b.dataset.logo); if(e.target.closest('[data-note]')) addLogoNote(document.getElementById('logoNote').value); if(e.target.closest('[data-text]')) addLogoText(document.getElementById('logoText').value); });
+  host.addEventListener('click', e => { if(e.target.closest('[data-radial]')) radialRepeat(); });
+})();
+
 function deleteLayer(id, ev){
   if(ev) ev.stopPropagation();
   const wasDotTarget = addPointMode && addPointLayerId === id;
@@ -2824,7 +3494,7 @@ function computeSharedFields(selLayers){
   const schemas = selLayers.map(l=>schemaFor(l));
   const shared = [];
   schemas[0].forEach(f=>{
-    if(f.type==='envelopeEditor') return;
+    if(f.type==='envelopeEditor' || f.type==='text') return;
     if(shared.some(s=>s.key===f.key)) return;
     let min = f.min, max = f.max, step = f.step;
     let ok = true;
@@ -2950,6 +3620,13 @@ function renderField(f, layer){
           onmousedown="ensureHistorySnapshot()" ontouchstart="ensureHistorySnapshot()"
           oninput="onFieldRangeInput(this,'${layer.id}','${f.key}')"
           onchange="onFieldRangeChangeEnd('${layer.id}','${f.key}')">
+      </div>`;
+  }
+  if(f.type==='text'){
+    return `
+      <div class="field">
+        <label>${f.label}</label>
+        <input type="text" style="width:100%;" value="${String(val == null ? '' : val).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" onchange="updateParam('${layer.id}','${f.key}', this.value, false)">
       </div>`;
   }
   if(f.type==='select'){
@@ -3251,7 +3928,7 @@ function pointListEditorHtml(layer){
   const closesLoop = !!(p.closed && pts.length > 2);
   const totalLen = pts.length>=2 ? Math.hypot(pts[pts.length-1].x-pts[0].x, pts[pts.length-1].y-pts[0].y) : 0;
   const rows = pts.map((pt,i)=>{
-    const pointRow = `
+    let pointRow = `
     <div class="env-pt-row">
       <span class="env-pt-idx">${i+1}</span>
       <label class="env-pt-field">X
@@ -3264,6 +3941,7 @@ function pointListEditorHtml(layer){
       </label>
       <button type="button" class="env-add-btn" title="Match this point's Y to another point" onclick="promptMatchY('${layer.id}',${i})">= Y</button>
     </div>`;
+    if(p.ribbon) pointRow += ribbonAttrRow(layer, pt, i);
     // Between-point info: this segment's own length, plus how far its midpoint sits from
     // the shape's start — same readout as the jagged-line points panel. The closing
     // segment (last point back to the first, when the shape is closed) gets a row too.
@@ -3541,7 +4219,9 @@ function buildParamPanel(){
   if(layer.type==='fill'){
     customControls = `<div class="pen-hint" style="margin-bottom:10px;">Paint-bucket fill. It sits underneath your lines and exports with the canvas. Click it with the Fill tool to recolour it.</div>`;
   }
-  if(layer.type==='import'){
+  if(layer.type==='import' && layer.params.gen){
+    customControls = layer.params.gen === 'logo' ? `<button type="button" style="width:100%;margin-bottom:12px;padding:8px;background:var(--paper-deep);color:var(--ink);border:1px solid var(--border);border-radius:8px;cursor:pointer;" title="Turn every dot / piece into its own layer so you can move each one" onclick="explodeGenLayer('${layer.id}')">Split into separate layers</button>` : '';
+  } else if(layer.type==='import'){
     customControls = `<div class="pen-hint" style="margin-bottom:10px;">This is vector artwork from the Circular layout workspace — it exports with the rest of the canvas. Press the button to change the layout itself; scale and rotation are here.</div>
       <div style="display:flex; gap:8px; margin-bottom:14px;"><button class="btn" style="flex:1;" onclick="CircularBridge.edit('${layer.id}')">Edit in Circular layout</button></div>`;
   }
@@ -3918,6 +4598,9 @@ function updateParam(id, key, value, numeric, liveOnly){
   if(!liveOnly && !historyPending) pushHistory();
   const prevThickness = layer.params.thickness;
   layer.params[key] = numeric ? parseFloat(value) : value;
+  if(key === 'rbFill' && layer.type === 'custom'){ if(value !== '\u2014') applyRibbonProfile(layer.params, value); layer.params.rbFill = '\u2014'; }
+  if(key === 'swPreset' && SW_PRESETS[value]) Object.assign(layer.params, SW_BASE, SW_PRESETS[value]);
+  else if(layer.params.gen === 'swell' && key.startsWith('sw')) layer.params.swPreset = 'Custom';
   const hasArrow = layer.params.arrowType && layer.params.arrowType !== 'none';
   if(key === 'closed' && layer.type === 'custom'){
     // Auto-pick a sensible stroke for the new state, but only when the current thickness is
